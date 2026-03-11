@@ -1,14 +1,12 @@
 {
   "name": "@reinteractive/railsinsight",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Rails-aware codebase indexer — MCP server for AI agents",
   "type": "module",
-  "bin": {
-    "railsinsight": "./bin/railsinsight.js"
-  },
+  "bin": "./bin/railsinsight.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/reinteractive/rails-insight.git"
+    "url": "git+https://github.com/reinteractive/rails-insight.git"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
