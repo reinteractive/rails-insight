@@ -1,0 +1,23 @@
+<h1>Posts</h1>
+
+<%= link_to "New Post", new_post_path, class: "btn btn-primary" %>
+
+<%= turbo_stream_from "posts" %>
+
+<%= turbo_frame_tag "posts" do %>
+  <div id="posts" class="posts">
+    <% @posts.each do |post| %>
+      <%= turbo_frame_tag dom_id(post) do %>
+        <div class="post-card">
+          <h2><%= link_to post.title, post %></h2>
+          <p class="meta">
+            By <%= post.user.name %> &middot; <%= time_ago_in_words(post.created_at) %> ago
+          </p>
+          <span class="badge"><%= post.status.humanize %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<%= paginate @posts %>

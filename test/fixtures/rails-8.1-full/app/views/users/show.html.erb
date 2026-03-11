@@ -1,0 +1,20 @@
+<div class="user-profile">
+  <div class="user-header">
+    <% if @user.avatar.attached? %>
+      <%= image_tag @user.avatar.variant(resize_to_limit: [200, 200]), class: "avatar" %>
+    <% end %>
+    <h1><%= @user.username %></h1>
+    <p class="role"><%= @user.role.humanize %></p>
+    <p>Member since <%= @user.created_at.strftime("%B %Y") %></p>
+  </div>
+
+  <div class="user-posts">
+    <h2>Recent Posts</h2>
+    <% @posts.each do |post| %>
+      <div class="post-summary">
+        <h3><%= link_to post.title, post %></h3>
+        <p><%= truncate(post.body, length: 150) %></p>
+      </div>
+    <% end %>
+  </div>
+</div>

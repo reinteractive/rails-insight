@@ -1,0 +1,47 @@
+{
+  "name": "@reinteractive/railsinsight",
+  "version": "0.1.0",
+  "description": "Rails-aware codebase indexer — MCP server for AI agents",
+  "type": "module",
+  "bin": {
+    "railsinsight": "./bin/railsinsight.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reinteractive/railsinsight.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node bin/railsinsight.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:patterns": "vitest run test/patterns/",
+    "test:extractors": "vitest run test/extractors/",
+    "test:core": "vitest run test/core/",
+    "test:contracts": "vitest run test/contracts/",
+    "test:golden": "vitest run test/golden/",
+    "test:edge": "vitest run test/edge-cases/",
+    "test:perf": "vitest run test/performance/",
+    "test:cross-version": "vitest run test/cross-version/",
+    "test:mcp": "vitest run test/mcp/",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,369 @@
+import { describe, it, expect, beforeAll } from 'vitest'
+import { extractController } from '../../src/extractors/controller.js'
+
+function mockProvider(files) {
+  return {
+    readFile(path) {
+      return files[path] || null
+    },
+  }
+}
+
+describe('Controller Extractor', () => {
+  describe('complex controller with all patterns', () => {
+    const fixture = `
+class Api::V2::ProjectsController < Api::V2::BaseController
+  include Authenticatable
+  include Paginatable
+
+  before_action :authenticate_user!
+  before_action :set_project, only: [:show, :update, :destroy]
+  skip_before_action :verify_authenticity_token
+  after_action :track_analytics
+
+  rescue_from ActiveRecord::RecordNotFound, with: :not_found
+  rescue_from Pundit::NotAuthorizedError, with: :forbidden
+
+  skip_forgery_protection
+
+  layout "admin"
+
+  def index
+    @projects = current_user.projects.page(params[:page])
+  end
+
+  def show
+    respond_to do |format|
+      format.html
+      format.json
+    end
+  end
+
+  def create
+    @project = current_user.projects.create!(project_params)
+    redirect_to @project
+  end
+
+  def update
+    @project.update!(project_params)
+  end
+
+  def destroy
+    @project.destroy
+  end
+
+  private
+
+  def set_project
+    @project = current_user.projects.find(params[:id])
+  end
+
+  def project_params
+    params.require(:project).permit(:name, :description, :status)
+  end
+
+  def not_found
+    render json: { error: 'Not found' }, status: :not_found
+  end
+
+  def forbidden
+    render json: { error: 'Forbidden' }, status: :forbidden
+  end
+end`
+
+    let result
+
+    beforeAll(() => {
+      result = extractController(
+        mockProvider({
+          'app/controllers/api/v2/projects_controller.rb': fixture,
+        }),
+        'app/controllers/api/v2/projects_controller.rb',
+      )
+    })
+
+    it('extracts class name', () => {
+      expect(result.class).toBe('Api::V2::ProjectsController')
+    })
+
+    it('extracts superclass', () => {
+      expect(result.superclass).toBe('Api::V2::BaseController')
+    })
+
+    it('extracts namespace', () => {
+      expect(result.namespace).toBe('api/v2')
+    })
+
+    it('extracts concerns', () => {
+      expect(result.concerns).toContain('Authenticatable')
+      expect(result.concerns).toContain('Paginatable')
+      expect(result.concerns).toHaveLength(2)
+    })
+
+    it('extracts before_action filters', () => {
+      const auth = result.filters.find((f) => f.method === 'authenticate_user!')
+      expect(auth).toBeDefined()
+      expect(auth.type).toBe('before_action')
+    })
+
+    it('extracts filters with options', () => {
+      const setProject = result.filters.find((f) => f.method === 'set_project')
+      expect(setProject).toBeDefined()
+      expect(setProject.options).toContain('only')
+    })
+
+    it('extracts skip_before_action', () => {
+      const skip = result.filters.find(
+        (f) => f.method === 'verify_authenticity_token',
+      )
+      expect(skip).toBeDefined()
+      expect(skip.type).toBe('skip_before_action')
+    })
+
+    it('extracts after_action', () => {
+      const aa = result.filters.find((f) => f.method === 'track_analytics')
+      expect(aa.type).toBe('after_action')
+    })
+
+    it('extracts correct total filter count', () => {
+      expect(result.filters).toHaveLength(4)
+    })
+
+    it('extracts only public actions', () => {
+      expect(result.actions).toContain('index')
+      expect(result.actions).toContain('show')
+      expect(result.actions).toContain('create')
+      expect(result.actions).toContain('update')
+      expect(result.actions).toContain('destroy')
+      expect(result.actions).toHaveLength(5)
+      expect(result.actions).not.toContain('set_project')
+      expect(result.actions).not.toContain('project_params')
+    })
+
+    it('extracts strong params', () => {
+      expect(result.strong_params).toBeDefined()
+      expect(result.strong_params.model).toBe('project')
+      expect(result.strong_params.permitted).toContain(':name')
+    })
+
+    it('extracts rescue handlers', () => {
+      expect(result.rescue_handlers).toHaveLength(2)
+      const rnf = result.rescue_handlers.find(
+        (r) => r.exception === 'ActiveRecord::RecordNotFound',
+      )
+      expect(rnf.handler).toBe('not_found')
+    })
+
+    it('extracts layout', () => {
+      expect(result.layout).toBe('admin')
+    })
+
+    it('detects API controller', () => {
+      expect(result.api_controller).toBe(true)
+    })
+
+    it('stores file path', () => {
+      expect(result.file).toBe('app/controllers/api/v2/projects_controller.rb')
+    })
+  })
+
+  describe('simple non-API controller', () => {
+    const fixture = `
+class PagesController < ApplicationController
+  def home
+  end
+
+  def about
+  end
+end`
+
+    it('is not an API controller', () => {
+      const result = extractController(
+        mockProvider({ 'app/controllers/pages_controller.rb': fixture }),
+        'app/controllers/pages_controller.rb',
+      )
+      expect(result.api_controller).toBe(false)
+      expect(result.namespace).toBeNull()
+      expect(result.actions).toEqual(['home', 'about'])
+    })
+  })
+
+  describe('streaming controller', () => {
+    const fixture = `
+class StreamController < ApplicationController
+  include ActionController::Live
+
+  def events
+    response.headers['Content-Type'] = 'text/event-stream'
+  end
+end`
+
+    it('detects streaming', () => {
+      const result = extractController(
+        mockProvider({ 'app/controllers/stream_controller.rb': fixture }),
+        'app/controllers/stream_controller.rb',
+      )
+      expect(result.streaming).toBe(true)
+    })
+  })
+
+  describe('empty controller', () => {
+    const fixture = `
+class EmptyController < ApplicationController
+end`
+
+    it('produces valid output with empty arrays', () => {
+      const result = extractController(
+        mockProvider({ 'app/controllers/empty_controller.rb': fixture }),
+        'app/controllers/empty_controller.rb',
+      )
+      expect(result.class).toBe('EmptyController')
+      expect(result.actions).toEqual([])
+      expect(result.filters).toEqual([])
+      expect(result.concerns).toEqual([])
+      expect(result.rescue_handlers).toEqual([])
+    })
+  })
+
+  describe('missing file', () => {
+    it('returns null', () => {
+      const result = extractController(
+        mockProvider({}),
+        'app/controllers/missing_controller.rb',
+      )
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('null_session forgery protection', () => {
+    const fixture = `
+class Api::BaseController < ActionController::API
+  protect_from_forgery with: :null_session
+
+  def index
+  end
+end`
+
+    it('detects API controller via null_session', () => {
+      const result = extractController(
+        mockProvider({ 'app/controllers/api/base_controller.rb': fixture }),
+        'app/controllers/api/base_controller.rb',
+      )
+      expect(result.api_controller).toBe(true)
+    })
+  })
+
+  describe('Rails 8 rate_limit declarations', () => {
+    const fixture = `
+class SessionsController < ApplicationController
+  rate_limit to: 10, within: 3.minutes, only: :create
+
+  def new
+  end
+
+  def create
+    user = User.authenticate_by(email: params[:email], password: params[:password])
+    if user
+      start_new_session_for(user)
+      redirect_to root_path
+    end
+  end
+
+  def destroy
+    terminate_session
+    redirect_to new_session_path
+  end
+end`
+
+    let result
+
+    beforeAll(() => {
+      result = extractController(
+        mockProvider({ 'app/controllers/sessions_controller.rb': fixture }),
+        'app/controllers/sessions_controller.rb',
+      )
+    })
+
+    it('extracts rate_limit declarations', () => {
+      expect(result.rate_limits).toHaveLength(1)
+      expect(result.rate_limits[0].to).toBe(10)
+      expect(result.rate_limits[0].within).toBe('3.minutes')
+      expect(result.rate_limits[0].only).toBe('create')
+    })
+
+    it('builds action flow chains in action_summaries', () => {
+      expect(result.action_summaries).toBeDefined()
+      expect(result.action_summaries.create).toBeDefined()
+      // Should capture authenticate_by call + redirect as chain
+      expect(result.action_summaries.create).toContain('→')
+    })
+
+    it('captures terminate_session in destroy summary', () => {
+      expect(result.action_summaries.destroy).toBeDefined()
+    })
+  })
+
+  describe('allow_unauthenticated_access', () => {
+    const fixture = `
+class RegistrationsController < ApplicationController
+  allow_unauthenticated_access only: %i[new create]
+
+  def new
+  end
+
+  def create
+  end
+end`
+
+    it('extracts allow_unauthenticated_access with only option', () => {
+      const result = extractController(
+        mockProvider({
+          'app/controllers/registrations_controller.rb': fixture,
+        }),
+        'app/controllers/registrations_controller.rb',
+      )
+      expect(result.allow_unauthenticated_access).toBeDefined()
+      expect(result.allow_unauthenticated_access.only).toContain('new')
+      expect(result.allow_unauthenticated_access.only).toContain('create')
+    })
+
+    it('handles allow_unauthenticated_access without only option', () => {
+      const fixture2 = `
+class PublicController < ApplicationController
+  allow_unauthenticated_access
+
+  def index
+  end
+end`
+      const result = extractController(
+        mockProvider({ 'app/controllers/public_controller.rb': fixture2 }),
+        'app/controllers/public_controller.rb',
+      )
+      expect(result.allow_unauthenticated_access).toBeDefined()
+    })
+  })
+
+  describe('multiple rate_limits', () => {
+    const fixture = `
+class ApiController < ApplicationController
+  rate_limit to: 100, within: 1.minute
+  rate_limit to: 10, within: 1.minute, only: :create
+
+  def index
+  end
+
+  def create
+  end
+end`
+
+    it('extracts multiple rate_limit declarations', () => {
+      const result = extractController(
+        mockProvider({ 'app/controllers/api_controller.rb': fixture }),
+        'app/controllers/api_controller.rb',
+      )
+      expect(result.rate_limits).toHaveLength(2)
+      expect(result.rate_limits[0].to).toBe(100)
+      expect(result.rate_limits[1].to).toBe(10)
+    })
+  })
+})

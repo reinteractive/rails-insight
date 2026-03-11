@@ -1,0 +1,6 @@
+<button class="<%= css_classes %>" <%= "disabled" if @disabled %>>
+  <% if icon? %>
+    <span class="btn-icon"><%= icon %></span>
+  <% end %>
+  <span class="btn-label"><%= @label %></span>
+</button>

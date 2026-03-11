@@ -1,0 +1,13 @@
+<h1>Posts</h1>
+
+<div id="posts">
+  <%= turbo_frame_tag "posts" do %>
+    <%= render partial: "post", collection: @posts %>
+  <% end %>
+</div>
+
+<div class="pagination">
+  <%== pagy_nav(@pagy) %>
+</div>
+
+<%= link_to "New Post", new_post_path, class: "btn btn-primary" %>
