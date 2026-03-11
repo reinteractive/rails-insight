@@ -5,16 +5,42 @@ A Rails-aware codebase indexer that runs as an MCP (Model Context Protocol) serv
 ## Quick Start (Local)
 
 ```bash
-npx railsinsight --project-root /path/to/your/rails/app
+npx @reinteractive/railsinsight
 ```
 
-This starts a local MCP server over stdio. The indexer scans your project structure, extracts Rails conventions, builds a relationship graph, and exposes everything through MCP tools.
+This starts a local MCP server over stdio using the current working directory as the Rails project root. The indexer scans your project structure, extracts Rails conventions, builds a relationship graph, and exposes everything through MCP tools.
+
+If you need to point at a different Rails app, override the root explicitly:
+
+```bash
+npx @reinteractive/railsinsight --project-root /path/to/your/rails/app
+```
+
+## GitHub Packages Setup
+
+RailsInsight is published as a private GitHub Packages package under the `@reinteractive` scope.
+
+1. Create a GitHub Personal Access Token from your personal GitHub account.
+2. Grant it `read:packages`, `write:packages`, and `repo` access.
+3. If your organization uses SSO, authorize the token for `reinteractive`.
+4. Add this to your `~/.npmrc`:
+
+```ini
+@reinteractive:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+```
+
+Verify access with:
+
+```bash
+npm whoami --registry=https://npm.pkg.github.com
+```
 
 ### CLI Options
 
 | Flag                    | Description                                      |
 | ----------------------- | ------------------------------------------------ |
-| `--project-root <path>` | Path to the Rails project (required)             |
+| `--project-root <path>` | Path to the Rails project (defaults to cwd)      |
 | `--claude-md <path>`    | Path to a `claude.md` / `CLAUDE.md` context file |
 | `--mode local\|remote`  | Transport mode (default: `local`)                |
 | `--port <number>`       | Port for remote mode (default: `3000`)           |
@@ -30,7 +56,7 @@ Add to your Claude Code MCP configuration:
   "mcpServers": {
     "railsinsight": {
       "command": "npx",
-      "args": ["railsinsight", "--project-root", "/path/to/your/rails/app"]
+      "args": ["@reinteractive/railsinsight"]
     }
   }
 }
@@ -45,11 +71,13 @@ In your `.cursor/mcp.json` or VS Code MCP settings:
   "mcpServers": {
     "railsinsight": {
       "command": "npx",
-      "args": ["railsinsight", "--project-root", "."]
+      "args": ["@reinteractive/railsinsight"]
     }
   }
 }
 ```
+
+The server uses the workspace directory as the project root automatically, so no path argument is needed for normal project-local use.
 
 ## Available Tools
 
