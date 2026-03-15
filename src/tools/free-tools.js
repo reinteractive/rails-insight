@@ -918,6 +918,12 @@ export function registerFreeTools(server, state) {
           )
         }
 
+        case 'testing':
+          return respond(extractions.tier2?.testing || {})
+
+        case 'design_patterns':
+          return respond(extractions.tier2?.design_patterns || {})
+
         default:
           return respond({
             error: `Unknown category: ${category}`,
@@ -941,6 +947,8 @@ export function registerFreeTools(server, state) {
               'model_list',
               'controller_list',
               'component_list',
+              'testing',
+              'design_patterns',
             ],
           })
       }
