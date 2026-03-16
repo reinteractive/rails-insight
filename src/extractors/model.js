@@ -335,19 +335,55 @@ export function extractModel(provider, filePath, className) {
   // STI base detection (has subclasses inheriting from this, detected elsewhere)
   const sti_base = false
 
-  // Public instance method names (before first private/protected marker)
+  // Public instance method names (before first private/protected marker) with line ranges
   const public_methods = []
+  const method_line_ranges = {}
   {
     const methodLines = content.split('\n')
     let inPrivate = false
-    for (const line of methodLines) {
+    let currentMethodName = null
+    let currentMethodStart = null
+    for (let i = 0; i < methodLines.length; i++) {
+      const line = methodLines[i]
+      const lineNumber = i + 1
+
       if (/^\s*(private|protected)\s*$/.test(line)) {
+        if (currentMethodName && !inPrivate) {
+          method_line_ranges[currentMethodName] = {
+            start: currentMethodStart,
+            end: lineNumber - 1,
+          }
+        }
         inPrivate = true
+        currentMethodName = null
         continue
       }
-      if (!inPrivate) {
-        const mm = line.match(/^\s*def\s+(\w+)/)
-        if (mm && mm[1] !== 'initialize') public_methods.push(mm[1])
+
+      const mm = line.match(/^\s*def\s+(\w+[?!=]?)/)
+      if (mm) {
+        // Close previous method
+        if (currentMethodName && !inPrivate) {
+          method_line_ranges[currentMethodName] = {
+            start: currentMethodStart,
+            end: lineNumber - 1,
+          }
+        }
+
+        if (!inPrivate && mm[1] !== 'initialize') {
+          public_methods.push(mm[1])
+          currentMethodName = mm[1]
+          currentMethodStart = lineNumber
+        } else {
+          currentMethodName = null
+        }
+      }
+    }
+
+    // Close final method
+    if (currentMethodName && !inPrivate) {
+      method_line_ranges[currentMethodName] = {
+        start: currentMethodStart,
+        end: methodLines.length,
       }
     }
   }
@@ -387,6 +423,7 @@ export function extractModel(provider, filePath, className) {
     paper_trail,
     audited,
     public_methods,
+    method_line_ranges,
   }
 }
 

@@ -535,4 +535,102 @@ end`
       expect(result).toBeNull()
     })
   })
+
+  describe('method_line_ranges', () => {
+    it('tracks line ranges for public methods', () => {
+      const fixture = `
+class User < ApplicationRecord
+  def activate
+    update(active: true)
+  end
+
+  def deactivate
+    update(active: false)
+  end
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': fixture }),
+        'app/models/user.rb',
+        'User'
+      )
+      expect(result.method_line_ranges.activate).toBeDefined()
+      expect(result.method_line_ranges.deactivate).toBeDefined()
+      expect(result.method_line_ranges.activate.start).toBeLessThan(
+        result.method_line_ranges.deactivate.start
+      )
+    })
+
+    it('uses 1-indexed line numbers', () => {
+      const fixture = `class User < ApplicationRecord
+  def greet
+    "hello"
+  end
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': fixture }),
+        'app/models/user.rb',
+        'User'
+      )
+      expect(result.method_line_ranges.greet.start).toBe(2)
+    })
+
+    it('excludes methods after private keyword', () => {
+      const fixture = `
+class User < ApplicationRecord
+  def public_method
+    true
+  end
+
+  private
+
+  def secret_method
+    false
+  end
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': fixture }),
+        'app/models/user.rb',
+        'User'
+      )
+      expect(result.method_line_ranges.public_method).toBeDefined()
+      expect(result.method_line_ranges.secret_method).toBeUndefined()
+    })
+
+    it('excludes initialize method', () => {
+      const fixture = `
+class User < ApplicationRecord
+  def initialize(attrs)
+    super
+  end
+
+  def activate
+    true
+  end
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': fixture }),
+        'app/models/user.rb',
+        'User'
+      )
+      expect(result.method_line_ranges.initialize).toBeUndefined()
+      expect(result.method_line_ranges.activate).toBeDefined()
+    })
+
+    it('returns empty object for model with no public methods', () => {
+      const fixture = `
+class User < ApplicationRecord
+  private
+
+  def secret
+    true
+  end
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': fixture }),
+        'app/models/user.rb',
+        'User'
+      )
+      expect(result.method_line_ranges).toEqual({})
+    })
+  })
 })

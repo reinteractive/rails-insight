@@ -27,6 +27,9 @@ import { extractApi } from '../extractors/api.js'
 import { extractConfig } from '../extractors/config.js'
 import { extractTier2 } from '../extractors/tier2.js'
 import { extractTier3 } from '../extractors/tier3.js'
+import { extractTestConventions } from '../extractors/test-conventions.js'
+import { extractFactoryRegistry } from '../extractors/factory-registry.js'
+import { extractCoverageSnapshot } from '../extractors/coverage-snapshot.js'
 
 /**
  * Build the complete index from a FileProvider.
@@ -111,6 +114,18 @@ export async function buildIndex(provider, options = {}) {
       if (sc) extractions.stimulus_controllers.push(sc)
     }
   }
+
+  // Test convention and factory analysis
+  extractions.test_conventions = extractTestConventions(provider, entries, { gems })
+  extractions.factory_registry = extractFactoryRegistry(provider, entries)
+
+  // Coverage snapshot (depends on models and controllers being extracted first
+  // for method line range cross-referencing)
+  extractions.coverage_snapshot = extractCoverageSnapshot(
+    provider,
+    extractions.models,
+    extractions.controllers
+  )
 
   // Layer 5: Graph + Rankings
   const { relationships, rankings } = buildGraph(

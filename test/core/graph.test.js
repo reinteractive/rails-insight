@@ -179,4 +179,61 @@ describe('buildGraph', () => {
     expect(relationships).toEqual([])
     expect(rankings).toEqual({})
   })
+
+  it('creates tests edge from model spec to model', () => {
+    const extractions = {
+      models: {
+        User: {
+          superclass: 'ApplicationRecord',
+          associations: [],
+        },
+      },
+      test_conventions: {},
+    }
+    const manifest = {
+      entries: [
+        { path: 'spec/models/user_spec.rb', category: 19, specCategory: 'model_specs' },
+      ],
+    }
+    const { relationships } = buildGraph(extractions, manifest)
+    const testsEdge = relationships.find(
+      (r) => r.type === 'tests' && r.to === 'User'
+    )
+    expect(testsEdge).toBeTruthy()
+    expect(testsEdge.from).toBe('spec:User')
+  })
+
+  it('creates tests edge from request spec to controller', () => {
+    const extractions = {
+      controllers: {
+        UsersController: { actions: ['index'] },
+      },
+      test_conventions: {},
+    }
+    const manifest = {
+      entries: [
+        { path: 'spec/requests/users_spec.rb', category: 19, specCategory: 'request_specs' },
+      ],
+    }
+    const { relationships } = buildGraph(extractions, manifest)
+    const testsEdge = relationships.find(
+      (r) => r.type === 'tests' && r.to === 'UsersController'
+    )
+    expect(testsEdge).toBeTruthy()
+  })
+
+  it('silently skips specs for models that do not exist', () => {
+    const extractions = {
+      models: {},
+      test_conventions: {},
+    }
+    const manifest = {
+      entries: [
+        { path: 'spec/models/missing_spec.rb', category: 19, specCategory: 'model_specs' },
+      ],
+    }
+    const { relationships } = buildGraph(extractions, manifest)
+    const testsEdge = relationships.find((r) => r.type === 'tests')
+    expect(testsEdge).toBeUndefined()
+  })
 })

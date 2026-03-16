@@ -366,4 +366,82 @@ end`
       expect(result.rate_limits[1].to).toBe(10)
     })
   })
+
+  describe('action_line_ranges', () => {
+    it('returns correct line ranges for actions', () => {
+      const fixture = `
+class PostsController < ApplicationController
+  def index
+    @posts = Post.all
+  end
+
+  def show
+    @post = Post.find(params[:id])
+  end
+
+  def create
+    @post = Post.create!(post_params)
+  end
+
+  private
+
+  def post_params
+    params.require(:post).permit(:title)
+  end
+end`
+      const result = extractController(
+        mockProvider({ 'app/controllers/posts_controller.rb': fixture }),
+        'app/controllers/posts_controller.rb',
+      )
+      expect(result.action_line_ranges.index).toBeDefined()
+      expect(result.action_line_ranges.show).toBeDefined()
+      expect(result.action_line_ranges.create).toBeDefined()
+      expect(result.action_line_ranges.index.start).toBeLessThan(
+        result.action_line_ranges.show.start
+      )
+    })
+
+    it('excludes actions after private', () => {
+      const fixture = `
+class PostsController < ApplicationController
+  def index
+    @posts = Post.all
+  end
+
+  private
+
+  def set_post
+    @post = Post.find(params[:id])
+  end
+end`
+      const result = extractController(
+        mockProvider({ 'app/controllers/posts_controller.rb': fixture }),
+        'app/controllers/posts_controller.rb',
+      )
+      expect(result.action_line_ranges.index).toBeDefined()
+      expect(result.action_line_ranges.set_post).toBeUndefined()
+    })
+
+    it('preserves existing actions array', () => {
+      const fixture = `
+class PostsController < ApplicationController
+  def index
+  end
+
+  def show
+  end
+
+  private
+
+  def set_post
+  end
+end`
+      const result = extractController(
+        mockProvider({ 'app/controllers/posts_controller.rb': fixture }),
+        'app/controllers/posts_controller.rb',
+      )
+      expect(result.actions).toEqual(['index', 'show'])
+      expect(Object.keys(result.action_line_ranges)).toEqual(['index', 'show'])
+    })
+  })
 })

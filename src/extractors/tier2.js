@@ -83,6 +83,10 @@ function extractTesting(provider, entries, gems) {
     coverage: !!gems.simplecov,
     mocking: [],
     parallel: !!gems.parallel_tests,
+    faker: !!gems.faker,
+    spec_style: detectSpecStyle(entries),
+    factories_dir: detectFactoriesDir(provider),
+    fixtures_dir: detectFixturesDir(provider),
   }
 
   if (gems['rspec-rails']) {
@@ -95,6 +99,49 @@ function extractTesting(provider, entries, gems) {
   if (gems.vcr) result.mocking.push('vcr')
 
   return result
+}
+
+/**
+ * Detect whether the project uses request specs or controller specs.
+ * @param {Array<{path: string}>} entries
+ * @returns {{primary: string, request_count: number, controller_count: number, has_mixed: boolean}}
+ */
+function detectSpecStyle(entries) {
+  const requestCount = entries.filter(
+    (e) => e.path.startsWith('spec/requests/')
+  ).length
+  const controllerCount = entries.filter(
+    (e) => e.path.startsWith('spec/controllers/')
+  ).length
+
+  return {
+    primary: requestCount >= controllerCount ? 'request' : 'controller',
+    request_count: requestCount,
+    controller_count: controllerCount,
+    has_mixed: requestCount > 0 && controllerCount > 0,
+  }
+}
+
+/**
+ * Detect the factories directory.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @returns {string|null}
+ */
+function detectFactoriesDir(provider) {
+  if (provider.fileExists('spec/factories')) return 'spec/factories'
+  if (provider.fileExists('test/factories')) return 'test/factories'
+  return null
+}
+
+/**
+ * Detect the fixtures directory.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @returns {string|null}
+ */
+function detectFixturesDir(provider) {
+  if (provider.fileExists('spec/fixtures')) return 'spec/fixtures'
+  if (provider.fileExists('test/fixtures')) return 'test/fixtures'
+  return null
 }
 
 /** #20 Code Quality */

@@ -20,6 +20,19 @@ function toTableName(name) {
   return snake.endsWith('s') ? snake : `${snake}s`
 }
 
+/**
+ * Convert a file path to a Ruby-style class name.
+ * @param {string} path
+ * @returns {string}
+ */
+function pathToClassName(path) {
+  const basename = path.split('/').pop().replace('.rb', '')
+  return basename
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('')
+}
+
 // Architecturally significant gem categories (for slimmed dependencies output)
 const SIGNIFICANT_CATEGORIES = new Set([
   'core',
@@ -924,6 +937,15 @@ export function registerFreeTools(server, state) {
         case 'design_patterns':
           return respond(extractions.tier2?.design_patterns || {})
 
+        case 'test_conventions':
+          return respond(extractions.test_conventions || {})
+
+        case 'factory_registry':
+          return respond(extractions.factory_registry || {})
+
+        case 'coverage_snapshot':
+          return respond(extractions.coverage_snapshot || {})
+
         default:
           return respond({
             error: `Unknown category: ${category}`,
@@ -949,9 +971,278 @@ export function registerFreeTools(server, state) {
               'component_list',
               'testing',
               'design_patterns',
+              'test_conventions',
+              'factory_registry',
+              'coverage_snapshot',
             ],
           })
       }
+    },
+  )
+
+  // 11. get_coverage_gaps
+  server.tool(
+    'get_coverage_gaps',
+    'Returns prioritised list of files needing test coverage, with structural context from RailsInsight and per-method coverage data from SimpleCov.',
+    {
+      category: z
+        .string()
+        .optional()
+        .describe('Filter by spec category (e.g. "model_specs", "request_specs")'),
+      min_gap: z
+        .number()
+        .optional()
+        .describe('Minimum coverage gap percentage to include (default: 0)'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Maximum results to return (default: 20)'),
+    },
+    async ({ category, min_gap = 0, limit = 20 }) => {
+      if (!state.index) return noIndex()
+      const extractions = state.index.extractions || {}
+      const coverageSnapshot = extractions.coverage_snapshot || {}
+      const models = extractions.models || {}
+      const controllers = extractions.controllers || {}
+      const manifest = state.index.manifest || {}
+
+      // Build gaps list
+      const gaps = []
+
+      // Get all model/controller files
+      const entries = manifest.entries || []
+
+      for (const [name, model] of Object.entries(models)) {
+        if (!model.file) continue
+        const fileCov = coverageSnapshot.per_file?.[model.file]
+        const coverage = fileCov ? fileCov.line_coverage : 0
+        const gap = 100 - (coverage || 0)
+
+        if (gap < min_gap) continue
+        if (category && category !== 'model_specs') continue
+
+        gaps.push({
+          file: model.file,
+          entity: name,
+          entity_type: 'model',
+          coverage: coverage || 0,
+          gap,
+          public_methods: model.public_methods?.length || 0,
+          associations: model.associations?.length || 0,
+          uncovered_methods: (coverageSnapshot.uncovered_methods || [])
+            .filter((m) => m.entity === name)
+            .map((m) => ({ method: m.method, coverage: m.coverage })),
+        })
+      }
+
+      for (const [name, ctrl] of Object.entries(controllers)) {
+        if (!ctrl.file) continue
+        const fileCov = coverageSnapshot.per_file?.[ctrl.file]
+        const coverage = fileCov ? fileCov.line_coverage : 0
+        const gap = 100 - (coverage || 0)
+
+        if (gap < min_gap) continue
+        if (category && category !== 'request_specs' && category !== 'controller_specs') continue
+
+        gaps.push({
+          file: ctrl.file,
+          entity: name,
+          entity_type: 'controller',
+          coverage: coverage || 0,
+          gap,
+          actions: ctrl.actions?.length || 0,
+          uncovered_methods: (coverageSnapshot.uncovered_methods || [])
+            .filter((m) => m.entity === name)
+            .map((m) => ({ method: m.method, coverage: m.coverage })),
+        })
+      }
+
+      // Sort by gap descending (worst coverage first)
+      gaps.sort((a, b) => b.gap - a.gap)
+
+      return respond({
+        coverage_available: coverageSnapshot.available || false,
+        overall: coverageSnapshot.overall || null,
+        gaps: gaps.slice(0, limit),
+        total_gaps: gaps.length,
+      })
+    },
+  )
+
+  // 12. get_test_conventions
+  server.tool(
+    'get_test_conventions',
+    'Returns detected test patterns and conventions: spec style (request vs controller), let style, auth helper, factories, shared examples, custom matchers, and pattern reference files.',
+    {},
+    async () => {
+      if (!state.index) return noIndex()
+      return respond(state.index.extractions?.test_conventions || {})
+    },
+  )
+
+  // 13. get_domain_clusters
+  server.tool(
+    'get_domain_clusters',
+    'Returns domain-clustered file groups for parallel test generation. Files in the same cluster share associations and factories. Files in different clusters can be worked on simultaneously without conflict.',
+    {
+      max_cluster_size: z
+        .number()
+        .optional()
+        .describe('Maximum files per cluster (default: 8)'),
+      include_covered: z
+        .boolean()
+        .optional()
+        .describe('Include files that already have coverage (default: false)'),
+    },
+    async ({ max_cluster_size = 8, include_covered = false }) => {
+      if (!state.index) return noIndex()
+      const extractions = state.index.extractions || {}
+      const models = extractions.models || {}
+      const coverageSnapshot = extractions.coverage_snapshot || {}
+      const factoryRegistry = extractions.factory_registry || {}
+      const relationships = state.index.relationships || []
+
+      // Build clusters based on model associations
+      const clusters = []
+      const assigned = new Set()
+
+      // Sort models by number of associations (most connected first)
+      const sortedModels = Object.entries(models)
+        .filter(([, m]) => m.type !== 'concern' && !m.abstract)
+        .sort((a, b) => (b[1].associations?.length || 0) - (a[1].associations?.length || 0))
+
+      for (const [name, model] of sortedModels) {
+        if (assigned.has(name)) continue
+
+        // Skip covered files unless include_covered
+        if (!include_covered) {
+          const fileCov = coverageSnapshot.per_file?.[model.file]
+          if (fileCov && fileCov.line_coverage >= 90) continue
+        }
+
+        const cluster = {
+          anchor: name,
+          models: [name],
+          files: model.file ? [model.file] : [],
+          factories_available: [],
+          shared_associations: [],
+        }
+        assigned.add(name)
+
+        // Find related models through associations
+        const relatedModels = (model.associations || [])
+          .map((a) => pathToClassName(a.name))
+          .filter((n) => models[n] && !assigned.has(n))
+
+        for (const related of relatedModels) {
+          if (cluster.models.length >= max_cluster_size) break
+
+          if (!include_covered) {
+            const relModel = models[related]
+            const fileCov = relModel?.file ? coverageSnapshot.per_file?.[relModel.file] : null
+            if (fileCov && fileCov.line_coverage >= 90) continue
+          }
+
+          cluster.models.push(related)
+          assigned.add(related)
+          if (models[related]?.file) cluster.files.push(models[related].file)
+          cluster.shared_associations.push({
+            from: name,
+            to: related,
+            type: (model.associations || []).find(
+              (a) => pathToClassName(a.name) === related
+            )?.type || 'association',
+          })
+        }
+
+        // Check which factories are available for cluster models
+        for (const modelName of cluster.models) {
+          const factoryName = modelName.replace(/([A-Z])/g, (m, l, i) => (i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`))
+          if (factoryRegistry.factories?.[factoryName]) {
+            cluster.factories_available.push(factoryName)
+          }
+        }
+
+        clusters.push(cluster)
+      }
+
+      return respond({
+        clusters,
+        total_clusters: clusters.length,
+        unassigned_models: Object.keys(models)
+          .filter((n) => !assigned.has(n) && models[n].type !== 'concern' && !models[n].abstract)
+          .length,
+      })
+    },
+  )
+
+  // 14. get_factory_registry
+  server.tool(
+    'get_factory_registry',
+    'Returns parsed FactoryBot factory definitions including attributes, traits, sequences, and associations. Use to understand what test data factories are available.',
+    {
+      model: z
+        .string()
+        .optional()
+        .describe('Filter to a specific model/factory name'),
+    },
+    async ({ model }) => {
+      if (!state.index) return noIndex()
+      const registry = state.index.extractions?.factory_registry || {}
+
+      if (model) {
+        // Try exact match first, then snake_case conversion
+        const factory = registry.factories?.[model] ||
+          registry.factories?.[model.replace(/([A-Z])/g, (m, l, i) => (i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`))]
+        if (!factory) {
+          return respond({
+            error: `Factory for '${model}' not found`,
+            available: Object.keys(registry.factories || {}),
+          })
+        }
+        return respond(factory)
+      }
+
+      return respond(registry)
+    },
+  )
+
+  // 15. get_well_tested_examples
+  server.tool(
+    'get_well_tested_examples',
+    'Returns high-quality existing spec files suitable as pattern references for test generation agents. Selected by structural complexity (most describe/context blocks) per spec category.',
+    {
+      category: z
+        .string()
+        .optional()
+        .describe('Filter by spec category (e.g. "model_specs", "request_specs")'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Maximum results to return (default: 3)'),
+    },
+    async ({ category, limit = 3 }) => {
+      if (!state.index) return noIndex()
+      const conventions = state.index.extractions?.test_conventions || {}
+      let refs = conventions.pattern_reference_files || []
+
+      if (category) {
+        refs = refs.filter((r) => r.category === category)
+      }
+
+      // Return the files with their content for reference
+      const results = refs.slice(0, limit).map((ref) => {
+        const content = state.provider?.readFile(ref.path) || null
+        return {
+          ...ref,
+          content: content ? content.slice(0, 5000) : null, // Cap at 5k chars
+        }
+      })
+
+      return respond({
+        examples: results,
+        total_available: refs.length,
+      })
     },
   )
 }

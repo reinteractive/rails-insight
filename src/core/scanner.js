@@ -14,6 +14,7 @@
  * @property {number} category - Category number (1-56)
  * @property {string} categoryName - Human-readable category name
  * @property {string} type - File type (ruby, js, erb, yml, etc.)
+ * @property {string|null} [specCategory] - Sub-category for test files (category 19 only)
  */
 
 /**
@@ -243,14 +244,44 @@ function detectType(path) {
 function classifyFile(path) {
   for (const rule of RULES) {
     if (rule.test(path)) {
-      return {
+      const entry = {
         path,
         category: rule.category,
         categoryName: CATEGORIES[rule.category],
         type: detectType(path),
       }
+      if (entry.category === 19) {
+        entry.specCategory = classifySpecFile(path)
+      }
+      return entry
     }
   }
+  return null
+}
+
+/**
+ * Sub-classify a spec/test file by its directory.
+ * @param {string} path
+ * @returns {string|null}
+ */
+function classifySpecFile(path) {
+  if (path.startsWith('spec/models/')) return 'model_specs'
+  if (path.startsWith('spec/requests/')) return 'request_specs'
+  if (path.startsWith('spec/controllers/')) return 'controller_specs'
+  if (path.startsWith('spec/services/')) return 'service_specs'
+  if (path.startsWith('spec/jobs/')) return 'job_specs'
+  if (path.startsWith('spec/mailers/')) return 'mailer_specs'
+  if (path.startsWith('spec/policies/')) return 'policy_specs'
+  if (path.startsWith('spec/components/')) return 'component_specs'
+  if (path.startsWith('spec/forms/')) return 'form_specs'
+  if (path.startsWith('spec/factories/')) return 'factories'
+  if (path.startsWith('spec/support/')) return 'support'
+  if (path.startsWith('spec/shared_examples/')) return 'shared_examples'
+  if (path.startsWith('spec/shared_contexts/')) return 'shared_contexts'
+  if (path.startsWith('test/models/')) return 'model_tests'
+  if (path.startsWith('test/controllers/')) return 'controller_tests'
+  if (path.startsWith('test/integration/')) return 'integration_tests'
+  if (path.startsWith('test/factories/')) return 'factories'
   return null
 }
 
@@ -332,4 +363,4 @@ export function scanStructure(provider) {
   return { entries, byCategory, stats, unclassified }
 }
 
-export { classifyFile, CATEGORIES }
+export { classifyFile, classifySpecFile, CATEGORIES }

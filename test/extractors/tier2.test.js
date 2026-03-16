@@ -6,6 +6,9 @@ function mockProvider(files) {
     readFile(path) {
       return files[path] || null
     },
+    fileExists(path) {
+      return path in files
+    },
   }
 }
 
@@ -283,6 +286,66 @@ describe('Tier 2 Extractor', () => {
       expect(result.payments.provider).toBeNull()
       expect(result.admin.framework).toBeNull()
       expect(result.design_patterns).toEqual({})
+    })
+  })
+
+  describe('testing extended fields', () => {
+    it('detects request spec style when more request specs exist', () => {
+      const entries = [
+        { path: 'spec/requests/users_spec.rb' },
+        { path: 'spec/requests/posts_spec.rb' },
+        { path: 'spec/requests/comments_spec.rb' },
+        { path: 'spec/requests/orders_spec.rb' },
+        { path: 'spec/requests/items_spec.rb' },
+        { path: 'spec/controllers/admin_controller_spec.rb' },
+        { path: 'spec/controllers/api_controller_spec.rb' },
+      ]
+      const result = extractTier2(mockProvider({}), entries, { gems: { 'rspec-rails': {} } })
+      expect(result.testing.spec_style.primary).toBe('request')
+      expect(result.testing.spec_style.request_count).toBe(5)
+      expect(result.testing.spec_style.controller_count).toBe(2)
+      expect(result.testing.spec_style.has_mixed).toBe(true)
+    })
+
+    it('detects controller spec style when only controller specs exist', () => {
+      const entries = [
+        { path: 'spec/controllers/users_controller_spec.rb' },
+        { path: 'spec/controllers/posts_controller_spec.rb' },
+      ]
+      const result = extractTier2(mockProvider({}), entries, { gems: { 'rspec-rails': {} } })
+      expect(result.testing.spec_style.primary).toBe('controller')
+    })
+
+    it('detects faker gem', () => {
+      const result = extractTier2(mockProvider({}), [], {
+        gems: { faker: {}, 'rspec-rails': {} },
+      })
+      expect(result.testing.faker).toBe(true)
+    })
+
+    it('detects factories_dir when spec/factories exists', () => {
+      const provider = mockProvider({
+        'spec/factories': '', // directory marker
+      })
+      const result = extractTier2(provider, [], { gems: { 'rspec-rails': {} } })
+      expect(result.testing.factories_dir).toBe('spec/factories')
+    })
+
+    it('preserves existing testing fields unchanged', () => {
+      const result = extractTier2(mockProvider({}), [], {
+        gems: {
+          'rspec-rails': {},
+          factory_bot_rails: {},
+          capybara: {},
+          simplecov: {},
+          parallel_tests: {},
+        },
+      })
+      expect(result.testing.framework).toBe('rspec')
+      expect(result.testing.factories).toBe(true)
+      expect(result.testing.system_tests).toBe(true)
+      expect(result.testing.coverage).toBe(true)
+      expect(result.testing.parallel).toBe(true)
     })
   })
 })

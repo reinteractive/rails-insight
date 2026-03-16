@@ -53,22 +53,57 @@ export function extractController(provider, filePath) {
     })
   }
 
-  // Actions (public methods before private/protected)
+  // Actions (public methods before private/protected) with line ranges
   const actions = []
+  const action_line_ranges = {}
   const lines = content.split('\n')
   let inPublic = true
+  let currentActionName = null
+  let currentActionStart = null
   const visRe = /^\s*(private|protected)\s*$/
   const methodRe = /^\s*def\s+(\w+)/
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const lineNumber = i + 1
+
     if (visRe.test(line)) {
+      // Close current action if open
+      if (currentActionName && inPublic) {
+        action_line_ranges[currentActionName] = {
+          start: currentActionStart,
+          end: lineNumber - 1,
+        }
+      }
       inPublic = false
+      currentActionName = null
       continue
     }
-    if (inPublic) {
-      const mm = line.match(methodRe)
-      if (mm) {
-        actions.push(mm[1])
+
+    const mm = line.match(methodRe)
+    if (mm) {
+      // Close previous action
+      if (currentActionName && inPublic) {
+        action_line_ranges[currentActionName] = {
+          start: currentActionStart,
+          end: lineNumber - 1,
+        }
       }
+
+      if (inPublic) {
+        actions.push(mm[1])
+        currentActionName = mm[1]
+        currentActionStart = lineNumber
+      } else {
+        currentActionName = null
+      }
+    }
+  }
+
+  // Close final action
+  if (currentActionName && inPublic) {
+    action_line_ranges[currentActionName] = {
+      start: currentActionStart,
+      end: lines.length,
     }
   }
 
@@ -185,6 +220,7 @@ export function extractController(provider, filePath) {
     concerns,
     filters,
     actions,
+    action_line_ranges,
     action_summaries:
       Object.keys(action_summaries).length > 0 ? action_summaries : null,
     strong_params,

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   scanStructure,
   classifyFile,
+  classifySpecFile,
   CATEGORIES,
 } from '../../src/core/scanner.js'
 
@@ -234,6 +235,64 @@ describe('Scanner', () => {
         (e) => e.path === 'app/models/user.rb',
       )
       expect(userEntries.length).toBe(1)
+    })
+  })
+
+  describe('specCategory', () => {
+    it('assigns model_specs to spec/models/ files', () => {
+      const entry = classifyFile('spec/models/user_spec.rb')
+      expect(entry.category).toBe(19)
+      expect(entry.specCategory).toBe('model_specs')
+    })
+
+    it('assigns request_specs to spec/requests/ files', () => {
+      const entry = classifyFile('spec/requests/orders_spec.rb')
+      expect(entry.specCategory).toBe('request_specs')
+    })
+
+    it('assigns factories to spec/factories/ files', () => {
+      const entry = classifyFile('spec/factories/users.rb')
+      expect(entry.specCategory).toBe('factories')
+    })
+
+    it('assigns support to spec/support/ files', () => {
+      const entry = classifyFile('spec/support/auth_helper.rb')
+      expect(entry.specCategory).toBe('support')
+    })
+
+    it('does not add specCategory to non-test files', () => {
+      const entry = classifyFile('app/models/user.rb')
+      expect(entry.specCategory).toBeUndefined()
+    })
+
+    it('returns null specCategory for unrecognized spec paths', () => {
+      const entry = classifyFile('spec/some_random_spec.rb')
+      expect(entry.category).toBe(19)
+      expect(entry.specCategory).toBeNull()
+    })
+  })
+
+  describe('classifySpecFile', () => {
+    it('classifies service specs', () => {
+      expect(classifySpecFile('spec/services/foo_spec.rb')).toBe('service_specs')
+    })
+
+    it('classifies job specs', () => {
+      expect(classifySpecFile('spec/jobs/import_job_spec.rb')).toBe('job_specs')
+    })
+
+    it('classifies controller specs', () => {
+      expect(classifySpecFile('spec/controllers/users_controller_spec.rb')).toBe('controller_specs')
+    })
+
+    it('classifies test/ paths', () => {
+      expect(classifySpecFile('test/models/user_test.rb')).toBe('model_tests')
+      expect(classifySpecFile('test/controllers/users_test.rb')).toBe('controller_tests')
+      expect(classifySpecFile('test/integration/signup_test.rb')).toBe('integration_tests')
+    })
+
+    it('returns null for unrecognized paths', () => {
+      expect(classifySpecFile('spec/random/foo_spec.rb')).toBeNull()
     })
   })
 })

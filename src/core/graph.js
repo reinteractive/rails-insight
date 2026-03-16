@@ -28,6 +28,7 @@ const EDGE_WEIGHTS = {
   delegates_to: 1.0,
   contains: 0.5,
   references: 1.0,
+  tests: 1.0,
 }
 
 export class Graph {
@@ -248,6 +249,42 @@ export function buildGraph(extractions, manifest, skills = []) {
         to: fk.to_table,
         type: 'schema_fk',
       })
+    }
+  }
+
+  // Spec → Source relationships (test files → tested entities)
+  if (extractions.test_conventions) {
+    const specEntries = manifest.entries?.filter(
+      (e) => e.category === 19 && e.specCategory && e.path.endsWith('_spec.rb')
+    ) || []
+
+    for (const entry of specEntries) {
+      // Derive the model/controller name from the spec path
+      const basename = entry.path.split('/').pop().replace('_spec.rb', '')
+      const className = classify(basename)
+
+      if (entry.specCategory === 'model_specs') {
+        if (extractions.models && extractions.models[className]) {
+          graph.addNode(`spec:${className}`, 'spec', `${className} spec`)
+          graph.addEdge(`spec:${className}`, className, 'tests')
+          relationships.push({
+            from: `spec:${className}`,
+            to: className,
+            type: 'tests',
+          })
+        }
+      } else if (entry.specCategory === 'request_specs' || entry.specCategory === 'controller_specs') {
+        const ctrlName = className + 'Controller'
+        if (extractions.controllers && extractions.controllers[ctrlName]) {
+          graph.addNode(`spec:${ctrlName}`, 'spec', `${ctrlName} spec`)
+          graph.addEdge(`spec:${ctrlName}`, ctrlName, 'tests')
+          relationships.push({
+            from: `spec:${ctrlName}`,
+            to: ctrlName,
+            type: 'tests',
+          })
+        }
+      }
     }
   }
 
