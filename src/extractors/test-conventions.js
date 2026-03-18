@@ -50,8 +50,12 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
     database_strategy: detectDatabaseStrategy(provider, gems),
 
     // Factory tool
-    factory_tool: gems.factory_bot_rails || gems.factory_bot
-      ? 'factory_bot' : gems.fabrication ? 'fabrication' : null,
+    factory_tool:
+      gems.factory_bot_rails || gems.factory_bot
+        ? 'factory_bot'
+        : gems.fabrication
+          ? 'fabrication'
+          : null,
 
     // Spec file counts by category
     spec_counts: {},
@@ -62,7 +66,7 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
 
   // Scan spec files for convention patterns
   const specEntries = entries.filter(
-    (e) => e.category === 19 && e.path.endsWith('_spec.rb')
+    (e) => e.category === 19 && e.path.endsWith('_spec.rb'),
   )
 
   // Count spec files by specCategory
@@ -99,7 +103,8 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
 
   // Determine let style
   if (result.let_count > 0 || result.let_bang_count > 0) {
-    const ratio = result.let_bang_count / (result.let_count + result.let_bang_count)
+    const ratio =
+      result.let_bang_count / (result.let_count + result.let_bang_count)
     if (ratio > 0.7) result.let_style = 'eager'
     else if (ratio < 0.3) result.let_style = 'lazy'
     else result.let_style = 'mixed'
@@ -107,7 +112,7 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
 
   // Scan spec/support/ for shared examples, shared contexts, and custom matchers
   const supportEntries = entries.filter(
-    (e) => e.path.startsWith('spec/support/') && e.path.endsWith('.rb')
+    (e) => e.path.startsWith('spec/support/') && e.path.endsWith('.rb'),
   )
 
   for (const entry of supportEntries) {
@@ -115,14 +120,16 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
     if (!content) continue
 
     // Shared examples
-    const sharedExRe = /(?:shared_examples_for|shared_examples|RSpec\.shared_examples)\s+['"]([^'"]+)['"]/g
+    const sharedExRe =
+      /(?:shared_examples_for|shared_examples|RSpec\.shared_examples)\s+['"]([^'"]+)['"]/g
     let m
     while ((m = sharedExRe.exec(content))) {
       result.shared_examples.push(m[1])
     }
 
     // Shared contexts
-    const sharedCtxRe = /(?:shared_context|RSpec\.shared_context)\s+['"]([^'"]+)['"]/g
+    const sharedCtxRe =
+      /(?:shared_context|RSpec\.shared_context)\s+['"]([^'"]+)['"]/g
     while ((m = sharedCtxRe.exec(content))) {
       result.shared_contexts.push(m[1])
     }
@@ -142,7 +149,7 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
 
   // Also check spec/shared_examples/ and spec/shared_contexts/ directories
   const sharedExampleEntries = entries.filter(
-    (e) => e.path.startsWith('spec/shared_examples/') && e.path.endsWith('.rb')
+    (e) => e.path.startsWith('spec/shared_examples/') && e.path.endsWith('.rb'),
   )
   for (const entry of sharedExampleEntries) {
     const content = provider.readFile(entry.path)
@@ -169,11 +176,11 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
  * @returns {{primary: string, request_count: number, controller_count: number, has_mixed: boolean}}
  */
 function detectSpecStyle(entries) {
-  const requestCount = entries.filter(
-    (e) => e.path.startsWith('spec/requests/')
+  const requestCount = entries.filter((e) =>
+    e.path.startsWith('spec/requests/'),
   ).length
-  const controllerCount = entries.filter(
-    (e) => e.path.startsWith('spec/controllers/')
+  const controllerCount = entries.filter((e) =>
+    e.path.startsWith('spec/controllers/'),
   ).length
 
   return {
@@ -227,9 +234,10 @@ function detectAuthHelper(provider, entries, gems) {
 
   // Check spec/support/ for custom auth helpers
   const supportEntries = entries.filter(
-    (e) => e.path.startsWith('spec/support/') &&
-           e.path.endsWith('.rb') &&
-           /auth/i.test(e.path)
+    (e) =>
+      e.path.startsWith('spec/support/') &&
+      e.path.endsWith('.rb') &&
+      /auth/i.test(e.path),
   )
 
   for (const entry of supportEntries) {
@@ -237,7 +245,9 @@ function detectAuthHelper(provider, entries, gems) {
     if (!content) continue
 
     // Look for sign_in method definition
-    const signInMatch = content.match(/def\s+(sign_in|log_in|login|authenticate)/)
+    const signInMatch = content.match(
+      /def\s+(sign_in|log_in|login|authenticate)/,
+    )
     if (signInMatch) {
       result.strategy = 'custom'
       result.helper_method = signInMatch[1]
@@ -328,7 +338,8 @@ function findPatternReferences(provider, specEntries) {
     const content = provider.readFile(entry.path)
     if (!content) continue
 
-    const describeCount = (content.match(/^\s*(?:describe|context)\s/gm) || []).length
+    const describeCount = (content.match(/^\s*(?:describe|context)\s/gm) || [])
+      .length
     const exampleCount = (content.match(/^\s*it\s/gm) || []).length
 
     // Skip trivially small files

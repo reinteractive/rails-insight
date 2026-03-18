@@ -551,12 +551,12 @@ end`
       const result = extractModel(
         mockProvider({ 'app/models/user.rb': fixture }),
         'app/models/user.rb',
-        'User'
+        'User',
       )
       expect(result.method_line_ranges.activate).toBeDefined()
       expect(result.method_line_ranges.deactivate).toBeDefined()
       expect(result.method_line_ranges.activate.start).toBeLessThan(
-        result.method_line_ranges.deactivate.start
+        result.method_line_ranges.deactivate.start,
       )
     })
 
@@ -569,7 +569,7 @@ end`
       const result = extractModel(
         mockProvider({ 'app/models/user.rb': fixture }),
         'app/models/user.rb',
-        'User'
+        'User',
       )
       expect(result.method_line_ranges.greet.start).toBe(2)
     })
@@ -590,7 +590,7 @@ end`
       const result = extractModel(
         mockProvider({ 'app/models/user.rb': fixture }),
         'app/models/user.rb',
-        'User'
+        'User',
       )
       expect(result.method_line_ranges.public_method).toBeDefined()
       expect(result.method_line_ranges.secret_method).toBeUndefined()
@@ -610,7 +610,7 @@ end`
       const result = extractModel(
         mockProvider({ 'app/models/user.rb': fixture }),
         'app/models/user.rb',
-        'User'
+        'User',
       )
       expect(result.method_line_ranges.initialize).toBeUndefined()
       expect(result.method_line_ranges.activate).toBeDefined()
@@ -628,7 +628,7 @@ end`
       const result = extractModel(
         mockProvider({ 'app/models/user.rb': fixture }),
         'app/models/user.rb',
-        'User'
+        'User',
       )
       expect(result.method_line_ranges).toEqual({})
     })

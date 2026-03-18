@@ -397,7 +397,7 @@ end`
       expect(result.action_line_ranges.show).toBeDefined()
       expect(result.action_line_ranges.create).toBeDefined()
       expect(result.action_line_ranges.index.start).toBeLessThan(
-        result.action_line_ranges.show.start
+        result.action_line_ranges.show.start,
       )
     })
 

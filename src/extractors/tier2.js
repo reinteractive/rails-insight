@@ -107,11 +107,11 @@ function extractTesting(provider, entries, gems) {
  * @returns {{primary: string, request_count: number, controller_count: number, has_mixed: boolean}}
  */
 function detectSpecStyle(entries) {
-  const requestCount = entries.filter(
-    (e) => e.path.startsWith('spec/requests/')
+  const requestCount = entries.filter((e) =>
+    e.path.startsWith('spec/requests/'),
   ).length
-  const controllerCount = entries.filter(
-    (e) => e.path.startsWith('spec/controllers/')
+  const controllerCount = entries.filter((e) =>
+    e.path.startsWith('spec/controllers/'),
   ).length
 
   return {

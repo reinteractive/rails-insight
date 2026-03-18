@@ -24,8 +24,9 @@ export function extractFactoryRegistry(provider, entries) {
 
   // Find factory files
   const factoryEntries = entries.filter(
-    (e) => e.specCategory === 'factories' ||
-           (e.path.includes('factories/') && e.path.endsWith('.rb'))
+    (e) =>
+      e.specCategory === 'factories' ||
+      (e.path.includes('factories/') && e.path.endsWith('.rb')),
   )
 
   for (const entry of factoryEntries) {
@@ -144,8 +145,9 @@ function parseFactoryFile(content, filePath) {
     }
 
     // Sequence
-    const seqMatch = trimmed.match(FACTORY_PATTERNS.sequence) ||
-                     trimmed.match(FACTORY_PATTERNS.sequenceBlock)
+    const seqMatch =
+      trimmed.match(FACTORY_PATTERNS.sequence) ||
+      trimmed.match(FACTORY_PATTERNS.sequenceBlock)
     if (seqMatch) {
       currentFactory.sequences.push(seqMatch[1])
       if (/\bdo\b/.test(trimmed) && !/\bend\b/.test(trimmed)) depth++
@@ -173,13 +175,28 @@ function parseFactoryFile(content, filePath) {
     // Attribute with block
     if (!inTransient) {
       const attrBlockMatch = trimmed.match(FACTORY_PATTERNS.attributeBlock)
-      if (attrBlockMatch && !FACTORY_PATTERNS.trait.test(trimmed) &&
-          !FACTORY_PATTERNS.transient.test(trimmed) &&
-          !FACTORY_PATTERNS.afterCreate.test(trimmed) &&
-          !FACTORY_PATTERNS.afterBuild.test(trimmed)) {
+      if (
+        attrBlockMatch &&
+        !FACTORY_PATTERNS.trait.test(trimmed) &&
+        !FACTORY_PATTERNS.transient.test(trimmed) &&
+        !FACTORY_PATTERNS.afterCreate.test(trimmed) &&
+        !FACTORY_PATTERNS.afterBuild.test(trimmed)
+      ) {
         const attrName = attrBlockMatch[1]
         // Filter out ruby keywords and control structures
-        if (!['if', 'unless', 'do', 'end', 'def', 'class', 'module', 'factory', 'trait'].includes(attrName)) {
+        if (
+          ![
+            'if',
+            'unless',
+            'do',
+            'end',
+            'def',
+            'class',
+            'module',
+            'factory',
+            'trait',
+          ].includes(attrName)
+        ) {
           currentFactory.attributes.push(attrName)
         }
       }

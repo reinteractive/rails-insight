@@ -9,6 +9,7 @@
  */
 import { registerFreeTools } from './free-tools.js'
 import { registerProTools } from './pro-tools.js'
+import { registerBlastRadiusTools } from './blast-radius-tools.js'
 
 export function registerTools(server, options) {
   const tier = options.tier || 'free'
@@ -22,6 +23,9 @@ export function registerTools(server, options) {
 
   // Always register all primary tools (they are all in free-tools now)
   registerFreeTools(server, state)
+
+  // Blast radius analysis tools
+  registerBlastRadiusTools(server, state)
 
   // registerProTools is now a no-op stub kept for compatibility
   if (tier === 'pro' || tier === 'team') {

@@ -5,7 +5,7 @@
  */
 
 /** Edge type weights */
-const EDGE_WEIGHTS = {
+export const EDGE_WEIGHTS = {
   inherits: 3.0,
   includes_concern: 2.5,
   has_many: 2.0,
@@ -39,6 +39,8 @@ export class Graph {
     this.edges = []
     /** @type {Map<string, Array<{to: string, weight: number}>>} */
     this.adjacency = new Map()
+    /** @type {Map<string, Array<{from: string, weight: number, type: string}>>} */
+    this.reverseAdjacency = new Map()
   }
 
   /**
@@ -51,6 +53,7 @@ export class Graph {
     if (!this.nodes.has(id)) {
       this.nodes.set(id, { id, type, label: label || id })
       this.adjacency.set(id, [])
+      this.reverseAdjacency.set(id, [])
     }
   }
 
@@ -68,6 +71,77 @@ export class Graph {
 
     this.edges.push({ from, to, type, weight })
     this.adjacency.get(from).push({ to, weight })
+    if (!this.reverseAdjacency.has(to)) this.reverseAdjacency.set(to, [])
+    this.reverseAdjacency.get(to).push({ from, weight, type })
+  }
+
+  /**
+   * BFS traversal from seed nodes through forward and reverse adjacency.
+   * @param {string[]} seedIds - Starting entity IDs
+   * @param {number} [maxDepth=3] - Maximum BFS hops
+   * @param {Object} [options]
+   * @param {Set<string>} [options.excludeEdgeTypes] - Edge types to skip
+   * @param {number} [options.minEdgeWeight] - Minimum edge weight to traverse (default 0)
+   * @returns {Array<{entity: string, distance: number, reachedVia: string, edgeType: string, direction: string}>}
+   */
+  bfsFromSeeds(seedIds, maxDepth = 3, options = {}) {
+    const { excludeEdgeTypes = new Set(), minEdgeWeight = 0 } = options
+    const visited = new Set()
+    const results = []
+    const queue = []
+
+    for (const id of seedIds) {
+      if (this.nodes.has(id)) {
+        visited.add(id)
+        queue.push({ entity: id, distance: 0, reachedVia: null, edgeType: null, direction: null })
+      }
+    }
+
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (current.distance > 0) {
+        results.push(current)
+      }
+      if (current.distance >= maxDepth) continue
+
+      this._enqueueNeighbours(current, 'forward', visited, queue, excludeEdgeTypes, minEdgeWeight)
+      this._enqueueNeighbours(current, 'reverse', visited, queue, excludeEdgeTypes, minEdgeWeight)
+    }
+
+    return results
+  }
+
+  /** @private */
+  _enqueueNeighbours(current, direction, visited, queue, excludeEdgeTypes, minEdgeWeight) {
+    const edges = direction === 'forward'
+      ? this._forwardEdgesFrom(current.entity)
+      : this._reverseEdgesTo(current.entity)
+
+    for (const edge of edges) {
+      const neighbour = direction === 'forward' ? edge.to : edge.from
+      if (visited.has(neighbour)) continue
+      if (excludeEdgeTypes.has(edge.type)) continue
+      if (edge.weight < minEdgeWeight) continue
+
+      visited.add(neighbour)
+      queue.push({
+        entity: neighbour,
+        distance: current.distance + 1,
+        reachedVia: current.entity,
+        edgeType: edge.type,
+        direction,
+      })
+    }
+  }
+
+  /** @private */
+  _forwardEdgesFrom(nodeId) {
+    return this.edges.filter((e) => e.from === nodeId)
+  }
+
+  /** @private */
+  _reverseEdgesTo(nodeId) {
+    return this.edges.filter((e) => e.to === nodeId)
   }
 
   /**
@@ -254,9 +328,11 @@ export function buildGraph(extractions, manifest, skills = []) {
 
   // Spec → Source relationships (test files → tested entities)
   if (extractions.test_conventions) {
-    const specEntries = manifest.entries?.filter(
-      (e) => e.category === 19 && e.specCategory && e.path.endsWith('_spec.rb')
-    ) || []
+    const specEntries =
+      manifest.entries?.filter(
+        (e) =>
+          e.category === 19 && e.specCategory && e.path.endsWith('_spec.rb'),
+      ) || []
 
     for (const entry of specEntries) {
       // Derive the model/controller name from the spec path
@@ -273,7 +349,10 @@ export function buildGraph(extractions, manifest, skills = []) {
             type: 'tests',
           })
         }
-      } else if (entry.specCategory === 'request_specs' || entry.specCategory === 'controller_specs') {
+      } else if (
+        entry.specCategory === 'request_specs' ||
+        entry.specCategory === 'controller_specs'
+      ) {
         const ctrlName = className + 'Controller'
         if (extractions.controllers && extractions.controllers[ctrlName]) {
           graph.addNode(`spec:${ctrlName}`, 'spec', `${ctrlName} spec`)
@@ -315,7 +394,7 @@ export function buildGraph(extractions, manifest, skills = []) {
  * @param {string} str
  * @returns {string}
  */
-function classify(str) {
+export function classify(str) {
   return str
     .split(/[_\s]+/)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))

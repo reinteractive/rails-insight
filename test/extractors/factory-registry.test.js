@@ -15,7 +15,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/users.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/users.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.total_factories).toBe(1)
@@ -37,7 +41,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/admins.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/admins.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.admin.class_name).toBe('User')
@@ -61,7 +69,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/users.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/users.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.user.traits).toContain('admin')
@@ -82,7 +94,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/users.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/users.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.user.sequences).toContain('email')
@@ -101,7 +117,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/posts.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/posts.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.post.associations.length).toBe(2)
@@ -127,7 +147,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/models.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/models.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.total_factories).toBe(3)
@@ -150,7 +174,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/users.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/users.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.user.has_transient).toBe(true)
@@ -170,7 +198,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/users.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/users.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.user.has_after_create).toBe(true)
@@ -183,7 +215,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/empty.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/empty.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.total_factories).toBe(0)
@@ -200,7 +236,11 @@ FactoryBot.define do
 end`,
     })
     const entries = [
-      { path: 'spec/factories/users.rb', category: 19, specCategory: 'factories' },
+      {
+        path: 'spec/factories/users.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
     ]
     const result = extractFactoryRegistry(provider, entries)
     expect(result.factories.user.file).toBe('spec/factories/users.rb')

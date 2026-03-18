@@ -274,7 +274,9 @@ describe('Scanner', () => {
 
   describe('classifySpecFile', () => {
     it('classifies service specs', () => {
-      expect(classifySpecFile('spec/services/foo_spec.rb')).toBe('service_specs')
+      expect(classifySpecFile('spec/services/foo_spec.rb')).toBe(
+        'service_specs',
+      )
     })
 
     it('classifies job specs', () => {
@@ -282,13 +284,19 @@ describe('Scanner', () => {
     })
 
     it('classifies controller specs', () => {
-      expect(classifySpecFile('spec/controllers/users_controller_spec.rb')).toBe('controller_specs')
+      expect(
+        classifySpecFile('spec/controllers/users_controller_spec.rb'),
+      ).toBe('controller_specs')
     })
 
     it('classifies test/ paths', () => {
       expect(classifySpecFile('test/models/user_test.rb')).toBe('model_tests')
-      expect(classifySpecFile('test/controllers/users_test.rb')).toBe('controller_tests')
-      expect(classifySpecFile('test/integration/signup_test.rb')).toBe('integration_tests')
+      expect(classifySpecFile('test/controllers/users_test.rb')).toBe(
+        'controller_tests',
+      )
+      expect(classifySpecFile('test/integration/signup_test.rb')).toBe(
+        'integration_tests',
+      )
     })
 
     it('returns null for unrecognized paths', () => {

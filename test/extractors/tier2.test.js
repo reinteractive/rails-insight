@@ -300,7 +300,9 @@ describe('Tier 2 Extractor', () => {
         { path: 'spec/controllers/admin_controller_spec.rb' },
         { path: 'spec/controllers/api_controller_spec.rb' },
       ]
-      const result = extractTier2(mockProvider({}), entries, { gems: { 'rspec-rails': {} } })
+      const result = extractTier2(mockProvider({}), entries, {
+        gems: { 'rspec-rails': {} },
+      })
       expect(result.testing.spec_style.primary).toBe('request')
       expect(result.testing.spec_style.request_count).toBe(5)
       expect(result.testing.spec_style.controller_count).toBe(2)
@@ -312,7 +314,9 @@ describe('Tier 2 Extractor', () => {
         { path: 'spec/controllers/users_controller_spec.rb' },
         { path: 'spec/controllers/posts_controller_spec.rb' },
       ]
-      const result = extractTier2(mockProvider({}), entries, { gems: { 'rspec-rails': {} } })
+      const result = extractTier2(mockProvider({}), entries, {
+        gems: { 'rspec-rails': {} },
+      })
       expect(result.testing.spec_style.primary).toBe('controller')
     })
 

@@ -18,7 +18,12 @@ RSpec.describe User do
 end`,
       })
       const entries = [
-        { path: 'spec/models/user_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.let_style).toBe('lazy')
@@ -41,7 +46,12 @@ RSpec.describe User do
 end`,
       })
       const entries = [
-        { path: 'spec/models/user_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.let_style).toBe('eager')
@@ -61,7 +71,12 @@ RSpec.describe User do
 end`,
       })
       const entries = [
-        { path: 'spec/models/user_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.let_style).toBe('mixed')
@@ -83,7 +98,12 @@ shared_examples_for "an auditable model" do
 end`,
       })
       const entries = [
-        { path: 'spec/support/shared_examples.rb', category: 19, categoryName: 'testing', specCategory: 'support' },
+        {
+          path: 'spec/support/shared_examples.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'support',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.shared_examples).toContain('a valid model')
@@ -102,7 +122,12 @@ shared_context "authenticated user" do
 end`,
       })
       const entries = [
-        { path: 'spec/support/contexts.rb', category: 19, categoryName: 'testing', specCategory: 'support' },
+        {
+          path: 'spec/support/contexts.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'support',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.shared_contexts).toContain('authenticated user')
@@ -121,7 +146,12 @@ end
 define_negated_matcher :not_include, :include`,
       })
       const entries = [
-        { path: 'spec/support/matchers.rb', category: 19, categoryName: 'testing', specCategory: 'support' },
+        {
+          path: 'spec/support/matchers.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'support',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.custom_matchers).toContain('be_published')
@@ -153,12 +183,19 @@ module AuthenticationHelpers
 end`,
       })
       const entries = [
-        { path: 'spec/support/authentication.rb', category: 19, categoryName: 'testing', specCategory: 'support' },
+        {
+          path: 'spec/support/authentication.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'support',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.auth_helper.strategy).toBe('custom')
       expect(result.auth_helper.helper_method).toBe('sign_in')
-      expect(result.auth_helper.helper_file).toBe('spec/support/authentication.rb')
+      expect(result.auth_helper.helper_file).toBe(
+        'spec/support/authentication.rb',
+      )
     })
   })
 
@@ -184,9 +221,24 @@ end`,
         'spec/requests/users_spec.rb': 'RSpec.describe "Users"',
       })
       const entries = [
-        { path: 'spec/models/user_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
-        { path: 'spec/models/post_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
-        { path: 'spec/requests/users_spec.rb', category: 19, categoryName: 'testing', specCategory: 'request_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
+        {
+          path: 'spec/models/post_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
+        {
+          path: 'spec/requests/users_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'request_specs',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.spec_counts.model_specs).toBe(2)
@@ -218,12 +270,24 @@ RSpec.describe Post do
 end`,
       })
       const entries = [
-        { path: 'spec/models/user_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
-        { path: 'spec/models/post_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
+        {
+          path: 'spec/models/post_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.pattern_reference_files.length).toBe(1)
-      expect(result.pattern_reference_files[0].path).toBe('spec/models/user_spec.rb')
+      expect(result.pattern_reference_files[0].path).toBe(
+        'spec/models/user_spec.rb',
+      )
     })
   })
 
@@ -259,7 +323,12 @@ RSpec.describe User do
 end`,
       })
       const entries = [
-        { path: 'spec/models/user_spec.rb', category: 19, categoryName: 'testing', specCategory: 'model_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_specs',
+        },
       ]
       const result = extractTestConventions(provider, entries)
       expect(result.subject_usage).toBe(true)
