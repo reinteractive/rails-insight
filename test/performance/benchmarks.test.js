@@ -7,6 +7,7 @@ import {
 } from '../helpers/mock-provider.js'
 import { Graph } from '../../src/core/graph.js'
 import { formatOutput } from '../../src/core/formatter.js'
+import { computeBlastRadius, buildReviewContext } from '../../src/core/blast-radius.js'
 
 const FIXTURE_DIR = resolve(import.meta.dirname, '../fixtures/rails-8.1-full')
 
@@ -62,5 +63,42 @@ describe('Performance Benchmarks', () => {
     const routes = index.extractions?.routes
     const elapsed = Date.now() - start
     expect(elapsed).toBeLessThan(50)
+  })
+
+  it('blast radius completes in under 50ms for Rails 8.1 fixture', async () => {
+    const provider = createFixtureProvider(FIXTURE_DIR)
+    const index = await buildIndex(provider)
+
+    const userFile = Object.entries(index.fileEntityMap || {}).find(
+      ([, v]) => v.entity === 'User' && v.type === 'model',
+    )
+    if (userFile) {
+      const start = Date.now()
+      const result = computeBlastRadius(index, [
+        { path: userFile[0], status: 'modified' },
+      ])
+      const elapsed = Date.now() - start
+      expect(elapsed).toBeLessThan(50)
+      expect(result.seeds.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('review context generation completes in under 100ms', async () => {
+    const provider = createFixtureProvider(FIXTURE_DIR)
+    const index = await buildIndex(provider)
+
+    const userFile = Object.entries(index.fileEntityMap || {}).find(
+      ([, v]) => v.entity === 'User' && v.type === 'model',
+    )
+    if (userFile) {
+      const blastResult = computeBlastRadius(index, [
+        { path: userFile[0], status: 'modified' },
+      ])
+      const start = Date.now()
+      const context = buildReviewContext(index, blastResult, 8000)
+      const elapsed = Date.now() - start
+      expect(elapsed).toBeLessThan(100)
+      expect(context.entities).toBeDefined()
+    }
   })
 })

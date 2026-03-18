@@ -1,5 +1,9 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const execPromise = promisify(exec)
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -216,5 +220,27 @@ export class LocalFSProvider {
     const entryRel = currentRel ? `${currentRel}/${entryName}` : entryName
     if (SKIP_PATHS.has(entryRel)) return true
     return false
+  }
+
+  /**
+   * Execute a shell command in the project root.
+   * @param {string} command
+   * @returns {Promise<{stdout: string, stderr: string, exitCode: number}>}
+   */
+  async execCommand(command) {
+    try {
+      const { stdout, stderr } = await execPromise(command, {
+        cwd: this._root,
+        maxBuffer: 1024 * 1024,
+        timeout: 10000,
+      })
+      return { stdout: stdout || '', stderr: stderr || '', exitCode: 0 }
+    } catch (err) {
+      return {
+        stdout: err.stdout || '',
+        stderr: err.stderr || '',
+        exitCode: err.code || 1,
+      }
+    }
   }
 }

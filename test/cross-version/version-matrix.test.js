@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { resolve } from 'node:path'
 import { buildIndex } from '../../src/core/indexer.js'
 import { createFixtureProvider } from '../helpers/mock-provider.js'
+import { computeBlastRadius } from '../../src/core/blast-radius.js'
 
 const FIXTURES = {
   6.1: resolve(import.meta.dirname, '../fixtures/rails-6.1-classic'),
@@ -90,6 +91,28 @@ describe('Cross-Version Regression', () => {
       for (const version of Object.keys(FIXTURES)) {
         const user = indexes[version].extractions?.models?.User
         expect(user).toBeDefined()
+      }
+    })
+
+    it('all versions: fileEntityMap is populated', () => {
+      for (const version of Object.keys(FIXTURES)) {
+        const map = indexes[version].fileEntityMap
+        expect(map).toBeDefined()
+        expect(Object.keys(map).length).toBeGreaterThan(0)
+      }
+    })
+
+    it('8.1: blast radius from User model change includes PostsController', () => {
+      const index = indexes['8.1']
+      const userFile = Object.entries(index.fileEntityMap || {}).find(
+        ([, v]) => v.entity === 'User' && v.type === 'model',
+      )
+      if (userFile) {
+        const result = computeBlastRadius(index, [
+          { path: userFile[0], status: 'modified' },
+        ])
+        expect(result.seeds.length).toBeGreaterThan(0)
+        expect(result.impacted).toBeDefined()
       }
     })
   })

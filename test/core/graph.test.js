@@ -192,12 +192,16 @@ describe('buildGraph', () => {
     }
     const manifest = {
       entries: [
-        { path: 'spec/models/user_spec.rb', category: 19, specCategory: 'model_specs' },
+        {
+          path: 'spec/models/user_spec.rb',
+          category: 19,
+          specCategory: 'model_specs',
+        },
       ],
     }
     const { relationships } = buildGraph(extractions, manifest)
     const testsEdge = relationships.find(
-      (r) => r.type === 'tests' && r.to === 'User'
+      (r) => r.type === 'tests' && r.to === 'User',
     )
     expect(testsEdge).toBeTruthy()
     expect(testsEdge.from).toBe('spec:User')
@@ -212,12 +216,16 @@ describe('buildGraph', () => {
     }
     const manifest = {
       entries: [
-        { path: 'spec/requests/users_spec.rb', category: 19, specCategory: 'request_specs' },
+        {
+          path: 'spec/requests/users_spec.rb',
+          category: 19,
+          specCategory: 'request_specs',
+        },
       ],
     }
     const { relationships } = buildGraph(extractions, manifest)
     const testsEdge = relationships.find(
-      (r) => r.type === 'tests' && r.to === 'UsersController'
+      (r) => r.type === 'tests' && r.to === 'UsersController',
     )
     expect(testsEdge).toBeTruthy()
   })
@@ -229,11 +237,125 @@ describe('buildGraph', () => {
     }
     const manifest = {
       entries: [
-        { path: 'spec/models/missing_spec.rb', category: 19, specCategory: 'model_specs' },
+        {
+          path: 'spec/models/missing_spec.rb',
+          category: 19,
+          specCategory: 'model_specs',
+        },
       ],
     }
     const { relationships } = buildGraph(extractions, manifest)
     const testsEdge = relationships.find((r) => r.type === 'tests')
     expect(testsEdge).toBeUndefined()
+  })
+})
+
+describe('Graph BFS', () => {
+  describe('reverseAdjacency', () => {
+    it('is built correctly when edges are added', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      expect(g.reverseAdjacency.get('B')).toEqual(
+        expect.arrayContaining([expect.objectContaining({ from: 'A' })]),
+      )
+    })
+  })
+
+  describe('bfsFromSeeds', () => {
+    it('returns empty for empty graph', () => {
+      const g = new Graph()
+      const result = g.bfsFromSeeds(['A'])
+      expect(result).toEqual([])
+    })
+
+    it('finds direct neighbours at distance 1', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      const result = g.bfsFromSeeds(['A'])
+      expect(result).toHaveLength(1)
+      expect(result[0].entity).toBe('B')
+      expect(result[0].distance).toBe(1)
+    })
+
+    it('respects maxDepth', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      g.addEdge('B', 'C', 'has_many')
+      g.addEdge('C', 'D', 'has_many')
+      const result = g.bfsFromSeeds(['A'], 2)
+      const entities = result.map((r) => r.entity)
+      expect(entities).toContain('B')
+      expect(entities).toContain('C')
+      expect(entities).not.toContain('D')
+    })
+
+    it('traverses reverse edges', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      const result = g.bfsFromSeeds(['B'])
+      const entities = result.map((r) => r.entity)
+      expect(entities).toContain('A')
+    })
+
+    it('handles multiple seeds', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      g.addEdge('C', 'D', 'has_many')
+      const result = g.bfsFromSeeds(['A', 'C'])
+      const entities = result.map((r) => r.entity)
+      expect(entities).toContain('B')
+      expect(entities).toContain('D')
+    })
+
+    it('excludes specified edge types', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      g.addEdge('A', 'C', 'contains')
+      const result = g.bfsFromSeeds(['A'], 3, {
+        excludeEdgeTypes: new Set(['contains']),
+      })
+      const entities = result.map((r) => r.entity)
+      expect(entities).toContain('B')
+      expect(entities).not.toContain('C')
+    })
+
+    it('respects minEdgeWeight', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many') // weight 2.0
+      g.addEdge('A', 'C', 'contains') // weight 0.5
+      const result = g.bfsFromSeeds(['A'], 3, { minEdgeWeight: 1.0 })
+      const entities = result.map((r) => r.entity)
+      expect(entities).toContain('B')
+      expect(entities).not.toContain('C')
+    })
+
+    it('handles cycles without infinite loop', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      g.addEdge('B', 'C', 'has_many')
+      g.addEdge('C', 'A', 'has_many')
+      const result = g.bfsFromSeeds(['A'])
+      expect(result.length).toBeLessThanOrEqual(3)
+      const entities = result.map((r) => r.entity)
+      expect(entities).toContain('B')
+      expect(entities).toContain('C')
+    })
+
+    it('records reachedVia and edgeType', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      const result = g.bfsFromSeeds(['A'])
+      expect(result[0].reachedVia).toBe('A')
+      expect(result[0].edgeType).toBe('has_many')
+    })
+
+    it('handles disconnected nodes', () => {
+      const g = new Graph()
+      g.addEdge('A', 'B', 'has_many')
+      g.addNode('C', 'model')
+      const result = g.bfsFromSeeds(['A'])
+      const entities = result.map((r) => r.entity)
+      expect(entities).not.toContain('C')
+    })
   })
 })

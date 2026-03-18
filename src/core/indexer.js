@@ -116,7 +116,9 @@ export async function buildIndex(provider, options = {}) {
   }
 
   // Test convention and factory analysis
-  extractions.test_conventions = extractTestConventions(provider, entries, { gems })
+  extractions.test_conventions = extractTestConventions(provider, entries, {
+    gems,
+  })
   extractions.factory_registry = extractFactoryRegistry(provider, entries)
 
   // Coverage snapshot (depends on models and controllers being extracted first
@@ -124,7 +126,7 @@ export async function buildIndex(provider, options = {}) {
   extractions.coverage_snapshot = extractCoverageSnapshot(
     provider,
     extractions.models,
-    extractions.controllers
+    extractions.controllers,
   )
 
   // Layer 5: Graph + Rankings
@@ -136,6 +138,9 @@ export async function buildIndex(provider, options = {}) {
 
   // Drift detection
   const drift = detectDrift(context, versions, extractions)
+
+  // File-to-entity mapping for blast radius analysis
+  const fileEntityMap = buildFileEntityMap(extractions, manifest)
 
   // Statistics
   const statistics = computeStatistics(manifest, extractions, relationships)
@@ -156,6 +161,7 @@ export async function buildIndex(provider, options = {}) {
     rankings,
     drift,
     statistics,
+    fileEntityMap,
   }
 }
 
@@ -170,6 +176,72 @@ function pathToClassName(path) {
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join('')
+}
+
+/**
+ * Build a reverse mapping from file paths to their graph entities.
+ * @param {Object} extractions
+ * @param {Object} manifest
+ * @returns {Object<string, {entity: string, type: string}>}
+ */
+function buildFileEntityMap(extractions, manifest) {
+  const map = {}
+
+  mapEntities(map, extractions.models, 'model')
+  mapEntities(map, extractions.controllers, 'controller')
+  mapEntities(map, extractions.components, 'component')
+  mapStimulusControllers(map, extractions.stimulus_controllers)
+  mapConcernFiles(map, extractions, manifest)
+  mapSpecialFiles(map, extractions)
+  mapViewFiles(map, extractions.controllers, manifest)
+
+  return map
+}
+
+function mapEntities(map, entities, type) {
+  if (!entities) return
+  for (const [name, entity] of Object.entries(entities)) {
+    if (entity.file) map[entity.file] = { entity: name, type }
+  }
+}
+
+function mapStimulusControllers(map, controllers) {
+  if (!Array.isArray(controllers)) return
+  for (const sc of controllers) {
+    if (sc.file && sc.name) {
+      map[sc.file] = { entity: sc.name, type: 'stimulus_controller' }
+    }
+  }
+}
+
+function mapConcernFiles(map, extractions, manifest) {
+  const entries = manifest?.entries || []
+  for (const entry of entries) {
+    if (entry.path.includes('/concerns/') && entry.path.endsWith('.rb')) {
+      const className = pathToClassName(entry.path)
+      map[entry.path] = { entity: className, type: 'concern' }
+    }
+  }
+}
+
+function mapSpecialFiles(map, extractions) {
+  map['db/schema.rb'] = { entity: '__schema__', type: 'schema' }
+  map['config/routes.rb'] = { entity: '__routes__', type: 'routes' }
+  map['Gemfile'] = { entity: '__gemfile__', type: 'gemfile' }
+}
+
+function mapViewFiles(map, controllers, manifest) {
+  const entries = manifest?.entries || []
+  for (const entry of entries) {
+    if (!entry.path.startsWith('app/views/')) continue
+    const parts = entry.path.replace('app/views/', '').split('/')
+    if (parts.length < 2) continue
+    const controllerSlug = parts[0]
+    const className = pathToClassName(controllerSlug + '_controller.rb')
+    if (controllers && controllers[className]) {
+      map[entry.path] = { entity: className, type: 'view' }
+    }
+  }
 }
 
 /**

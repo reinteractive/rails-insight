@@ -50,6 +50,10 @@ export function createFixtureProvider(fixtureDir) {
         return []
       }
     },
+
+    async execCommand() {
+      return { stdout: '', stderr: 'Not a git repository', exitCode: 128 }
+    },
   }
 }
 
@@ -139,6 +143,9 @@ export function createMemoryProvider(files) {
         }
       }
       return [...items]
+    },
+    async execCommand() {
+      return { stdout: '', stderr: 'Not a git repository', exitCode: 128 }
     },
   }
 }

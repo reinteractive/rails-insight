@@ -988,7 +988,9 @@ export function registerFreeTools(server, state) {
       category: z
         .string()
         .optional()
-        .describe('Filter by spec category (e.g. "model_specs", "request_specs")'),
+        .describe(
+          'Filter by spec category (e.g. "model_specs", "request_specs")',
+        ),
       min_gap: z
         .number()
         .optional()
@@ -1042,7 +1044,12 @@ export function registerFreeTools(server, state) {
         const gap = 100 - (coverage || 0)
 
         if (gap < min_gap) continue
-        if (category && category !== 'request_specs' && category !== 'controller_specs') continue
+        if (
+          category &&
+          category !== 'request_specs' &&
+          category !== 'controller_specs'
+        )
+          continue
 
         gaps.push({
           file: ctrl.file,
@@ -1109,7 +1116,10 @@ export function registerFreeTools(server, state) {
       // Sort models by number of associations (most connected first)
       const sortedModels = Object.entries(models)
         .filter(([, m]) => m.type !== 'concern' && !m.abstract)
-        .sort((a, b) => (b[1].associations?.length || 0) - (a[1].associations?.length || 0))
+        .sort(
+          (a, b) =>
+            (b[1].associations?.length || 0) - (a[1].associations?.length || 0),
+        )
 
       for (const [name, model] of sortedModels) {
         if (assigned.has(name)) continue
@@ -1139,7 +1149,9 @@ export function registerFreeTools(server, state) {
 
           if (!include_covered) {
             const relModel = models[related]
-            const fileCov = relModel?.file ? coverageSnapshot.per_file?.[relModel.file] : null
+            const fileCov = relModel?.file
+              ? coverageSnapshot.per_file?.[relModel.file]
+              : null
             if (fileCov && fileCov.line_coverage >= 90) continue
           }
 
@@ -1149,15 +1161,18 @@ export function registerFreeTools(server, state) {
           cluster.shared_associations.push({
             from: name,
             to: related,
-            type: (model.associations || []).find(
-              (a) => pathToClassName(a.name) === related
-            )?.type || 'association',
+            type:
+              (model.associations || []).find(
+                (a) => pathToClassName(a.name) === related,
+              )?.type || 'association',
           })
         }
 
         // Check which factories are available for cluster models
         for (const modelName of cluster.models) {
-          const factoryName = modelName.replace(/([A-Z])/g, (m, l, i) => (i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`))
+          const factoryName = modelName.replace(/([A-Z])/g, (m, l, i) =>
+            i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`,
+          )
           if (factoryRegistry.factories?.[factoryName]) {
             cluster.factories_available.push(factoryName)
           }
@@ -1169,9 +1184,12 @@ export function registerFreeTools(server, state) {
       return respond({
         clusters,
         total_clusters: clusters.length,
-        unassigned_models: Object.keys(models)
-          .filter((n) => !assigned.has(n) && models[n].type !== 'concern' && !models[n].abstract)
-          .length,
+        unassigned_models: Object.keys(models).filter(
+          (n) =>
+            !assigned.has(n) &&
+            models[n].type !== 'concern' &&
+            !models[n].abstract,
+        ).length,
       })
     },
   )
@@ -1192,8 +1210,13 @@ export function registerFreeTools(server, state) {
 
       if (model) {
         // Try exact match first, then snake_case conversion
-        const factory = registry.factories?.[model] ||
-          registry.factories?.[model.replace(/([A-Z])/g, (m, l, i) => (i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`))]
+        const factory =
+          registry.factories?.[model] ||
+          registry.factories?.[
+            model.replace(/([A-Z])/g, (m, l, i) =>
+              i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`,
+            )
+          ]
         if (!factory) {
           return respond({
             error: `Factory for '${model}' not found`,
@@ -1215,7 +1238,9 @@ export function registerFreeTools(server, state) {
       category: z
         .string()
         .optional()
-        .describe('Filter by spec category (e.g. "model_specs", "request_specs")'),
+        .describe(
+          'Filter by spec category (e.g. "model_specs", "request_specs")',
+        ),
       limit: z
         .number()
         .optional()

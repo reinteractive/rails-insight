@@ -6,5 +6,7 @@
  * @property {function(string): string[]} glob - Recursive glob matching. Pattern supports ** wildcards.
  * @property {function(string): string[]} listDir - List directory contents. Returns [] if not found.
  * @property {function(): string} getProjectRoot - Return the project root identifier.
+ * @property {function(string): Promise<{stdout: string, stderr: string, exitCode: number}>} [execCommand]
+ *   Execute a shell command in the project root. Returns stdout, stderr, and exit code.
  */
 export default {}

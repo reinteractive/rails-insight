@@ -107,4 +107,27 @@ describe('MCP Protocol Integration', () => {
     expect(data.error).toContain('not found')
     expect(data.available).toBeDefined()
   })
+
+  it('calls get_blast_radius with explicit files and gets valid response', async () => {
+    const result = await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { files: ['app/models/user.rb'] },
+    })
+    expect(result.content).toBeDefined()
+    const data = JSON.parse(result.content[0].text)
+    expect(data.seeds).toBeDefined()
+    expect(data.impacted).toBeDefined()
+    expect(data.summary).toBeDefined()
+  })
+
+  it('calls get_review_context and gets token-budgeted output', async () => {
+    const result = await client.callTool({
+      name: 'get_review_context',
+      arguments: { files: ['app/models/user.rb'], token_budget: 4000 },
+    })
+    expect(result.content).toBeDefined()
+    const data = JSON.parse(result.content[0].text)
+    expect(data.entities).toBeDefined()
+    expect(data.summary).toBeDefined()
+  })
 })

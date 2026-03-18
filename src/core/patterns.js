@@ -469,7 +469,8 @@ export const CONFIG_PATTERNS = {
 // ============================================================
 export const FACTORY_PATTERNS = {
   // Factory definition: factory :name or factory :name, class: "ClassName"
-  factoryDef: /^\s*factory\s+:(\w+)(?:,\s*class:\s*['"]?:?(\w+(?:::\w+)*)['"]?)?\s*do/m,
+  factoryDef:
+    /^\s*factory\s+:(\w+)(?:,\s*class:\s*['"]?:?(\w+(?:::\w+)*)['"]?)?\s*do/m,
 
   // Trait definition
   trait: /^\s*trait\s+:(\w+)\s*do/m,

@@ -76,7 +76,9 @@ describe('Coverage Snapshot Extractor', () => {
       'coverage/coverage.json': JSON.stringify(coverageData),
     })
     const result = extractCoverageSnapshot(provider)
-    expect(result.per_file['app/models/user.rb'].uncovered_lines).toEqual([2, 4])
+    expect(result.per_file['app/models/user.rb'].uncovered_lines).toEqual([
+      2, 4,
+    ])
   })
 
   it('handles null entries in lines array correctly', () => {
@@ -103,7 +105,7 @@ describe('Coverage Snapshot Extractor', () => {
         '/project/app/models/user.rb': {
           lines: [1, 1, 1],
           branches: {
-            'branch_0': { 'then': 1, 'else': 0 },
+            branch_0: { then: 1, else: 0 },
           },
         },
       },
@@ -138,7 +140,7 @@ describe('Coverage Snapshot Extractor', () => {
     }
     const result = extractCoverageSnapshot(provider, modelExtractions, {})
     const activateUncovered = result.uncovered_methods.find(
-      (m) => m.method === 'activate'
+      (m) => m.method === 'activate',
     )
     expect(activateUncovered).toBeDefined()
     expect(activateUncovered.entity).toBe('User')
@@ -167,7 +169,7 @@ describe('Coverage Snapshot Extractor', () => {
     }
     const result = extractCoverageSnapshot(provider, {}, controllerExtractions)
     const indexUncovered = result.uncovered_methods.find(
-      (m) => m.method === 'index'
+      (m) => m.method === 'index',
     )
     expect(indexUncovered).toBeDefined()
     expect(indexUncovered.entity_type).toBe('controller')

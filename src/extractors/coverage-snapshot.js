@@ -13,7 +13,11 @@
  * @param {object} [controllerExtractions] - Pre-extracted controller data
  * @returns {object}
  */
-export function extractCoverageSnapshot(provider, modelExtractions = {}, controllerExtractions = {}) {
+export function extractCoverageSnapshot(
+  provider,
+  modelExtractions = {},
+  controllerExtractions = {},
+) {
   const result = {
     available: false,
     tool: null,
@@ -33,7 +37,12 @@ export function extractCoverageSnapshot(provider, modelExtractions = {}, control
     // Also try .resultset.json (older SimpleCov format)
     const resultsetRaw = provider.readFile('coverage/.resultset.json')
     if (!resultsetRaw) return result
-    return parseResultSet(resultsetRaw, result, modelExtractions, controllerExtractions)
+    return parseResultSet(
+      resultsetRaw,
+      result,
+      modelExtractions,
+      controllerExtractions,
+    )
   }
 
   let coverageData
@@ -74,7 +83,7 @@ export function extractCoverageSnapshot(provider, modelExtractions = {}, control
     if (!relativePath) continue
 
     // Extract line coverage data
-    const lineData = Array.isArray(fileData) ? fileData : (fileData.lines || [])
+    const lineData = Array.isArray(fileData) ? fileData : fileData.lines || []
 
     let fileTotal = 0
     let fileCovered = 0
@@ -93,9 +102,8 @@ export function extractCoverageSnapshot(provider, modelExtractions = {}, control
       }
     }
 
-    const fileCoveragePercent = fileTotal > 0
-      ? Math.round((fileCovered / fileTotal) * 1000) / 10
-      : null
+    const fileCoveragePercent =
+      fileTotal > 0 ? Math.round((fileCovered / fileTotal) * 1000) / 10 : null
 
     result.per_file[relativePath] = {
       line_coverage: fileCoveragePercent,
@@ -115,13 +123,19 @@ export function extractCoverageSnapshot(provider, modelExtractions = {}, control
         }
       }
 
-      const fileBranchTotal = Object.values(fileData.branches).reduce((sum, bd) => {
-        return sum + (typeof bd === 'object' ? Object.keys(bd).length : 0)
-      }, 0)
-      const fileBranchCovered = Object.values(fileData.branches).reduce((sum, bd) => {
-        if (typeof bd !== 'object') return sum
-        return sum + Object.values(bd).filter((c) => c > 0).length
-      }, 0)
+      const fileBranchTotal = Object.values(fileData.branches).reduce(
+        (sum, bd) => {
+          return sum + (typeof bd === 'object' ? Object.keys(bd).length : 0)
+        },
+        0,
+      )
+      const fileBranchCovered = Object.values(fileData.branches).reduce(
+        (sum, bd) => {
+          if (typeof bd !== 'object') return sum
+          return sum + Object.values(bd).filter((c) => c > 0).length
+        },
+        0,
+      )
 
       if (fileBranchTotal > 0) {
         result.per_file[relativePath].branch_coverage =
@@ -135,16 +149,16 @@ export function extractCoverageSnapshot(provider, modelExtractions = {}, control
       uncoveredLineNumbers,
       modelExtractions,
       controllerExtractions,
-      result.uncovered_methods
+      result.uncovered_methods,
     )
   }
 
-  result.overall.line_coverage = totalLines > 0
-    ? Math.round((coveredLines / totalLines) * 1000) / 10
-    : null
-  result.overall.branch_coverage = totalBranches > 0
-    ? Math.round((coveredBranches / totalBranches) * 1000) / 10
-    : null
+  result.overall.line_coverage =
+    totalLines > 0 ? Math.round((coveredLines / totalLines) * 1000) / 10 : null
+  result.overall.branch_coverage =
+    totalBranches > 0
+      ? Math.round((coveredBranches / totalBranches) * 1000) / 10
+      : null
   result.overall.files_tracked = Object.keys(result.per_file).length
 
   return result
@@ -163,7 +177,7 @@ function mapUncoveredMethods(
   uncoveredLines,
   modelExtractions,
   controllerExtractions,
-  outputArray
+  outputArray,
 ) {
   if (uncoveredLines.length === 0) return
 
@@ -198,7 +212,7 @@ function mapUncoveredMethods(
 
   for (const [methodName, range] of Object.entries(methodRanges)) {
     const uncoveredInMethod = uncoveredLines.filter(
-      (line) => line >= range.start && line <= range.end
+      (line) => line >= range.start && line <= range.end,
     )
     const totalMethodLines = range.end - range.start + 1
 
@@ -210,7 +224,11 @@ function mapUncoveredMethods(
         method: methodName,
         uncovered_lines: uncoveredInMethod.length,
         total_lines: totalMethodLines,
-        coverage: Math.round(((totalMethodLines - uncoveredInMethod.length) / totalMethodLines) * 1000) / 10,
+        coverage:
+          Math.round(
+            ((totalMethodLines - uncoveredInMethod.length) / totalMethodLines) *
+              1000,
+          ) / 10,
       })
     }
   }
@@ -267,7 +285,11 @@ function parseResultSet(raw, result, modelExtractions, controllerExtractions) {
             return null
           },
         }
-        return extractCoverageSnapshot(provider, modelExtractions, controllerExtractions)
+        return extractCoverageSnapshot(
+          provider,
+          modelExtractions,
+          controllerExtractions,
+        )
       }
     }
   } catch {
