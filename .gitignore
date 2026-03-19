@@ -5,3 +5,4 @@ coverage/
 tmp/
 dist/
 test/golden/baselines/*.json
+.env
