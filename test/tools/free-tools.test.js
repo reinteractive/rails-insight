@@ -95,6 +95,57 @@ ActiveRecord::Schema[7.1].define(version: 2024_01_01_000000) do
     t.timestamps
   end
 end`,
+    'spec/factories/users.rb': `
+FactoryBot.define do
+  factory :user do
+    email { 'person@example.com' }
+
+    trait :admin do
+      role { 'admin' }
+    end
+  end
+
+  factory :user_profile do
+    association :user
+    display_name { 'Test User' }
+  end
+end`,
+    'spec/models/user_spec.rb': `
+RSpec.describe User, type: :model do
+  describe 'associations' do
+    it 'has many posts' do
+      expect(true).to be(true)
+    end
+
+    it 'supports devise auth' do
+      expect(true).to be(true)
+    end
+  end
+
+  context 'scopes' do
+    it 'supports active scope' do
+      expect(true).to be(true)
+    end
+  end
+end`,
+    'spec/requests/posts_spec.rb': `
+RSpec.describe 'Posts', type: :request do
+  describe 'GET /posts' do
+    it 'returns http success' do
+      expect(true).to be(true)
+    end
+
+    it 'lists posts' do
+      expect(true).to be(true)
+    end
+  end
+
+  context 'POST /posts' do
+    it 'creates a post' do
+      expect(true).to be(true)
+    end
+  end
+end`,
   }
 
   return {
@@ -329,10 +380,35 @@ describe('Free Tools Logic', () => {
 describe('Free Tools — MCP Handlers', () => {
   let mock
   let provider
+  let builtIndex
+
+  function createFreshMock(indexOverride = builtIndex) {
+    const fresh = createMockServer()
+    registerFreeTools(fresh.server, {
+      index: indexOverride,
+      provider,
+      verbose: false,
+    })
+    return fresh
+  }
 
   beforeAll(async () => {
     provider = createMockProvider()
-    const builtIndex = await buildIndex(provider)
+    builtIndex = await buildIndex(provider)
+    builtIndex.extractions.coverage_snapshot = {
+      available: true,
+      overall: 71,
+      per_file: {
+        'app/models/user.rb': { line_coverage: 40 },
+        'app/models/post.rb': { line_coverage: 95 },
+        'app/controllers/posts_controller.rb': { line_coverage: 35 },
+        'app/controllers/users_controller.rb': { line_coverage: 92 },
+      },
+      uncovered_methods: [
+        { entity: 'User', method: 'active', coverage: 0 },
+        { entity: 'PostsController', method: 'create', coverage: 0 },
+      ],
+    }
     mock = createMockServer()
     const state = { index: builtIndex, provider, verbose: false }
     registerFreeTools(mock.server, state)
@@ -686,6 +762,204 @@ describe('Free Tools — MCP Handlers', () => {
       })
       const data = parseResponse(result)
       expect(data.error).toBeDefined()
+    })
+
+    it('returns coverage_snapshot data', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_deep_analysis', {
+        category: 'coverage_snapshot',
+      })
+      const data = parseResponse(result)
+      expect(data.available).toBe(true)
+      expect(data.overall).toBe(71)
+    })
+  })
+
+  describe('get_coverage_gaps', () => {
+    it('returns prioritised model coverage gaps', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_coverage_gaps', {
+        category: 'model_specs',
+        min_gap: 10,
+      })
+      const data = parseResponse(result)
+
+      expect(data.coverage_available).toBe(true)
+      expect(data.overall).toBe(71)
+      expect(data.total_gaps).toBe(1)
+      expect(data.gaps[0]).toMatchObject({
+        entity: 'User',
+        entity_type: 'model',
+        coverage: 40,
+        gap: 60,
+      })
+      expect(data.gaps[0].uncovered_methods).toEqual([
+        { method: 'active', coverage: 0 },
+      ])
+    })
+
+    it('returns controller coverage gaps for request or controller spec categories', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_coverage_gaps', {
+        category: 'request_specs',
+        min_gap: 50,
+      })
+      const data = parseResponse(result)
+
+      expect(data.total_gaps).toBe(1)
+      expect(data.gaps[0]).toMatchObject({
+        entity: 'PostsController',
+        entity_type: 'controller',
+        coverage: 35,
+        gap: 65,
+        actions: 3,
+      })
+      expect(data.gaps[0].uncovered_methods).toEqual([
+        { method: 'create', coverage: 0 },
+      ])
+    })
+
+    it('sorts all gaps by descending gap and enforces limit', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_coverage_gaps', {
+        limit: 1,
+      })
+      const data = parseResponse(result)
+
+      expect(data.total_gaps).toBe(4)
+      expect(data.gaps).toHaveLength(1)
+      expect(data.gaps[0].entity).toBe('PostsController')
+    })
+  })
+
+  describe('get_test_conventions', () => {
+    it('returns detected convention metadata and pattern references', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_test_conventions', {})
+      const data = parseResponse(result)
+
+      expect(data.spec_style.primary).toBe('request')
+      expect(data.pattern_reference_files).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ category: 'model_specs' }),
+          expect.objectContaining({ category: 'request_specs' }),
+        ]),
+      )
+    })
+  })
+
+  describe('get_domain_clusters', () => {
+    it('skips highly covered files by default and reports unassigned models', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_domain_clusters', {})
+      const data = parseResponse(result)
+
+      expect(data.total_clusters).toBe(1)
+      expect(data.unassigned_models).toBe(1)
+      expect(data.clusters[0]).toMatchObject({
+        anchor: 'User',
+        models: ['User'],
+        files: ['app/models/user.rb'],
+        factories_available: ['user'],
+      })
+    })
+
+    it('includes covered related models when requested and preserves association details', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_domain_clusters', {
+        include_covered: true,
+        max_cluster_size: 2,
+      })
+      const data = parseResponse(result)
+
+      expect(data.total_clusters).toBe(1)
+      expect(data.unassigned_models).toBe(0)
+      expect(data.clusters[0]).toMatchObject({
+        anchor: 'Post',
+        models: ['Post', 'User'],
+        files: ['app/models/post.rb', 'app/models/user.rb'],
+        factories_available: ['user'],
+      })
+      expect(data.clusters[0].shared_associations).toEqual([
+        { from: 'Post', to: 'User', type: 'belongs_to' },
+      ])
+    })
+
+    it('keeps related models without files out of the cluster file list', async () => {
+      const customIndex = structuredClone(builtIndex)
+      customIndex.extractions.models.User.file = null
+
+      const freshMock = createFreshMock(customIndex)
+      const result = await freshMock.callTool('get_domain_clusters', {
+        include_covered: true,
+        max_cluster_size: 2,
+      })
+      const data = parseResponse(result)
+
+      expect(data.clusters[0].models).toContain('User')
+      expect(data.clusters[0].files).toEqual(['app/models/post.rb'])
+      expect(data.clusters[0].shared_associations).toEqual([
+        { from: 'Post', to: 'User', type: 'belongs_to' },
+      ])
+    })
+  })
+
+  describe('get_factory_registry', () => {
+    it('returns the full factory registry', async () => {
+      const result = await mock.callTool('get_factory_registry', {})
+      const data = parseResponse(result)
+
+      expect(data.total_factories).toBe(2)
+      expect(data.factories.user).toBeDefined()
+      expect(data.factory_files).toContain('spec/factories/users.rb')
+    })
+
+    it('finds factories by snake_case conversion from model name', async () => {
+      const result = await mock.callTool('get_factory_registry', {
+        model: 'UserProfile',
+      })
+      const data = parseResponse(result)
+
+      expect(data.class_name).toBe('UserProfile')
+      expect(data.associations).toEqual(
+        expect.arrayContaining([expect.objectContaining({ name: 'user' })]),
+      )
+    })
+
+    it('returns available factories when a model is missing', async () => {
+      const result = await mock.callTool('get_factory_registry', {
+        model: 'UnknownFactory',
+      })
+      const data = parseResponse(result)
+
+      expect(data.error).toContain("Factory for 'UnknownFactory' not found")
+      expect(data.available).toEqual(
+        expect.arrayContaining(['user', 'user_profile']),
+      )
+    })
+  })
+
+  describe('get_well_tested_examples', () => {
+    it('returns content-carrying pattern references', async () => {
+      const result = await mock.callTool('get_well_tested_examples', {})
+      const data = parseResponse(result)
+
+      expect(data.total_available).toBeGreaterThan(0)
+      expect(data.examples.length).toBeGreaterThan(0)
+      expect(data.examples[0].content).toContain('RSpec.describe')
+    })
+
+    it('filters examples by category and applies the limit', async () => {
+      const result = await mock.callTool('get_well_tested_examples', {
+        category: 'model_specs',
+        limit: 1,
+      })
+      const data = parseResponse(result)
+
+      expect(data.total_available).toBe(1)
+      expect(data.examples).toHaveLength(1)
+      expect(data.examples[0].category).toBe('model_specs')
+      expect(data.examples[0].path).toBe('spec/models/user_spec.rb')
     })
   })
 })

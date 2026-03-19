@@ -3,6 +3,7 @@
 import { parseArgs } from 'node:util'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const options = {
   'project-root': { type: 'string', short: 'p' },
@@ -13,19 +14,7 @@ const options = {
   help: { type: 'boolean', short: 'h', default: false },
 }
 
-let parsed
-try {
-  parsed = parseArgs({ options, allowPositionals: false })
-} catch (err) {
-  console.error(`Error: ${err.message}`)
-  console.error('Run with --help for usage information.')
-  process.exit(1)
-}
-
-const { values } = parsed
-
-if (values.help) {
-  console.log(`
+const HELP_TEXT = `
 RailsInsight — Rails-Aware Codebase Indexer (MCP Server)
 
 Usage:
@@ -42,32 +31,93 @@ Options:
 Examples:
   railsinsight --project-root /path/to/rails/app
   railsinsight -p . --verbose
-`)
-  process.exit(0)
-}
+`
 
-const mode = values.mode || 'local'
+/**
+ * Run the CLI with injectable dependencies for testing.
+ * @param {string[]} argv
+ * @param {Object} deps
+ * @returns {Promise<number>} Process exit code
+ */
+export async function main(argv = process.argv.slice(2), deps = {}) {
+  const writeStdout = deps.writeStdout || ((text) => process.stdout.write(text))
+  const writeStderr = deps.writeStderr || ((text) => process.stderr.write(text))
+  const parseArgsFn = deps.parseArgsFn || parseArgs
+  const existsSyncFn = deps.existsSyncFn || existsSync
+  const resolvePath = deps.resolvePath || resolve
+  const importServer = deps.importServer || (() => import('../src/server.js'))
 
-if (mode === 'local') {
-  const projectRoot = resolve(values['project-root'] || '.')
-
-  if (!existsSync(projectRoot)) {
-    console.error(`Error: Project root does not exist: ${projectRoot}`)
-    process.exit(1)
+  let parsed
+  try {
+    parsed = parseArgsFn({ args: argv, options, allowPositionals: false })
+  } catch (err) {
+    writeStderr(`Error: ${err.message}\n`)
+    writeStderr('Run with --help for usage information.\n')
+    return 1
   }
 
-  const claudeMdPath = values['claude-md'] || null
-  const verbose = values.verbose || false
+  const { values } = parsed
 
-  const { startLocal } = await import('../src/server.js')
-  await startLocal(projectRoot, { claudeMdPath, verbose, tier: 'pro' })
-} else if (mode === 'remote') {
-  const port = parseInt(values.port || '3000', 10)
-  const verbose = values.verbose || false
+  if (values.help) {
+    writeStdout(HELP_TEXT)
+    return 0
+  }
 
-  const { startRemote } = await import('../src/server.js')
-  await startRemote({ port, verbose })
-} else {
-  console.error(`Error: Unknown mode "${mode}". Use "local" or "remote".`)
-  process.exit(1)
+  const mode = values.mode || 'local'
+
+  if (mode === 'local') {
+    const projectRoot = resolvePath(values['project-root'] || '.')
+
+    if (!existsSyncFn(projectRoot)) {
+      writeStderr(`Error: Project root does not exist: ${projectRoot}\n`)
+      return 1
+    }
+
+    const claudeMdPath = values['claude-md'] || null
+    const verbose = values.verbose || false
+
+    const { startLocal } = await importServer()
+    await startLocal(projectRoot, { claudeMdPath, verbose, tier: 'pro' })
+    return 0
+  }
+
+  if (mode === 'remote') {
+    const port = parseInt(values.port || '3000', 10)
+    const verbose = values.verbose || false
+
+    const { startRemote } = await importServer()
+    await startRemote({ port, verbose })
+    return 0
+  }
+
+  writeStderr(`Error: Unknown mode "${mode}". Use "local" or "remote".\n`)
+  return 1
+}
+
+export function shouldRunAsCli(
+  argv1 = process.argv[1],
+  metaUrl = import.meta.url,
+) {
+  return Boolean(argv1) && metaUrl === pathToFileURL(argv1).href
+}
+
+export async function runCliIfInvoked(deps = {}) {
+  const argv1 = deps.argv1 ?? process.argv[1]
+  const metaUrl = deps.metaUrl ?? import.meta.url
+  const mainFn = deps.mainFn || main
+  const exitFn = deps.exitFn || ((code) => process.exit(code))
+
+  if (!shouldRunAsCli(argv1, metaUrl)) {
+    return false
+  }
+
+  const exitCode = await mainFn()
+  if (exitCode !== 0) {
+    exitFn(exitCode)
+  }
+
+  return true
+}
+
+if (await runCliIfInvoked()) {
 }
