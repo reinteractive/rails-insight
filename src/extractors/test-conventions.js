@@ -66,7 +66,7 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
 
   // Scan spec files for convention patterns
   const specEntries = entries.filter(
-    (e) => e.category === 19 && e.path.endsWith('_spec.rb'),
+    (e) => e.categoryName === 'testing' && e.path.endsWith('_spec.rb'),
   )
 
   // Count spec files by specCategory

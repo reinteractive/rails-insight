@@ -30,6 +30,7 @@ import { extractTier3 } from '../extractors/tier3.js'
 import { extractTestConventions } from '../extractors/test-conventions.js'
 import { extractFactoryRegistry } from '../extractors/factory-registry.js'
 import { extractCoverageSnapshot } from '../extractors/coverage-snapshot.js'
+import { pathToClassName } from '../tools/handlers/helpers.js'
 
 /**
  * Build the complete index from a FileProvider.
@@ -166,19 +167,6 @@ export async function buildIndex(provider, options = {}) {
 }
 
 /**
- * Convert a file path to a Ruby-style class name.
- * @param {string} path
- * @returns {string}
- */
-function pathToClassName(path) {
-  const basename = path.split('/').pop().replace('.rb', '')
-  return basename
-    .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join('')
-}
-
-/**
  * Build a reverse mapping from file paths to their graph entities.
  * @param {Object} extractions
  * @param {Object} manifest
@@ -198,6 +186,12 @@ function buildFileEntityMap(extractions, manifest) {
   return map
 }
 
+/**
+ * Map extracted entities (models, controllers, components) to their file paths.
+ * @param {Object<string, Object>} map - Accumulator: file path → { entity, type }
+ * @param {Object<string, {file?: string}>} entities - Extraction results keyed by name
+ * @param {string} type - Entity type label (e.g. 'model', 'controller')
+ */
 function mapEntities(map, entities, type) {
   if (!entities) return
   for (const [name, entity] of Object.entries(entities)) {
@@ -205,6 +199,11 @@ function mapEntities(map, entities, type) {
   }
 }
 
+/**
+ * Map Stimulus controller files to their controller identifiers.
+ * @param {Object<string, Object>} map - Accumulator
+ * @param {Array<{file?: string, name?: string}>} controllers - Stimulus extraction results
+ */
 function mapStimulusControllers(map, controllers) {
   if (!Array.isArray(controllers)) return
   for (const sc of controllers) {
@@ -214,6 +213,12 @@ function mapStimulusControllers(map, controllers) {
   }
 }
 
+/**
+ * Map concern files from the manifest to their derived class names.
+ * @param {Object<string, Object>} map - Accumulator
+ * @param {Object} extractions - All extraction results (unused but kept for signature consistency)
+ * @param {Object} manifest - Scanner manifest with classified entries
+ */
 function mapConcernFiles(map, extractions, manifest) {
   const entries = manifest?.entries || []
   for (const entry of entries) {
@@ -224,12 +229,20 @@ function mapConcernFiles(map, extractions, manifest) {
   }
 }
 
+/** Map well-known singleton files (schema, routes, Gemfile) to fixed entity IDs. */
 function mapSpecialFiles(map, extractions) {
   map['db/schema.rb'] = { entity: '__schema__', type: 'schema' }
   map['config/routes.rb'] = { entity: '__routes__', type: 'routes' }
   map['Gemfile'] = { entity: '__gemfile__', type: 'gemfile' }
 }
 
+/**
+ * Map view templates to their owning controller using Rails directory conventions.
+ * e.g. app/views/users/show.html.erb → UsersController
+ * @param {Object<string, Object>} map - Accumulator
+ * @param {Object<string, Object>} controllers - Extracted controllers keyed by class name
+ * @param {Object} manifest - Scanner manifest with classified entries
+ */
 function mapViewFiles(map, controllers, manifest) {
   const entries = manifest?.entries || []
   for (const entry of entries) {

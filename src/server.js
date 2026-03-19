@@ -1,8 +1,12 @@
+import { createRequire } from 'node:module'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { LocalFSProvider } from './providers/local-fs.js'
 import { buildIndex } from './core/indexer.js'
 import { registerTools } from './tools/index.js'
+
+const require = createRequire(import.meta.url)
+const { version: PKG_VERSION } = require('../package.json')
 
 /**
  * Create an MCP server with tool registrations.
@@ -16,7 +20,7 @@ import { registerTools } from './tools/index.js'
 export function createServer(options) {
   const server = new McpServer({
     name: 'railsinsight',
-    version: '0.1.0',
+    version: PKG_VERSION,
     capabilities: { tools: {} },
   })
 
@@ -63,7 +67,5 @@ export async function startLocal(projectRoot, options = {}) {
  * @param {Object} options
  */
 export async function startRemote(options = {}) {
-  // Remote mode is deferred to Phase 7
-  console.error('Remote mode is not yet implemented. Use local mode.')
-  process.exit(1)
+  throw new Error('Remote mode is not yet implemented. Use local mode.')
 }

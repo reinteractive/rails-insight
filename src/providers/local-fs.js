@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
+import { EXEC_MAX_BUFFER, EXEC_TIMEOUT_MS } from '../core/constants.js'
 
 const execPromise = promisify(exec)
 
@@ -34,13 +35,29 @@ export class LocalFSProvider {
   }
 
   /**
+   * Resolve a relative path safely within the project root.
+   * Returns null if the path would escape the project root (path traversal).
+   * @param {string} relativePath
+   * @returns {string|null} Absolute path or null if unsafe
+   */
+  _safePath(relativePath) {
+    const full = resolve(join(this._root, relativePath))
+    const root = resolve(this._root)
+    if (full !== root && !full.startsWith(root + sep)) {
+      return null
+    }
+    return full
+  }
+
+  /**
    * Read a file's contents as UTF-8.
    * @param {string} relativePath
    * @returns {string|null} File contents or null on error
    */
   readFile(relativePath) {
     try {
-      const full = join(this._root, relativePath)
+      const full = this._safePath(relativePath)
+      if (!full) return null
       return readFileSync(full, 'utf-8')
     } catch {
       return null
@@ -65,7 +82,9 @@ export class LocalFSProvider {
    */
   fileExists(relativePath) {
     try {
-      return existsSync(join(this._root, relativePath))
+      const full = this._safePath(relativePath)
+      if (!full) return false
+      return existsSync(full)
     } catch {
       return false
     }
@@ -90,7 +109,8 @@ export class LocalFSProvider {
    */
   listDir(relativePath) {
     try {
-      const full = join(this._root, relativePath)
+      const full = this._safePath(relativePath)
+      if (!full) return []
       return readdirSync(full).sort()
     } catch {
       return []
@@ -231,8 +251,8 @@ export class LocalFSProvider {
     try {
       const { stdout, stderr } = await execPromise(command, {
         cwd: this._root,
-        maxBuffer: 1024 * 1024,
-        timeout: 10000,
+        maxBuffer: EXEC_MAX_BUFFER,
+        timeout: EXEC_TIMEOUT_MS,
       })
       return { stdout: stdout || '', stderr: stderr || '', exitCode: 0 }
     } catch (err) {

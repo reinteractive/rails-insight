@@ -1,0 +1,20 @@
+# Test and development files
+test/
+coverage/
+.github/
+.env
+.env.*
+
+# Internal docs
+prd.md
+
+# Config files not needed at runtime
+vitest.config.*
+.gitignore
+.eslintrc*
+.prettierrc*
+
+# Misc
+*.log
+.DS_Store
+tmp/

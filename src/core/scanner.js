@@ -88,17 +88,31 @@ const CATEGORIES = {
 /**
  * Classification rules. Each rule maps a path pattern to a category.
  * Order matters — first match wins for ambiguous paths.
+ *
+ * The rules are ordered by specificity:
+ * 1. Singleton files (routes.rb, schema.rb, Gemfile) — exact path matches
+ * 2. Auth-specific controllers (sessions, registrations, passwords) — before
+ *    general controllers so they land in category 8 instead of category 2
+ * 3. Specialized app/ subdirectories (policies, serializers, services) —
+ *    before general models/controllers to capture design-pattern files
+ * 4. Core Tier 1 categories (models, controllers, views, jobs, etc.)
+ * 5. Config and infrastructure files
+ * 6. Catch-all patterns (lib/, migrations)
+ *
  * @type {Array<{test: function(string): boolean, category: number}>}
  */
 const RULES = [
-  // Tier 1 — ordered for specificity
+  // --- Singleton files: exact path matches first ---
   { test: (p) => /^config\/routes(\.rb|\/.*\.rb)$/.test(p), category: 3 },
   { test: (p) => /^db\/(schema\.rb|structure\.sql)$/.test(p), category: 4 },
   { test: (p) => p === 'Gemfile' || p === 'Gemfile.lock', category: 16 },
 
-  // Auth-specific files (before general models/controllers)
+  // --- Auth-specific files: must precede general controllers/models ---
+  // Devise initializer is config but functionally auth
   { test: (p) => /^config\/initializers\/devise\.rb$/.test(p), category: 8 },
+  // Rails 8 native auth uses Session/Current models
   { test: (p) => /^app\/models\/(session|current)\.rb$/.test(p), category: 8 },
+  // Auth controllers: sessions, registrations, passwords, confirmations
   {
     test: (p) => /^app\/controllers\/.*sessions_controller\.rb$/.test(p),
     category: 8,
@@ -116,18 +130,18 @@ const RULES = [
     category: 8,
   },
 
-  // Authorization
+  // --- Authorization: policies and ability files ---
   { test: (p) => /^app\/policies\/.*\.rb$/.test(p), category: 9 },
   { test: (p) => /^app\/models\/ability\.rb$/.test(p), category: 9 },
 
-  // API serializers/blueprints
+  // --- API serializers/blueprints: before general models ---
   { test: (p) => /^app\/serializers\/.*\.rb$/.test(p), category: 15 },
   { test: (p) => /^app\/blueprints\/.*\.rb$/.test(p), category: 15 },
 
-  // GraphQL
+  // --- GraphQL: own directory under app/ ---
   { test: (p) => /^app\/graphql\/.*\.rb$/.test(p), category: 56 },
 
-  // Design patterns (before general models)
+  // --- Design pattern directories: before general models ---
   { test: (p) => /^app\/services\/.*\.rb$/.test(p), category: 26 },
   { test: (p) => /^app\/forms\/.*\.rb$/.test(p), category: 26 },
   { test: (p) => /^app\/queries\/.*\.rb$/.test(p), category: 26 },
@@ -135,10 +149,10 @@ const RULES = [
   { test: (p) => /^app\/presenters\/.*\.rb$/.test(p), category: 26 },
   { test: (p) => /^app\/interactors\/.*\.rb$/.test(p), category: 26 },
 
-  // Admin
+  // --- Admin namespace ---
   { test: (p) => /^app\/admin\/.*\.rb$/.test(p), category: 25 },
 
-  // Core Tier 1
+  // --- Core Tier 1: broad app/ directory matches ---
   { test: (p) => /^app\/models\/.*\.rb$/.test(p), category: 1 },
   { test: (p) => /^app\/controllers\/.*\.rb$/.test(p), category: 2 },
   { test: (p) => /^app\/components\/.*\.(rb|html\.\w+)$/.test(p), category: 5 },
@@ -152,33 +166,31 @@ const RULES = [
   { test: (p) => /^app\/channels\/.*\.rb$/.test(p), category: 14 },
   { test: (p) => /^app\/mailboxes\/.*\.rb$/.test(p), category: 11 },
 
-  // Storage config
+  // --- Infrastructure & Config ---
   { test: (p) => /^config\/storage\.yml$/.test(p), category: 12 },
-
-  // Config files
   { test: (p) => /^config\/application\.rb$/.test(p), category: 17 },
   { test: (p) => /^config\/environments\/.*\.rb$/.test(p), category: 17 },
   { test: (p) => /^config\/database\.yml$/.test(p), category: 17 },
   { test: (p) => /^config\/cable\.yml$/.test(p), category: 14 },
   { test: (p) => /^config\/initializers\/.*\.rb$/.test(p), category: 17 },
 
-  // Security
+  // Security-specific initializers (after general initializers to override)
   {
     test: (p) => /^config\/initializers\/content_security_policy\.rb$/.test(p),
     category: 18,
   },
   { test: (p) => /^config\/initializers\/cors\.rb$/.test(p), category: 18 },
 
-  // Testing
+  // --- Testing ---
   { test: (p) => /^spec\/.*\.rb$/.test(p), category: 19 },
   { test: (p) => /^test\/.*\.rb$/.test(p), category: 19 },
   { test: (p) => /^\.rspec$/.test(p), category: 19 },
 
-  // Code quality
+  // --- Code quality & tooling ---
   { test: (p) => /^\.rubocop(\.yml|_todo\.yml)$/.test(p), category: 20 },
   { test: (p) => /^\.eslintrc/.test(p), category: 20 },
 
-  // Deployment
+  // --- Deployment ---
   {
     test: (p) => /^(Dockerfile|docker-compose\.yml|\.dockerignore)$/.test(p),
     category: 21,
@@ -189,28 +201,18 @@ const RULES = [
   { test: (p) => /^Procfile/.test(p), category: 21 },
   { test: (p) => /^config\/puma\.rb$/.test(p), category: 21 },
 
-  // I18n
+  // --- i18n, credentials, middleware, engines, notifications ---
   { test: (p) => /^config\/locales\/.*\.yml$/.test(p), category: 28 },
-
-  // Credentials
   { test: (p) => /^config\/credentials/.test(p), category: 35 },
   { test: (p) => /^config\/master\.key$/.test(p), category: 35 },
   { test: (p) => /^\.env/.test(p), category: 35 },
-
-  // Middleware
   { test: (p) => /^app\/middleware\/.*\.rb$/.test(p), category: 33 },
-
-  // Engines
   { test: (p) => /^engines\/.*/.test(p), category: 34 },
   { test: (p) => /^lib\/engines\/.*/.test(p), category: 34 },
-
-  // Notifications
   { test: (p) => /^app\/notifications\/.*\.rb$/.test(p), category: 40 },
 
-  // Lib files (general)
+  // --- Catch-all: lib and migrations ---
   { test: (p) => /^lib\/.*\.rb$/.test(p), category: 17 },
-
-  // DB migrations
   { test: (p) => /^db\/migrate\/.*\.rb$/.test(p), category: 4 },
   { test: (p) => /^db\/seeds\.rb$/.test(p), category: 17 },
 ]

@@ -6,6 +6,8 @@
 import { z } from 'zod'
 import { computeBlastRadius, buildReviewContext } from '../core/blast-radius.js'
 import { detectChangedFiles } from '../git/diff-parser.js'
+import { noIndex, respond } from './handlers/helpers.js'
+import { DEFAULT_TOKEN_BUDGET } from '../core/constants.js'
 
 /**
  * Register blast radius analysis tools on the MCP server.
@@ -13,32 +15,36 @@ import { detectChangedFiles } from '../git/diff-parser.js'
  * @param {Object} state - Mutable state object with { index, provider, verbose }
  */
 export function registerBlastRadiusTools(server, state) {
-  const noIndex = () => ({
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ error: 'Index not built. Call index_project first.' }),
-      },
-    ],
-  })
-  const respond = (data) => ({
-    content: [{ type: 'text', text: JSON.stringify(data) }],
-  })
-
   server.tool(
     'get_blast_radius',
     'Analyse the impact of code changes. Accepts explicit file paths or auto-detects from git diff. Returns impacted entities classified by risk level (CRITICAL/HIGH/MEDIUM/LOW) with affected tests. Call this before making changes to understand what else might break, or after changes to identify what needs testing.',
     {
-      files: z.array(z.string()).optional().describe('Explicit list of changed file paths'),
-      base_ref: z.string().optional().describe('Git ref to diff against (default: HEAD)'),
-      staged: z.boolean().optional().describe('Only staged changes (default: false)'),
-      max_depth: z.number().optional().describe('BFS traversal depth limit (default: 3)'),
+      files: z
+        .array(z.string())
+        .optional()
+        .describe('Explicit list of changed file paths'),
+      base_ref: z
+        .string()
+        .optional()
+        .describe('Git ref to diff against (default: HEAD)'),
+      staged: z
+        .boolean()
+        .optional()
+        .describe('Only staged changes (default: false)'),
+      max_depth: z
+        .number()
+        .optional()
+        .describe('BFS traversal depth limit (default: 3)'),
     },
     async (args) => {
       if (!state.index) return noIndex()
 
       const changedFiles = await resolveChangedFiles(args, state)
-      if (changedFiles.error && changedFiles.files.length === 0 && !args.files?.length) {
+      if (
+        changedFiles.error &&
+        changedFiles.files.length === 0 &&
+        !args.files?.length
+      ) {
         return respond({ error: changedFiles.error })
       }
 
@@ -53,20 +59,36 @@ export function registerBlastRadiusTools(server, state) {
     'get_review_context',
     'Get a token-budgeted structural summary of entities impacted by code changes. Returns compact Rails-aware descriptions of each impacted model, controller, and component — enough context for an AI agent to review the change safely. Call get_blast_radius first, or provide files directly.',
     {
-      files: z.array(z.string()).optional().describe('Explicit list of changed file paths'),
-      base_ref: z.string().optional().describe('Git ref to diff against (default: HEAD)'),
-      token_budget: z.number().optional().describe('Maximum tokens for the response (default: 8000)'),
-      risk_filter: z.string().optional().describe('Minimum risk level to include (default: LOW)'),
+      files: z
+        .array(z.string())
+        .optional()
+        .describe('Explicit list of changed file paths'),
+      base_ref: z
+        .string()
+        .optional()
+        .describe('Git ref to diff against (default: HEAD)'),
+      token_budget: z
+        .number()
+        .optional()
+        .describe('Maximum tokens for the response (default: 8000)'),
+      risk_filter: z
+        .string()
+        .optional()
+        .describe('Minimum risk level to include (default: LOW)'),
     },
     async (args) => {
       if (!state.index) return noIndex()
 
       const changedFiles = await resolveChangedFiles(args, state)
-      if (changedFiles.error && changedFiles.files.length === 0 && !args.files?.length) {
+      if (
+        changedFiles.error &&
+        changedFiles.files.length === 0 &&
+        !args.files?.length
+      ) {
         return respond({ error: changedFiles.error })
       }
 
-      const tokenBudget = args.token_budget || 8000
+      const tokenBudget = args.token_budget || DEFAULT_TOKEN_BUDGET
       const blastResult = computeBlastRadius(state.index, changedFiles.files)
 
       if (args.risk_filter) {
@@ -79,7 +101,11 @@ export function registerBlastRadiusTools(server, state) {
         }
       }
 
-      const reviewContext = buildReviewContext(state.index, blastResult, tokenBudget)
+      const reviewContext = buildReviewContext(
+        state.index,
+        blastResult,
+        tokenBudget,
+      )
       return respond(reviewContext)
     },
   )

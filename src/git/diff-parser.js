@@ -59,6 +59,17 @@ function parseUntrackedOutput(rawOutput) {
 }
 
 /**
+ * Validate that a git ref is safe for shell interpolation.
+ * Allows alphanumeric chars, dots, hyphens, slashes, tildes, carets, at-signs,
+ * braces, and colons — all legal in git refs but no shell metacharacters.
+ * @param {string} ref
+ * @returns {boolean}
+ */
+function isValidGitRef(ref) {
+  return /^[\w.\-/~^@{}:]+$/.test(ref)
+}
+
+/**
  * Detect changed files relative to a base ref.
  * @param {import('../providers/interface.js').FileProvider} provider
  * @param {string} [baseRef='HEAD'] - Git ref to diff against
@@ -67,11 +78,27 @@ function parseUntrackedOutput(rawOutput) {
  * @param {boolean} [options.includeUntracked] - Include untracked files (default: true)
  * @returns {Promise<{files: Array<{path: string, status: string}>, baseRef: string, error: string|null}>}
  */
-export async function detectChangedFiles(provider, baseRef = 'HEAD', options = {}) {
+export async function detectChangedFiles(
+  provider,
+  baseRef = 'HEAD',
+  options = {},
+) {
   const { staged = false, includeUntracked = true } = options
 
   if (typeof provider.execCommand !== 'function') {
-    return { files: [], baseRef, error: 'Provider does not support execCommand' }
+    return {
+      files: [],
+      baseRef,
+      error: 'Provider does not support execCommand',
+    }
+  }
+
+  if (!staged && !isValidGitRef(baseRef)) {
+    return {
+      files: [],
+      baseRef,
+      error: 'Invalid git ref: contains unsafe characters',
+    }
   }
 
   const diffCommand = staged
@@ -81,7 +108,8 @@ export async function detectChangedFiles(provider, baseRef = 'HEAD', options = {
   const diffResult = await provider.execCommand(diffCommand)
 
   if (diffResult.exitCode !== 0 && diffResult.stderr) {
-    const isNotGit = diffResult.stderr.includes('not a git repository') ||
+    const isNotGit =
+      diffResult.stderr.includes('not a git repository') ||
       diffResult.stderr.includes('Not a git repository')
     if (isNotGit) {
       return { files: [], baseRef, error: 'Not a git repository' }
@@ -92,7 +120,9 @@ export async function detectChangedFiles(provider, baseRef = 'HEAD', options = {
   const files = parseDiffOutput(diffResult.stdout)
 
   if (includeUntracked) {
-    const untrackedResult = await provider.execCommand('git ls-files --others --exclude-standard')
+    const untrackedResult = await provider.execCommand(
+      'git ls-files --others --exclude-standard',
+    )
     if (untrackedResult.exitCode === 0) {
       files.push(...parseUntrackedOutput(untrackedResult.stdout))
     }

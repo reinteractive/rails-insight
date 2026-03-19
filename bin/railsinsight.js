@@ -86,7 +86,12 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     const verbose = values.verbose || false
 
     const { startRemote } = await importServer()
-    await startRemote({ port, verbose })
+    try {
+      await startRemote({ port, verbose })
+    } catch (err) {
+      writeStderr(`Error: ${err.message}\n`)
+      return 1
+    }
     return 0
   }
 

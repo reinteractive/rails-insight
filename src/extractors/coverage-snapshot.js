@@ -6,6 +6,8 @@
  * @module coverage-snapshot
  */
 
+import { toOneDecimalPercent } from '../core/constants.js'
+
 /**
  * Extract coverage snapshot from SimpleCov output.
  * @param {import('../providers/interface.js').FileProvider} provider
@@ -49,6 +51,7 @@ export function extractCoverageSnapshot(
   try {
     coverageData = JSON.parse(coverageRaw)
   } catch {
+    result.parse_error = true
     return result
   }
 
@@ -102,8 +105,7 @@ export function extractCoverageSnapshot(
       }
     }
 
-    const fileCoveragePercent =
-      fileTotal > 0 ? Math.round((fileCovered / fileTotal) * 1000) / 10 : null
+    const fileCoveragePercent = toOneDecimalPercent(fileCovered, fileTotal)
 
     result.per_file[relativePath] = {
       line_coverage: fileCoveragePercent,
@@ -138,8 +140,10 @@ export function extractCoverageSnapshot(
       )
 
       if (fileBranchTotal > 0) {
-        result.per_file[relativePath].branch_coverage =
-          Math.round((fileBranchCovered / fileBranchTotal) * 1000) / 10
+        result.per_file[relativePath].branch_coverage = toOneDecimalPercent(
+          fileBranchCovered,
+          fileBranchTotal,
+        )
       }
     }
 
@@ -153,12 +157,11 @@ export function extractCoverageSnapshot(
     )
   }
 
-  result.overall.line_coverage =
-    totalLines > 0 ? Math.round((coveredLines / totalLines) * 1000) / 10 : null
-  result.overall.branch_coverage =
-    totalBranches > 0
-      ? Math.round((coveredBranches / totalBranches) * 1000) / 10
-      : null
+  result.overall.line_coverage = toOneDecimalPercent(coveredLines, totalLines)
+  result.overall.branch_coverage = toOneDecimalPercent(
+    coveredBranches,
+    totalBranches,
+  )
   result.overall.files_tracked = Object.keys(result.per_file).length
 
   return result
@@ -224,11 +227,10 @@ function mapUncoveredMethods(
         method: methodName,
         uncovered_lines: uncoveredInMethod.length,
         total_lines: totalMethodLines,
-        coverage:
-          Math.round(
-            ((totalMethodLines - uncoveredInMethod.length) / totalMethodLines) *
-              1000,
-          ) / 10,
+        coverage: toOneDecimalPercent(
+          totalMethodLines - uncoveredInMethod.length,
+          totalMethodLines,
+        ),
       })
     }
   }
@@ -293,7 +295,7 @@ function parseResultSet(raw, result, modelExtractions, controllerExtractions) {
       }
     }
   } catch {
-    // Fall through
+    result.parse_error = true
   }
   return result
 }

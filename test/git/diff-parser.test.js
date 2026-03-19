@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { parseDiffOutput, detectChangedFiles } from '../../src/git/diff-parser.js'
+import {
+  parseDiffOutput,
+  detectChangedFiles,
+} from '../../src/git/diff-parser.js'
 
 describe('parseDiffOutput', () => {
   it('parses M (modified) status', () => {
@@ -47,7 +50,11 @@ describe('detectChangedFiles', () => {
   it('returns error for non-git repo', async () => {
     const provider = {
       async execCommand() {
-        return { stdout: '', stderr: 'fatal: not a git repository', exitCode: 128 }
+        return {
+          stdout: '',
+          stderr: 'fatal: not a git repository',
+          exitCode: 128,
+        }
       },
     }
     const result = await detectChangedFiles(provider)
@@ -76,7 +83,9 @@ describe('detectChangedFiles', () => {
         return { stdout: 'M\tapp/models/user.rb\n', stderr: '', exitCode: 0 }
       },
     }
-    const result = await detectChangedFiles(provider, 'HEAD', { includeUntracked: true })
+    const result = await detectChangedFiles(provider, 'HEAD', {
+      includeUntracked: true,
+    })
     expect(result.files).toHaveLength(2)
     const paths = result.files.map((f) => f.path)
     expect(paths).toContain('app/models/new.rb')
@@ -92,7 +101,9 @@ describe('detectChangedFiles', () => {
         return { stdout: 'M\tapp/models/user.rb\n', stderr: '', exitCode: 0 }
       },
     }
-    const result = await detectChangedFiles(provider, 'HEAD', { includeUntracked: false })
+    const result = await detectChangedFiles(provider, 'HEAD', {
+      includeUntracked: false,
+    })
     expect(result.files).toHaveLength(1)
     expect(result.files[0].path).toBe('app/models/user.rb')
   })
@@ -112,6 +123,77 @@ describe('detectChangedFiles', () => {
       },
     }
     await detectChangedFiles(provider, 'HEAD', { staged: true })
+    expect(commands[0]).toContain('--cached')
+  })
+
+  it('rejects baseRef with shell metacharacters', async () => {
+    const provider = {
+      async execCommand() {
+        return { stdout: '', stderr: '', exitCode: 0 }
+      },
+    }
+    const result = await detectChangedFiles(provider, 'HEAD; rm -rf /')
+    expect(result.error).toContain('Invalid git ref')
+    expect(result.files).toEqual([])
+  })
+
+  it('rejects baseRef with backtick injection', async () => {
+    const provider = {
+      async execCommand() {
+        return { stdout: '', stderr: '', exitCode: 0 }
+      },
+    }
+    const result = await detectChangedFiles(provider, '`malicious`')
+    expect(result.error).toContain('Invalid git ref')
+  })
+
+  it('rejects baseRef with pipe injection', async () => {
+    const provider = {
+      async execCommand() {
+        return { stdout: '', stderr: '', exitCode: 0 }
+      },
+    }
+    const result = await detectChangedFiles(provider, 'HEAD | cat /etc/passwd')
+    expect(result.error).toContain('Invalid git ref')
+  })
+
+  it('allows valid git refs', async () => {
+    const commands = []
+    const provider = {
+      async execCommand(cmd) {
+        commands.push(cmd)
+        return { stdout: '', stderr: '', exitCode: 0 }
+      },
+    }
+    await detectChangedFiles(provider, 'origin/main')
+    expect(commands[0]).toContain('origin/main')
+
+    commands.length = 0
+    await detectChangedFiles(provider, 'HEAD~3')
+    expect(commands[0]).toContain('HEAD~3')
+
+    commands.length = 0
+    await detectChangedFiles(provider, 'v1.0.0')
+    expect(commands[0]).toContain('v1.0.0')
+
+    commands.length = 0
+    await detectChangedFiles(provider, 'abc123')
+    expect(commands[0]).toContain('abc123')
+  })
+
+  it('skips baseRef validation when staged is true', async () => {
+    const commands = []
+    const provider = {
+      async execCommand(cmd) {
+        commands.push(cmd)
+        return { stdout: '', stderr: '', exitCode: 0 }
+      },
+    }
+    // staged mode doesn't use baseRef in the command, so validation is skipped
+    const result = await detectChangedFiles(provider, 'irrelevant', {
+      staged: true,
+    })
+    expect(result.error).toBeNull()
     expect(commands[0]).toContain('--cached')
   })
 })

@@ -11,8 +11,23 @@
     "url": "git+https://github.com/reinteractive/rails-insight.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
+  "homepage": "https://github.com/reinteractive/rails-insight#readme",
+  "bugs": {
+    "url": "https://github.com/reinteractive/rails-insight/issues"
+  },
+  "keywords": [
+    "rails",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "indexer",
+    "code-analysis",
+    "ruby",
+    "ruby-on-rails"
+  ],
+  "license": "ISC",
   "files": [
     "bin/",
     "src/",

@@ -82,6 +82,14 @@ describe('LocalFSProvider', () => {
       const content = provider.readFile('app/models/user.rb')
       expect(content).toContain('class User')
     })
+
+    it('blocks path traversal with ../', () => {
+      expect(provider.readFile('../../../etc/passwd')).toBeNull()
+    })
+
+    it('blocks path traversal with encoded sequences', () => {
+      expect(provider.readFile('app/../../etc/passwd')).toBeNull()
+    })
   })
 
   describe('readLines', () => {
@@ -107,6 +115,10 @@ describe('LocalFSProvider', () => {
 
     it('returns true for directories', () => {
       expect(provider.fileExists('app/models')).toBe(true)
+    })
+
+    it('blocks path traversal with ../', () => {
+      expect(provider.fileExists('../../../etc/passwd')).toBe(false)
     })
   })
 
@@ -176,6 +188,10 @@ describe('LocalFSProvider', () => {
 
     it('returns empty array for nonexistent dir', () => {
       expect(provider.listDir('nonexistent')).toEqual([])
+    })
+
+    it('blocks path traversal with ../', () => {
+      expect(provider.listDir('../../../etc')).toEqual([])
     })
   })
 })

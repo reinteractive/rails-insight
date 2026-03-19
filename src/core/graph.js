@@ -4,6 +4,8 @@
  * skill-personalized PageRank rankings.
  */
 
+import { RANK_PRECISION } from './constants.js'
+
 /** Edge type weights */
 export const EDGE_WEIGHTS = {
   inherits: 3.0,
@@ -93,7 +95,13 @@ export class Graph {
     for (const id of seedIds) {
       if (this.nodes.has(id)) {
         visited.add(id)
-        queue.push({ entity: id, distance: 0, reachedVia: null, edgeType: null, direction: null })
+        queue.push({
+          entity: id,
+          distance: 0,
+          reachedVia: null,
+          edgeType: null,
+          direction: null,
+        })
       }
     }
 
@@ -104,18 +112,40 @@ export class Graph {
       }
       if (current.distance >= maxDepth) continue
 
-      this._enqueueNeighbours(current, 'forward', visited, queue, excludeEdgeTypes, minEdgeWeight)
-      this._enqueueNeighbours(current, 'reverse', visited, queue, excludeEdgeTypes, minEdgeWeight)
+      this._enqueueNeighbours(
+        current,
+        'forward',
+        visited,
+        queue,
+        excludeEdgeTypes,
+        minEdgeWeight,
+      )
+      this._enqueueNeighbours(
+        current,
+        'reverse',
+        visited,
+        queue,
+        excludeEdgeTypes,
+        minEdgeWeight,
+      )
     }
 
     return results
   }
 
   /** @private */
-  _enqueueNeighbours(current, direction, visited, queue, excludeEdgeTypes, minEdgeWeight) {
-    const edges = direction === 'forward'
-      ? this._forwardEdgesFrom(current.entity)
-      : this._reverseEdgesTo(current.entity)
+  _enqueueNeighbours(
+    current,
+    direction,
+    visited,
+    queue,
+    excludeEdgeTypes,
+    minEdgeWeight,
+  ) {
+    const edges =
+      direction === 'forward'
+        ? this._forwardEdgesFrom(current.entity)
+        : this._reverseEdgesTo(current.entity)
 
     for (const edge of edges) {
       const neighbour = direction === 'forward' ? edge.to : edge.from
@@ -146,11 +176,21 @@ export class Graph {
 
   /**
    * Personalized PageRank via power iteration.
-   * @param {Object} [personalization] - Map of node id → bias weight
-   * @param {number} [damping=0.85]
-   * @param {number} [maxIter=50]
-   * @param {number} [tolerance=1e-6]
-   * @returns {Map<string, number>}
+   *
+   * Computes the importance of each node in the graph using an iterative
+   * algorithm. The personalization map biases the "random surfer" toward
+   * specific nodes (e.g. skill-relevant entities), so results are scoped
+   * to a domain rather than purely structural.
+   *
+   * Algorithm:
+   *   rank(v) = (1 - d) * p(v) + d * Σ [rank(u) * w(u→v) / Σw(u→*)]
+   * where d = damping factor, p(v) = personalization weight (normalized).
+   *
+   * @param {Object} [personalization] - Map of node id → bias weight (default: uniform)
+   * @param {number} [damping=0.85] - Probability of following a link (vs teleporting)
+   * @param {number} [maxIter=50] - Maximum power-iteration rounds
+   * @param {number} [tolerance=1e-6] - L1-norm convergence threshold
+   * @returns {Map<string, number>} Node id → rank score
    */
   personalizedPageRank(
     personalization = {},
@@ -181,21 +221,25 @@ export class Graph {
     for (let iter = 0; iter < maxIter; iter++) {
       const newRanks = new Float64Array(n)
 
-      // Teleport component
+      // Teleport component: with probability (1-d), jump to a random node
+      // weighted by the personalization vector instead of following links
       for (let i = 0; i < n; i++) {
         newRanks[i] = (1 - damping) * pVec[i]
       }
 
-      // Link component
+      // Link component: propagate rank along weighted edges
       for (const id of nodeIds) {
         const idx = idxMap.get(id)
         const outEdges = this.adjacency.get(id)
         if (outEdges.length === 0) {
-          // Dangling node: distribute rank to all nodes via personalization
+          // Dangling node (no outgoing edges): redistribute its rank to all
+          // nodes proportionally to the personalization vector, preventing
+          // rank from being "trapped" in dead-end nodes
           for (let i = 0; i < n; i++) {
             newRanks[i] += damping * ranks[idx] * pVec[i]
           }
         } else {
+          // Distribute rank to neighbours weighted by edge strength
           const totalWeight = outEdges.reduce((s, e) => s + e.weight, 0)
           for (const edge of outEdges) {
             const toIdx = idxMap.get(edge.to)
@@ -205,7 +249,7 @@ export class Graph {
         }
       }
 
-      // Check convergence
+      // Convergence check: stop early if L1-norm change is below tolerance
       let diff = 0
       for (let i = 0; i < n; i++) diff += Math.abs(newRanks[i] - ranks[i])
       ranks = newRanks
@@ -383,7 +427,7 @@ export function buildGraph(extractions, manifest, skills = []) {
   const rankMap = graph.personalizedPageRank(personalization)
   const rankings = {}
   for (const [id, score] of rankMap) {
-    rankings[id] = Math.round(score * 10000) / 10000
+    rankings[id] = Math.round(score * RANK_PRECISION) / RANK_PRECISION
   }
 
   return { graph, relationships, rankings }

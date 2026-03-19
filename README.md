@@ -1,39 +1,40 @@
 # RailsInsight
 
+[![npm version](https://img.shields.io/npm/v/@reinteractive/railsinsight.svg)](https://www.npmjs.com/package/@reinteractive/railsinsight)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
+
 A Rails-aware codebase indexer that runs as an MCP (Model Context Protocol) server, giving AI coding agents deep structural understanding of your Rails application — models, associations, routes, schema, authentication, jobs, components, and 56 total file categories — without reading every file.
 
-## Quick Start (Local)
+## Why RailsInsight?
+
+Generic code-analysis tools treat Ruby files as plain text. RailsInsight understands **Rails conventions**: `has_many :through`, `before_action` filters, Devise modules, Pundit policies, Turbo Stream broadcasts, Solid Queue jobs, and more. It builds a directed weighted graph of your entire app and exposes it through MCP tools so your AI agent can reason about impact, dependencies, and architecture — without consuming your entire codebase in tokens.
+
+## Installation
 
 ```bash
 npx @reinteractive/railsinsight
 ```
 
-This starts a local MCP server over stdio using the current working directory as the Rails project root. The indexer scans your project structure, extracts Rails conventions, builds a relationship graph, and exposes everything through MCP tools.
+Or install globally:
 
-If you need to point at a different Rails app, override the root explicitly:
+```bash
+npm install -g @reinteractive/railsinsight
+```
+
+## Quick Start
+
+Run from your Rails project root:
+
+```bash
+npx @reinteractive/railsinsight
+```
+
+This starts a local MCP server over stdio. The indexer scans your project structure, extracts Rails conventions, builds a relationship graph, and exposes everything through MCP tools.
+
+To point at a different Rails app:
 
 ```bash
 npx @reinteractive/railsinsight --project-root /path/to/your/rails/app
-```
-
-## GitHub Packages Setup
-
-RailsInsight is published as a private GitHub Packages package under the `@reinteractive` scope.
-
-1. Create a GitHub Personal Access Token from your personal GitHub account.
-2. Grant it `read:packages`, `write:packages`, and `repo` access.
-3. If your organization uses SSO, authorize the token for `reinteractive`.
-4. Add this to your `~/.npmrc`:
-
-```ini
-@reinteractive:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
-```
-
-Verify access with:
-
-```bash
-npm whoami --registry=https://npm.pkg.github.com
 ```
 
 ### CLI Options
@@ -81,20 +82,39 @@ The server uses the workspace directory as the project root automatically, so no
 
 ## Available Tools
 
-All 10 tools are available with no tier restrictions.
+All 17 tools are available with no tier restrictions.
 
-| Tool                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `index_project`     | Re-index the Rails project. In local mode, re-scans the project root. Accepts `force` (boolean) to bypass cache. Returns statistics and duration.                                                                                                                                                                                                                                                                                                      |
-| `get_overview`      | Project summary: Rails/Ruby versions, database, auth strategy, key models and controllers, frontend stack, file counts. Call this first.                                                                                                                                                                                                                                                                                                               |
-| `get_full_index`    | Complete index JSON trimmed to fit a specified token budget (default: 12,000 tokens).                                                                                                                                                                                                                                                                                                                                                                  |
-| `get_model`         | Deep extraction for a specific model: associations, validations, scopes with queries, enums with values, callbacks, public methods, database columns. Requires `name`.                                                                                                                                                                                                                                                                                 |
-| `get_controller`    | Deep extraction for a specific controller: actions with routes, filters, rate limiting, strong params, rescue handlers. Requires `name`.                                                                                                                                                                                                                                                                                                               |
-| `get_routes`        | Complete route map with namespaces, nested resources, member/collection routes.                                                                                                                                                                                                                                                                                                                                                                        |
-| `get_schema`        | Database schema with tables, columns, indexes, foreign keys, and model-to-table mapping.                                                                                                                                                                                                                                                                                                                                                               |
-| `get_subgraph`      | Skill-scoped relationship subgraph with ranked files. Skills: `authentication`, `database`, `frontend`, `api`, `jobs`, `email`.                                                                                                                                                                                                                                                                                                                        |
-| `search_patterns`   | Search across all extractions for a specific Rails pattern type (e.g. `has_many_through`, `before_action`, `turbo_broadcast`).                                                                                                                                                                                                                                                                                                                         |
-| `get_deep_analysis` | Deep analysis for a specific category. Categories: `authentication`, `authorization`, `jobs`, `email`, `storage`, `caching`, `realtime`, `api_patterns`, `dependencies`, `components`, `stimulus`, `views`, `convention_drift`, `manifest`, `detected_stack`, `related`, `model_list`, `controller_list`, `component_list`. Accepts optional `name` (entity name), `depth` (BFS hops for `related`, default 2), and `token_budget` (for `full_index`). |
+### Core Tools
+
+| Tool                | Description                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `index_project`     | Re-index the Rails project. In local mode, re-scans the project root. Accepts `force` (boolean) to bypass cache. Returns statistics and duration.                                                                                                                                                                                                                                                                  |
+| `get_overview`      | Project summary: Rails/Ruby versions, database, auth strategy, key models and controllers, frontend stack, file counts. Call this first.                                                                                                                                                                                                                                                                           |
+| `get_full_index`    | Complete index JSON trimmed to fit a specified token budget (default: 12,000 tokens).                                                                                                                                                                                                                                                                                                                              |
+| `get_model`         | Deep extraction for a specific model: associations, validations, scopes with queries, enums with values, callbacks, public methods, database columns. Requires `name`.                                                                                                                                                                                                                                             |
+| `get_controller`    | Deep extraction for a specific controller: actions with routes, filters, rate limiting, strong params, rescue handlers. Requires `name`.                                                                                                                                                                                                                                                                           |
+| `get_routes`        | Complete route map with namespaces, nested resources, member/collection routes.                                                                                                                                                                                                                                                                                                                                    |
+| `get_schema`        | Database schema with tables, columns, indexes, foreign keys, and model-to-table mapping.                                                                                                                                                                                                                                                                                                                           |
+| `get_subgraph`      | Skill-scoped relationship subgraph with ranked files. Skills: `authentication`, `database`, `frontend`, `api`, `jobs`, `email`.                                                                                                                                                                                                                                                                                    |
+| `search_patterns`   | Search across all extractions for a specific Rails pattern type (e.g. `has_many_through`, `before_action`, `turbo_broadcast`).                                                                                                                                                                                                                                                                                     |
+| `get_deep_analysis` | Deep analysis for a specific category. Categories: `authentication`, `authorization`, `jobs`, `email`, `storage`, `caching`, `realtime`, `api_patterns`, `dependencies`, `components`, `stimulus`, `views`, `convention_drift`, `manifest`, `detected_stack`, `related`, `model_list`, `controller_list`, `component_list`. Accepts optional `name` (entity name) and `depth` (BFS hops for `related`, default 2). |
+
+### Test Intelligence Tools
+
+| Tool                       | Description                                                                                                                                                                                                                  |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_coverage_gaps`        | Prioritised list of files needing test coverage, with structural context and per-method coverage data from SimpleCov. Accepts optional `category`, `min_gap`, and `limit`.                                                   |
+| `get_test_conventions`     | Detected test patterns and conventions: spec style (request vs controller), let style, auth helper, factories, shared examples, custom matchers, and pattern reference files.                                                |
+| `get_domain_clusters`      | Domain-clustered file groups for parallel test generation. Files in the same cluster share associations and factories; different clusters can be worked on simultaneously. Accepts `max_cluster_size` and `include_covered`. |
+| `get_factory_registry`     | Parsed FactoryBot factory definitions including attributes, traits, sequences, and associations. Accepts optional `model` to filter by factory name.                                                                         |
+| `get_well_tested_examples` | High-quality existing spec files suitable as pattern references for test generation agents. Selected by structural complexity per spec category. Accepts `category` and `limit`.                                             |
+
+### Blast Radius Tools
+
+| Tool                 | Description                                                                                                                                                                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_blast_radius`   | Analyse the impact of code changes. Accepts explicit file paths or auto-detects from git diff. Returns impacted entities classified by risk level (CRITICAL/HIGH/MEDIUM/LOW) with affected tests. Accepts `files`, `base_ref`, `staged`, `max_depth`. |
+| `get_review_context` | Build a token-budget-aware review summary for changed files. Combines blast radius analysis with relevant code context for AI-assisted code review. Accepts `files`, `base_ref`, `staged`, `token_budget`.                                            |
 
 ## What It Detects
 
@@ -162,39 +182,7 @@ The entire index is built in a single pass, typically under 2 seconds for large 
 
 ## Contributing
 
-### Adding a New Extractor
-
-1. Create `src/extractors/your-domain.js` exporting an async function:
-
-```js
-/**
- * @param {Map<string, Array<{path: string}>>} filesByCategory
- * @param {import('../providers/interface.js').FileProvider} provider
- * @param {Object} context - { versions, gemInfo, ... }
- * @returns {Promise<Object>}
- */
-export async function extractYourDomain(filesByCategory, provider, context) {
-  const files = filesByCategory.get('your_category') || [];
-  const results = {};
-
-  for (const entry of files) {
-    const content = await provider.readFile(entry.path);
-    // Parse content and build results...
-  }
-
-  return results;
-}
-```
-
-2. Add a classification rule in `src/core/scanner.js`:
-
-```js
-{ test: (p) => p.includes('app/your_domain/'), category: NEW_CATEGORY_NUMBER },
-```
-
-3. Wire it into the indexer in `src/core/indexer.js` by calling your extractor and assigning the result to `extractions.your_domain`.
-
-4. Add tests in `test/extractors/your-domain.test.js` using `createMemoryProvider()` from `test/helpers/mock-provider.js`.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Running Tests
 
@@ -204,9 +192,19 @@ npm run test:watch         # Watch mode
 npm run test:core          # Core layer tests only
 npm run test:extractors    # Extractor tests
 npm run test:patterns      # Rails pattern tests
-npm run test:contracts     # Contract tests
+npm run test:coverage      # Run with coverage
 ```
+
+## Limitations
+
+RailsInsight uses regex-based extraction rather than a full Ruby AST parser. This handles the vast majority of real-world Rails code, but may miss unconventional patterns such as:
+
+- Multi-line method calls split across 3+ lines
+- Metaprogrammed associations or validations
+- Dynamic class definitions
+
+If you encounter a pattern that isn't detected, please [open an issue](https://github.com/reinteractive/rails-insight/issues).
 
 ## License
 
-ISC
+ISC — see [LICENSE](LICENSE) for details.

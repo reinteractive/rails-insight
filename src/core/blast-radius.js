@@ -4,16 +4,43 @@
  * through RailsInsight's relationship graph.
  */
 
+/**
+ * @typedef {Object} BlastRadiusSeed
+ * @property {string} file - Changed file path
+ * @property {string} entity - Mapped graph entity name
+ * @property {string} type - Entity type (model, controller, etc.)
+ * @property {string} status - Git change status (added, modified, deleted)
+ */
+
+/**
+ * @typedef {Object} BlastRadiusImpact
+ * @property {string} entity - Impacted entity name
+ * @property {string} type - Entity type
+ * @property {'CRITICAL'|'HIGH'|'MEDIUM'|'LOW'} risk - Risk classification
+ * @property {number} distance - BFS hops from nearest seed
+ * @property {string} reachedVia - Entity that led to this one
+ * @property {string} edgeType - Graph edge type traversed
+ */
+
+/**
+ * @typedef {Object} BlastRadiusResult
+ * @property {BlastRadiusSeed[]} seeds - Changed file → entity mappings
+ * @property {BlastRadiusImpact[]} impacted - Entities affected by the change
+ * @property {BlastRadiusImpact[]} impactedTests - Test files affected
+ * @property {Object} summary - Counts per risk level
+ * @property {string[]} warnings - Unmapped files or other notes
+ */
+
 import { EDGE_WEIGHTS } from './graph.js'
 import {
   estimateTokens,
   estimateTokensForObject,
 } from '../utils/token-counter.js'
+import { DEFAULT_TOKEN_BUDGET } from './constants.js'
 
 const RISK_LEVELS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 const STRONG_EDGE_THRESHOLD = 2.0
 const AUTH_ENTITY_PATTERNS = /devise|authenticat|authorization|pundit|cancan/i
-const CONCERN_TYPE = 'concern'
 
 /**
  * Compute the blast radius for a set of changed files.
@@ -36,7 +63,13 @@ export function computeBlastRadius(index, changedFiles, options = {}) {
   const warnings = collectUnmappedWarnings(changedFiles, fileEntityMap)
 
   if (seeds.length === 0) {
-    return { seeds: [], impacted: [], impactedTests: [], summary: buildSummary([]), warnings }
+    return {
+      seeds: [],
+      impacted: [],
+      impactedTests: [],
+      summary: buildSummary([]),
+      warnings,
+    }
   }
 
   const graph = rebuildGraph(index)
@@ -61,19 +94,35 @@ export function computeBlastRadius(index, changedFiles, options = {}) {
 }
 
 /**
- * Classify risk level for an impacted entity.
- * @param {Object} entity - BFS result entity
- * @param {Object} seedInfo - Information about the seed entity
- * @param {Object} index - For looking up entity details
+ * Classify risk level for an impacted entity based on graph distance,
+ * edge strength, and Rails-specific security heuristics.
+ *
+ * Risk escalation rules (evaluated top-to-bottom, first match wins):
+ * - Distance 0 (the changed entity itself) → always CRITICAL
+ * - Auth-related entities at distance ≤1 → HIGH (security-sensitive)
+ * - Schema changes propagating to distance ≤1 → CRITICAL (column/table changes break dependents)
+ * - Distance 1 via strong edge (weight ≥ 2.0, e.g. has_many, belongs_to, inherits) → HIGH
+ * - Distance 1 via weak edge → MEDIUM
+ * - Distance 2 via strong edge → MEDIUM
+ * - Everything else ≤2 → LOW
+ * - Distance 3+ → LOW
+ *
+ * @param {Object} entity - BFS result entity with { distance, edgeType }
+ * @param {Object} seedInfo - Information about the seed (changed) entity
+ * @param {Object} index - Full RailsInsight index for entity lookups
  * @returns {'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'}
  */
 export function classifyRisk(entity, seedInfo, index) {
+  // The changed entity itself is always critical
   if (entity.distance === 0) return 'CRITICAL'
 
+  // Auth/authorization entities are security-sensitive — escalate direct neighbours
   if (isAuthRelated(entity, index) && entity.distance <= 1) return 'HIGH'
+  // Schema changes (columns, tables) break all direct dependents
   if (isSchemaChange(seedInfo) && entity.distance <= 1) return 'CRITICAL'
 
   const edgeWeight = EDGE_WEIGHTS[entity.edgeType] || 1.0
+  // Strong edges (≥2.0) are structural relationships like associations and inheritance
   const isStrongEdge = edgeWeight >= STRONG_EDGE_THRESHOLD
 
   if (entity.distance === 1 && isStrongEdge) return 'HIGH'
@@ -90,7 +139,11 @@ export function classifyRisk(entity, seedInfo, index) {
  * @param {number} [tokenBudget=8000]
  * @returns {Object}
  */
-export function buildReviewContext(index, blastResult, tokenBudget = 8000) {
+export function buildReviewContext(
+  index,
+  blastResult,
+  tokenBudget = DEFAULT_TOKEN_BUDGET,
+) {
   const context = {
     seeds: blastResult.seeds,
     summary: blastResult.summary,
@@ -266,10 +319,12 @@ function findEntityInfo(entityId, index) {
   if (models[entityId]) return { type: 'model', data: models[entityId] }
 
   const controllers = index.extractions?.controllers || {}
-  if (controllers[entityId]) return { type: 'controller', data: controllers[entityId] }
+  if (controllers[entityId])
+    return { type: 'controller', data: controllers[entityId] }
 
   const components = index.extractions?.components || {}
-  if (components[entityId]) return { type: 'component', data: components[entityId] }
+  if (components[entityId])
+    return { type: 'component', data: components[entityId] }
 
   if (entityId.startsWith('spec:')) return { type: 'spec', data: null }
   return null
@@ -306,7 +361,11 @@ function escalateRailsSpecificRisks(impacted, seeds, index) {
   return impacted.map((entity) => {
     let risk = entity.risk
 
-    if (hasConcernSeed && entity.distance <= 1 && RISK_LEVELS.indexOf(risk) > RISK_LEVELS.indexOf('HIGH')) {
+    if (
+      hasConcernSeed &&
+      entity.distance <= 1 &&
+      RISK_LEVELS.indexOf(risk) > RISK_LEVELS.indexOf('HIGH')
+    ) {
       risk = 'HIGH'
     }
 
@@ -334,7 +393,10 @@ function deduplicateByHighestRisk(entities) {
   const byEntity = new Map()
   for (const entity of entities) {
     const existing = byEntity.get(entity.entity)
-    if (!existing || RISK_LEVELS.indexOf(entity.risk) < RISK_LEVELS.indexOf(existing.risk)) {
+    if (
+      !existing ||
+      RISK_LEVELS.indexOf(entity.risk) < RISK_LEVELS.indexOf(existing.risk)
+    ) {
       byEntity.set(entity.entity, entity)
     }
   }

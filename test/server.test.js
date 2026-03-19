@@ -71,7 +71,7 @@ describe('server bootstrap', () => {
     expect(server).toBeDefined()
     expect(mocks.McpServerMock).toHaveBeenCalledWith({
       name: 'railsinsight',
-      version: '0.1.0',
+      version: expect.stringMatching(/^\d+\.\d+\.\d+/),
       capabilities: { tools: {} },
     })
     expect(mocks.registerToolsMock).toHaveBeenCalledWith(server, options)
@@ -120,12 +120,9 @@ describe('server bootstrap', () => {
     )
   })
 
-  it('exits for unimplemented remote mode', async () => {
-    await startRemote({ port: 3000 })
-
-    expect(mocks.consoleErrorMock).toHaveBeenCalledWith(
+  it('throws for unimplemented remote mode', async () => {
+    await expect(startRemote({ port: 3000 })).rejects.toThrow(
       'Remote mode is not yet implemented. Use local mode.',
     )
-    expect(mocks.processExitMock).toHaveBeenCalledWith(1)
   })
 })
