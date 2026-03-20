@@ -31,6 +31,8 @@ export const EDGE_WEIGHTS = {
   contains: 0.5,
   references: 1.0,
   tests: 1.0,
+  helps_view: 0.5,
+  manages_upload: 1.0,
 }
 
 export class Graph {
@@ -419,6 +421,48 @@ export function buildGraph(extractions, manifest, skills = []) {
         if (entry.path.includes(skill)) {
           personalization[entry.path] = 3.0
         }
+      }
+    }
+  }
+
+  // Helpers → Controllers (by naming convention)
+  if (extractions.helpers) {
+    for (const [name, helper] of Object.entries(extractions.helpers)) {
+      graph.addNode(name, 'helper', name)
+      if (
+        helper.controller &&
+        extractions.controllers &&
+        extractions.controllers[helper.controller]
+      ) {
+        graph.addEdge(name, helper.controller, 'helps_view')
+        relationships.push({
+          from: name,
+          to: helper.controller,
+          type: 'helps_view',
+        })
+      }
+    }
+  }
+
+  // Workers — add as nodes (same category as jobs)
+  if (extractions.workers) {
+    for (const [name, worker] of Object.entries(extractions.workers)) {
+      graph.addNode(name, 'worker', name)
+    }
+  }
+
+  // Uploaders → Models (via mount_uploader cross-reference)
+  if (extractions.uploaders?.mounted) {
+    for (const mount of extractions.uploaders.mounted) {
+      const uploaderClass = mount.uploader
+      if (extractions.uploaders.uploaders?.[uploaderClass]) {
+        graph.addNode(uploaderClass, 'uploader', uploaderClass)
+        graph.addEdge(mount.model, uploaderClass, 'manages_upload')
+        relationships.push({
+          from: mount.model,
+          to: uploaderClass,
+          type: 'manages_upload',
+        })
       }
     }
   }

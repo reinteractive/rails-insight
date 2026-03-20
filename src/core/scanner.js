@@ -152,6 +152,19 @@ const RULES = [
   // --- Admin namespace ---
   { test: (p) => /^app\/admin\/.*\.rb$/.test(p), category: 25 },
 
+  // --- Workers: Sidekiq native workers (before general models) ---
+  { test: (p) => /^app\/workers\/.*\.rb$/.test(p), category: 10 },
+  { test: (p) => /^app\/sidekiq\/.*\.rb$/.test(p), category: 10 },
+
+  // --- Uploaders: CarrierWave / Shrine (before general models) ---
+  { test: (p) => /^app\/uploaders\/.*\.rb$/.test(p), category: 12 },
+
+  // --- Validators: Custom validators (before general models) ---
+  { test: (p) => /^app\/validators\/.*\.rb$/.test(p), category: 26 },
+
+  // --- Notifiers: Action Notifier (future, before general models) ---
+  { test: (p) => /^app\/notifiers\/.*\.rb$/.test(p), category: 40 },
+
   // --- Core Tier 1: broad app/ directory matches ---
   { test: (p) => /^app\/models\/.*\.rb$/.test(p), category: 1 },
   { test: (p) => /^app\/controllers\/.*\.rb$/.test(p), category: 2 },
@@ -161,6 +174,8 @@ const RULES = [
     category: 6,
   },
   { test: (p) => /^app\/views\/.*/.test(p), category: 7 },
+  // --- Helpers: View helpers ---
+  { test: (p) => /^app\/helpers\/.*\.rb$/.test(p), category: 7 },
   { test: (p) => /^app\/jobs\/.*\.rb$/.test(p), category: 10 },
   { test: (p) => /^app\/mailers\/.*\.rb$/.test(p), category: 11 },
   { test: (p) => /^app\/channels\/.*\.rb$/.test(p), category: 14 },
@@ -231,6 +246,7 @@ function detectType(path) {
   if (path.endsWith('.html.slim')) return 'slim'
   if (path.endsWith('.jbuilder')) return 'jbuilder'
   if (path.endsWith('.yml') || path.endsWith('.yaml')) return 'yaml'
+  if (path.endsWith('.json.erb')) return 'json_erb'
   if (path.endsWith('.json')) return 'json'
   if (path.endsWith('.sql')) return 'sql'
   if (path.endsWith('.css')) return 'css'
@@ -254,6 +270,15 @@ function classifyFile(path) {
       }
       if (entry.category === 19) {
         entry.specCategory = classifySpecFile(path)
+      }
+      if (entry.category === 7 && path.startsWith('app/views/pwa/')) {
+        entry.pwaFile = true
+      }
+      if (
+        entry.category === 10 &&
+        (path.startsWith('app/workers/') || path.startsWith('app/sidekiq/'))
+      ) {
+        entry.workerType = 'sidekiq_native'
       }
       return entry
     }
@@ -312,6 +337,7 @@ export function scanStructure(provider) {
     ...provider.glob('app/**/*.js'),
     ...provider.glob('app/**/*.ts'),
     ...provider.glob('app/**/*.html.erb'),
+    ...provider.glob('app/**/*.json.erb'),
     ...provider.glob('app/**/*.html.haml'),
     ...provider.glob('app/**/*.html.slim'),
     ...provider.glob('app/**/*.jbuilder'),

@@ -30,6 +30,12 @@ import { extractTier3 } from '../extractors/tier3.js'
 import { extractTestConventions } from '../extractors/test-conventions.js'
 import { extractFactoryRegistry } from '../extractors/factory-registry.js'
 import { extractCoverageSnapshot } from '../extractors/coverage-snapshot.js'
+import { extractHelper } from '../extractors/helper.js'
+import { extractWorker } from '../extractors/worker.js'
+import {
+  extractUploader,
+  detectMountedUploaders,
+} from '../extractors/uploader.js'
 import { pathToClassName } from '../tools/handlers/helpers.js'
 
 /**
@@ -90,6 +96,9 @@ export async function buildIndex(provider, options = {}) {
     controllers: {},
     components: {},
     stimulus_controllers: [],
+    helpers: {},
+    workers: {},
+    uploaders: { uploaders: {}, mounted: [] },
   }
 
   // Per-file extractors (categoryName is the string label, category is the number)
@@ -113,6 +122,24 @@ export async function buildIndex(provider, options = {}) {
     } else if (entry.categoryName === 'stimulus') {
       const sc = extractStimulusController(provider, entry.path)
       if (sc) extractions.stimulus_controllers.push(sc)
+    } else if (
+      entry.categoryName === 'views' &&
+      entry.path.startsWith('app/helpers/')
+    ) {
+      const helper = extractHelper(provider, entry.path)
+      if (helper) extractions.helpers[helper.module] = helper
+    } else if (
+      entry.categoryName === 'jobs' &&
+      entry.workerType === 'sidekiq_native'
+    ) {
+      const worker = extractWorker(provider, entry.path)
+      if (worker) extractions.workers[worker.class] = worker
+    } else if (
+      entry.categoryName === 'storage' &&
+      entry.path.startsWith('app/uploaders/')
+    ) {
+      const uploader = extractUploader(provider, entry.path)
+      if (uploader) extractions.uploaders.uploaders[uploader.class] = uploader
     }
   }
 
@@ -121,6 +148,12 @@ export async function buildIndex(provider, options = {}) {
     gems,
   })
   extractions.factory_registry = extractFactoryRegistry(provider, entries)
+
+  // Cross-reference CarrierWave mount_uploader in models
+  extractions.uploaders.mounted = detectMountedUploaders(
+    provider,
+    extractions.models,
+  )
 
   // Coverage snapshot (depends on models and controllers being extracted first
   // for method line range cross-referencing)
@@ -139,6 +172,9 @@ export async function buildIndex(provider, options = {}) {
 
   // Drift detection
   const drift = detectDrift(context, versions, extractions)
+
+  // PWA detection
+  const hasPwa = entries.some((e) => e.pwaFile === true)
 
   // File-to-entity mapping for blast radius analysis
   const fileEntityMap = buildFileEntityMap(extractions, manifest)
@@ -163,6 +199,7 @@ export async function buildIndex(provider, options = {}) {
     drift,
     statistics,
     fileEntityMap,
+    pwa: { detected: hasPwa },
   }
 }
 
@@ -178,6 +215,9 @@ function buildFileEntityMap(extractions, manifest) {
   mapEntities(map, extractions.models, 'model')
   mapEntities(map, extractions.controllers, 'controller')
   mapEntities(map, extractions.components, 'component')
+  mapEntities(map, extractions.helpers, 'helper')
+  mapEntities(map, extractions.workers, 'worker')
+  mapUploaderFiles(map, extractions.uploaders?.uploaders)
   mapStimulusControllers(map, extractions.stimulus_controllers)
   mapConcernFiles(map, extractions, manifest)
   mapSpecialFiles(map, extractions)
@@ -196,6 +236,18 @@ function mapEntities(map, entities, type) {
   if (!entities) return
   for (const [name, entity] of Object.entries(entities)) {
     if (entity.file) map[entity.file] = { entity: name, type }
+  }
+}
+
+/**
+ * Map uploader files to their class entities.
+ * @param {Object<string, Object>} map - Accumulator
+ * @param {Object<string, {file?: string}>} uploaders - Uploader extraction results
+ */
+function mapUploaderFiles(map, uploaders) {
+  if (!uploaders) return
+  for (const [name, uploader] of Object.entries(uploaders)) {
+    if (uploader.file) map[uploader.file] = { entity: name, type: 'uploader' }
   }
 }
 
@@ -271,5 +323,8 @@ function computeStatistics(manifest, extractions, relationships) {
     gems: Array.isArray(extractions.gemfile?.gems)
       ? extractions.gemfile.gems.length
       : Object.keys(extractions.gemfile?.gems || {}).length,
+    helpers: Object.keys(extractions.helpers || {}).length,
+    workers: Object.keys(extractions.workers || {}).length,
+    uploaders: Object.keys(extractions.uploaders?.uploaders || {}).length,
   }
 }

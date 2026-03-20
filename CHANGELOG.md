@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-20
+
+### Added
+
+- Scanner rule for `app/workers/*.rb` and `app/sidekiq/*.rb` → category 10 (jobs) with `workerType: 'sidekiq_native'` flag
+- Scanner rule for `app/helpers/*.rb` → category 7 (views)
+- Scanner rule for `app/validators/*.rb` → category 26 (design_patterns)
+- Scanner rule for `app/uploaders/*.rb` → category 12 (storage)
+- Scanner rule for `app/notifiers/*.rb` → category 40 (notifications)
+- Glob expansion for `app/**/*.json.erb` capturing Rails 8 PWA manifest templates
+- `pwaFile: true` flag on entries under `app/views/pwa/`
+- `json_erb` file type detection
+- `src/extractors/worker.js` — Sidekiq native worker extractor (class, queue, retry, perform args)
+- `src/extractors/helper.js` — Helper extractor (module name, public methods, controller association by convention)
+- `src/extractors/uploader.js` — CarrierWave and Shrine uploader extractor with `detectMountedUploaders` cross-reference
+- `src/core/patterns/worker.js`, `helper.js`, `uploader.js` — domain-specific regex pattern files
+- Two new graph edge types: `helps_view` (weight 0.5, helper → controller) and `manages_upload` (weight 1.0, model → uploader)
+- Worker, helper, and uploader nodes and relationships in `buildGraph`
+- `helpers`, `workers`, and `uploaders` extraction containers in indexer
+- `pwa: { detected: boolean }` field in index output
+- `helpers`, `workers`, `uploaders` counts in `computeStatistics`
+- Helper and worker file-to-entity mappings in `buildFileEntityMap`
+- `workers`, `helpers`, `uploaders`, and `pwa` sections in `get_overview` tool response
+
 ## [0.2.1] - 2026-03-19
 
 ### Fixed
