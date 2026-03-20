@@ -303,4 +303,75 @@ describe('Scanner', () => {
       expect(classifySpecFile('spec/random/foo_spec.rb')).toBeNull()
     })
   })
+
+  describe('new category rules', () => {
+    it('classifies worker file', () => {
+      const entry = classifyFile('app/workers/bulk_index_worker.rb')
+      expect(entry.category).toBe(10)
+      expect(entry.categoryName).toBe('jobs')
+    })
+
+    it('classifies sidekiq directory worker', () => {
+      const entry = classifyFile('app/sidekiq/send_email_job.rb')
+      expect(entry.category).toBe(10)
+      expect(entry.categoryName).toBe('jobs')
+    })
+
+    it('classifies helper file', () => {
+      const entry = classifyFile('app/helpers/posts_helper.rb')
+      expect(entry.category).toBe(7)
+      expect(entry.categoryName).toBe('views')
+    })
+
+    it('classifies application helper', () => {
+      const entry = classifyFile('app/helpers/application_helper.rb')
+      expect(entry.category).toBe(7)
+      expect(entry.categoryName).toBe('views')
+    })
+
+    it('classifies validator file', () => {
+      const entry = classifyFile('app/validators/email_format_validator.rb')
+      expect(entry.category).toBe(26)
+      expect(entry.categoryName).toBe('design_patterns')
+    })
+
+    it('classifies uploader file', () => {
+      const entry = classifyFile('app/uploaders/avatar_uploader.rb')
+      expect(entry.category).toBe(12)
+      expect(entry.categoryName).toBe('storage')
+    })
+
+    it('classifies notifier file', () => {
+      const entry = classifyFile('app/notifiers/post_notifier.rb')
+      expect(entry.category).toBe(40)
+      expect(entry.categoryName).toBe('notifications')
+    })
+
+    it('classifies PWA manifest with pwaFile flag', () => {
+      const entry = classifyFile('app/views/pwa/manifest.json.erb')
+      expect(entry.category).toBe(7)
+      expect(entry.categoryName).toBe('views')
+      expect(entry.pwaFile).toBe(true)
+    })
+
+    it('marks worker as sidekiq_native', () => {
+      const entry = classifyFile('app/workers/my_worker.rb')
+      expect(entry.workerType).toBe('sidekiq_native')
+    })
+
+    it('marks sidekiq dir worker as sidekiq_native', () => {
+      const entry = classifyFile('app/sidekiq/my_worker.rb')
+      expect(entry.workerType).toBe('sidekiq_native')
+    })
+
+    it('does not mark regular job as sidekiq_native', () => {
+      const entry = classifyFile('app/jobs/my_job.rb')
+      expect(entry.workerType).toBeUndefined()
+    })
+
+    it('detects json_erb file type', () => {
+      const entry = classifyFile('app/views/pwa/manifest.json.erb')
+      expect(entry.type).toBe('json_erb')
+    })
+  })
 })

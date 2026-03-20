@@ -359,3 +359,96 @@ describe('Graph BFS', () => {
     })
   })
 })
+
+describe('buildGraph new edge types', () => {
+  it('adds helps_view edge for helpers', () => {
+    const extractions = {
+      helpers: {
+        PostsHelper: {
+          module: 'PostsHelper',
+          file: 'app/helpers/posts_helper.rb',
+          controller: 'PostsController',
+          methods: ['format_date'],
+          includes: [],
+        },
+      },
+      controllers: {
+        PostsController: { actions: ['index', 'show'] },
+      },
+    }
+
+    const { graph, relationships } = buildGraph(extractions, {})
+    expect(graph.nodes.has('PostsHelper')).toBe(true)
+    const helpsEdge = relationships.find(
+      (r) => r.from === 'PostsHelper' && r.type === 'helps_view',
+    )
+    expect(helpsEdge).toBeTruthy()
+    expect(helpsEdge.to).toBe('PostsController')
+  })
+
+  it('does not add helps_view edge when controller missing', () => {
+    const extractions = {
+      helpers: {
+        OrphanHelper: {
+          module: 'OrphanHelper',
+          file: 'app/helpers/orphan_helper.rb',
+          controller: 'OrphanController',
+          methods: [],
+          includes: [],
+        },
+      },
+      controllers: {},
+    }
+
+    const { relationships } = buildGraph(extractions, {})
+    const helpsEdge = relationships.find((r) => r.type === 'helps_view')
+    expect(helpsEdge).toBeUndefined()
+  })
+
+  it('adds manages_upload edge for uploaders', () => {
+    const extractions = {
+      models: {
+        User: {
+          superclass: 'ApplicationRecord',
+          associations: [],
+        },
+      },
+      uploaders: {
+        uploaders: {
+          AvatarUploader: {
+            class: 'AvatarUploader',
+            file: 'app/uploaders/avatar_uploader.rb',
+            type: 'carrierwave',
+          },
+        },
+        mounted: [
+          { model: 'User', attribute: 'avatar', uploader: 'AvatarUploader' },
+        ],
+      },
+    }
+
+    const { graph, relationships } = buildGraph(extractions, {})
+    expect(graph.nodes.has('AvatarUploader')).toBe(true)
+    const uploadEdge = relationships.find(
+      (r) => r.from === 'User' && r.type === 'manages_upload',
+    )
+    expect(uploadEdge).toBeTruthy()
+    expect(uploadEdge.to).toBe('AvatarUploader')
+  })
+
+  it('worker nodes appear in graph', () => {
+    const extractions = {
+      workers: {
+        BulkIndexWorker: {
+          class: 'BulkIndexWorker',
+          file: 'app/workers/bulk_index_worker.rb',
+          type: 'sidekiq_native',
+        },
+      },
+    }
+
+    const { graph } = buildGraph(extractions, {})
+    expect(graph.nodes.has('BulkIndexWorker')).toBe(true)
+    expect(graph.nodes.get('BulkIndexWorker').type).toBe('worker')
+  })
+})

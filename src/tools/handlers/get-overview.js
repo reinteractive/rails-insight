@@ -121,6 +121,26 @@ export function register(server, state) {
         key_controllers: keyControllers,
         custom_patterns: customPatterns,
         file_counts: index.statistics || {},
+        workers: {
+          sidekiq_native_count: Object.keys(index.extractions?.workers || {})
+            .length,
+          queues: [
+            ...new Set(
+              Object.values(index.extractions?.workers || {}).map(
+                (w) => w.queue,
+              ),
+            ),
+          ],
+        },
+        helpers: {
+          count: Object.keys(index.extractions?.helpers || {}).length,
+        },
+        uploaders: {
+          count: Object.keys(index.extractions?.uploaders?.uploaders || {})
+            .length,
+          mounted: (index.extractions?.uploaders?.mounted || []).length,
+        },
+        pwa: index.pwa || { detected: false },
       }
 
       return respond(overview)

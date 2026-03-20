@@ -177,4 +177,100 @@ describe('Core Indexer', () => {
       expect(value).not.toBeUndefined()
     }
   })
+
+  it('includes helpers, workers, uploaders in extractions', async () => {
+    const provider = createMockProvider()
+    const index = await buildIndex(provider)
+    expect(index.extractions.helpers).toBeDefined()
+    expect(index.extractions.workers).toBeDefined()
+    expect(index.extractions.uploaders).toBeDefined()
+    expect(index.extractions.uploaders.uploaders).toBeDefined()
+    expect(index.extractions.uploaders.mounted).toBeDefined()
+  })
+
+  it('includes pwa detection in index', async () => {
+    const provider = createMockProvider()
+    const index = await buildIndex(provider)
+    expect(index.pwa).toBeDefined()
+    expect(index.pwa.detected).toBe(false)
+  })
+
+  it('includes new statistics fields', async () => {
+    const provider = createMockProvider()
+    const index = await buildIndex(provider)
+    expect(index.statistics).toHaveProperty('helpers')
+    expect(index.statistics).toHaveProperty('workers')
+    expect(index.statistics).toHaveProperty('uploaders')
+  })
+
+  it('maps helper files in fileEntityMap', async () => {
+    const files = {
+      Gemfile: "gem 'rails', '~> 7.1'",
+      'Gemfile.lock': '',
+      'config/application.rb': '',
+      'app/helpers/posts_helper.rb': `
+module PostsHelper
+  def format_date(date)
+    date.strftime('%B %d, %Y')
+  end
+end`,
+    }
+
+    const provider = {
+      readFile(path) {
+        return files[path] || null
+      },
+      fileExists(path) {
+        return path in files
+      },
+      glob(pattern) {
+        return Object.keys(files).filter((p) => matchGlob(pattern, p))
+      },
+      listDir() {
+        return []
+      },
+    }
+
+    const index = await buildIndex(provider)
+    const helperEntry = index.fileEntityMap['app/helpers/posts_helper.rb']
+    expect(helperEntry).toBeDefined()
+    expect(helperEntry.type).toBe('helper')
+  })
+
+  it('maps worker files in fileEntityMap', async () => {
+    const files = {
+      Gemfile: "gem 'rails', '~> 7.1'",
+      'Gemfile.lock': '',
+      'config/application.rb': '',
+      'app/workers/bulk_index_worker.rb': `
+class BulkIndexWorker
+  include Sidekiq::Job
+  sidekiq_options queue: :low
+
+  def perform(user_id)
+    User.find(user_id).reindex
+  end
+end`,
+    }
+
+    const provider = {
+      readFile(path) {
+        return files[path] || null
+      },
+      fileExists(path) {
+        return path in files
+      },
+      glob(pattern) {
+        return Object.keys(files).filter((p) => matchGlob(pattern, p))
+      },
+      listDir() {
+        return []
+      },
+    }
+
+    const index = await buildIndex(provider)
+    const workerEntry = index.fileEntityMap['app/workers/bulk_index_worker.rb']
+    expect(workerEntry).toBeDefined()
+    expect(workerEntry.type).toBe('worker')
+  })
 })
