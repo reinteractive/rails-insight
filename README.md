@@ -12,13 +12,13 @@ Generic code-analysis tools treat Ruby files as plain text. RailsInsight underst
 ## Installation
 
 ```bash
-npx @reinteractive/railsinsight
+npx @reinteractive/rails-insight
 ```
 
 Or install globally:
 
 ```bash
-npm install -g @reinteractive/railsinsight
+npm install -g @reinteractive/rails-insight
 ```
 
 ## Quick Start
@@ -26,7 +26,7 @@ npm install -g @reinteractive/railsinsight
 Run from your Rails project root:
 
 ```bash
-npx @reinteractive/railsinsight
+npx @reinteractive/rails-insight
 ```
 
 This starts a local MCP server over stdio. The indexer scans your project structure, extracts Rails conventions, builds a relationship graph, and exposes everything through MCP tools.
@@ -34,7 +34,7 @@ This starts a local MCP server over stdio. The indexer scans your project struct
 To point at a different Rails app:
 
 ```bash
-npx @reinteractive/railsinsight --project-root /path/to/your/rails/app
+npx @reinteractive/rails-insight --project-root /path/to/your/rails/app
 ```
 
 ### CLI Options
@@ -57,7 +57,7 @@ Add to your Claude Code MCP configuration:
   "mcpServers": {
     "railsinsight": {
       "command": "npx",
-      "args": ["@reinteractive/railsinsight"]
+      "args": ["@reinteractive/rails-insight"]
     }
   }
 }
@@ -72,7 +72,7 @@ In your `.cursor/mcp.json` or VS Code MCP settings:
   "mcpServers": {
     "railsinsight": {
       "command": "npx",
-      "args": ["@reinteractive/railsinsight"]
+      "args": ["@reinteractive/rails-insight"]
     }
   }
 }
