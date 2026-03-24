@@ -255,6 +255,26 @@ end`
       expect(orders.member_routes).toContain('cancel')
       expect(lineItems.member_routes).toHaveLength(0)
     })
+    it('does not crash when a singular resource has a member do block', () => {
+      const fixture = `
+Rails.application.routes.draw do
+  resources :asset_reviews do
+    resource :export, only: [:show] do
+      member do
+        put :ready
+        get :download
+      end
+    end
+  end
+end`
+      const result = extractRoutes(
+        mockProvider({ 'config/routes.rb': fixture }),
+      )
+      const exportR = result.resources.find((r) => r.name === 'export')
+      expect(exportR).toBeDefined()
+      expect(exportR.member_routes).toContain('ready')
+      expect(exportR.member_routes).toContain('download')
+    })
   })
 
   describe('Bug 2 — only: with single symbol (non-array) form', () => {
