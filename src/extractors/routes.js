@@ -122,6 +122,8 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         controller: ns ? `${ns}/${name}` : name,
         actions,
         singular: true,
+        member_routes: [],
+        collection_routes: [],
       }
 
       if (trimmed.includes('do')) {
