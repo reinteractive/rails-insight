@@ -5,6 +5,7 @@
  */
 
 import { RANK_PRECISION } from './constants.js'
+import { classify as inflectorClassify } from '../utils/inflector.js'
 
 /** Edge type weights */
 export const EDGE_WEIGHTS = {
@@ -41,7 +42,7 @@ export class Graph {
     this.nodes = new Map()
     /** @type {Array<{from: string, to: string, type: string, weight: number}>} */
     this.edges = []
-    /** @type {Map<string, Array<{to: string, weight: number}>>} */
+    /** @type {Map<string, Array<{to: string, weight: number, type: string}>>} */
     this.adjacency = new Map()
     /** @type {Map<string, Array<{from: string, weight: number, type: string}>>} */
     this.reverseAdjacency = new Map()
@@ -74,7 +75,7 @@ export class Graph {
     if (!this.nodes.has(to)) this.addNode(to, 'unknown')
 
     this.edges.push({ from, to, type, weight })
-    this.adjacency.get(from).push({ to, weight })
+    this.adjacency.get(from).push({ to, weight, type })
     if (!this.reverseAdjacency.has(to)) this.reverseAdjacency.set(to, [])
     this.reverseAdjacency.get(to).push({ from, weight, type })
   }
@@ -144,15 +145,16 @@ export class Graph {
     excludeEdgeTypes,
     minEdgeWeight,
   ) {
-    const edges =
+    const neighbours =
       direction === 'forward'
-        ? this._forwardEdgesFrom(current.entity)
-        : this._reverseEdgesTo(current.entity)
+        ? this.adjacency.get(current.entity) || []
+        : this.reverseAdjacency.get(current.entity) || []
 
-    for (const edge of edges) {
+    for (const edge of neighbours) {
       const neighbour = direction === 'forward' ? edge.to : edge.from
+      const edgeType = edge.type
       if (visited.has(neighbour)) continue
-      if (excludeEdgeTypes.has(edge.type)) continue
+      if (excludeEdgeTypes.has(edgeType)) continue
       if (edge.weight < minEdgeWeight) continue
 
       visited.add(neighbour)
@@ -160,20 +162,10 @@ export class Graph {
         entity: neighbour,
         distance: current.distance + 1,
         reachedVia: current.entity,
-        edgeType: edge.type,
+        edgeType,
         direction,
       })
     }
-  }
-
-  /** @private */
-  _forwardEdgesFrom(nodeId) {
-    return this.edges.filter((e) => e.from === nodeId)
-  }
-
-  /** @private */
-  _reverseEdgesTo(nodeId) {
-    return this.edges.filter((e) => e.to === nodeId)
   }
 
   /**
@@ -268,6 +260,17 @@ export class Graph {
 }
 
 /**
+ * Extract class_name override from association options string.
+ * @param {string|null} options - Raw options string from extractor
+ * @returns {string|null} Class name or null
+ */
+function extractClassName(options) {
+  if (!options) return null
+  const match = options.match(/class_name:\s*['"](\w+(?:::\w+)*)['"]/)
+  return match ? match[1] : null
+}
+
+/**
  * Build a graph from index extractions.
  * @param {object} extractions - All extraction results
  * @param {object} manifest - Scanner manifest with entries
@@ -296,13 +299,28 @@ export function buildGraph(extractions, manifest, skills = []) {
       // Associations
       if (model.associations) {
         for (const assoc of model.associations) {
-          const target = classify(assoc.name)
-          graph.addNode(target, 'model', target)
           const type = assoc.type.replace(':', '')
+
+          // Skip phantom edges for polymorphic belongs_to
+          if (type === 'belongs_to' && assoc.polymorphic) continue
+
+          const classNameOverride = extractClassName(assoc.options)
+          const target = classNameOverride || classify(assoc.name)
+          graph.addNode(target, 'model', target)
           if (EDGE_WEIGHTS[type]) {
             graph.addEdge(name, target, type)
             relationships.push({ from: name, to: target, type })
           }
+
+          // Add join model edge for through associations
+          if (assoc.through) {
+            const joinModel = classify(assoc.through)
+            graph.addNode(joinModel, 'model', joinModel)
+            graph.addEdge(name, joinModel, 'has_many')
+            relationships.push({ from: name, to: joinModel, type: 'has_many' })
+          }
+          // Note: polymorphic has_many with `as:` option creates a valid edge
+          // to the target model (e.g. has_many :comments, as: :commentable)
         }
       }
 
@@ -399,7 +417,12 @@ export function buildGraph(extractions, manifest, skills = []) {
         entry.specCategory === 'request_specs' ||
         entry.specCategory === 'controller_specs'
       ) {
-        const ctrlName = className + 'Controller'
+        // Controller names are plural (UsersController), so don't singularize
+        const ctrlBaseName = basename
+          .split('_')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join('')
+        const ctrlName = ctrlBaseName + 'Controller'
         if (extractions.controllers && extractions.controllers[ctrlName]) {
           graph.addNode(`spec:${ctrlName}`, 'spec', `${ctrlName} spec`)
           graph.addEdge(`spec:${ctrlName}`, ctrlName, 'tests')
@@ -478,13 +501,10 @@ export function buildGraph(extractions, manifest, skills = []) {
 }
 
 /**
- * Convert a snake_case string to CamelCase.
+ * Convert a snake_case or plural string to a PascalCase singular class name.
  * @param {string} str
  * @returns {string}
  */
 export function classify(str) {
-  return str
-    .split(/[_\s]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join('')
+  return inflectorClassify(str)
 }

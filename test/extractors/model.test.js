@@ -172,7 +172,7 @@ end`
     })
 
     it('extracts normalizes', () => {
-      expect(result.normalizes).toContain('email')
+      expect(result.normalizes.map((n) => n.attribute)).toContain('email')
     })
 
     it('extracts generates_token_for', () => {

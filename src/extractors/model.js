@@ -78,6 +78,9 @@ export function extractModel(provider, filePath, className) {
         // Check for polymorphic
         if (MODEL_PATTERNS.polymorphic.test(entry.options))
           entry.polymorphic = true
+        // Check for strict_loading
+        if (MODEL_PATTERNS.strictLoadingAssoc.test(entry.options))
+          entry.strict_loading = true
       }
       associations.push(entry)
     }
@@ -136,6 +139,14 @@ export function extractModel(provider, filePath, className) {
         valStr.match(/\w+/g)?.filter((v) => !/^\d+$/.test(v)) || []
       enums[name] = { values: symKeys, syntax: 'hash' }
     }
+    // Check for validate: true after the closing brace
+    const afterEnum = content.slice(
+      m.index + m[0].length,
+      m.index + m[0].length + 50,
+    )
+    if (/validate:\s*true/.test(m[0] + afterEnum)) {
+      enums[name].validate = true
+    }
   }
   // Legacy hash syntax: enum status: { draft: 0, ... } (Rails 4-6)
   const enumLegacyHashRe = /^\s*enum\s+(\w+):\s*\{([^}]+)\}/gm
@@ -157,6 +168,14 @@ export function extractModel(provider, filePath, className) {
       const symKeys =
         valStr.match(/\w+/g)?.filter((v) => !/^\d+$/.test(v)) || []
       enums[name] = { values: symKeys, syntax: 'legacy' }
+    }
+    // Check for validate: true after the closing brace
+    const afterEnum = content.slice(
+      m.index + m[0].length,
+      m.index + m[0].length + 50,
+    )
+    if (/validate:\s*true/.test(m[0] + afterEnum)) {
+      enums[name].validate = true
     }
   }
   // Array syntax: enum :role, [ :a, :b ] — only add if not already captured
@@ -200,8 +219,15 @@ export function extractModel(provider, filePath, className) {
   const normalizes = []
   const normRe = new RegExp(MODEL_PATTERNS.normalizes.source, 'gm')
   while ((m = normRe.exec(content))) {
-    const attrs = m[1].match(/:(\w+)/g)
-    if (attrs) normalizes.push(...attrs.map((a) => a.slice(1)))
+    const fullDecl = m[1]
+    const attrs = fullDecl.match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
+    const withMatch = fullDecl.match(
+      /with:\s*->\s*(?:\([^)]*\)\s*)?\{([^}]+)\}/,
+    )
+    const normExpression = withMatch ? withMatch[1].trim() : null
+    for (const attr of attrs) {
+      normalizes.push({ attribute: attr, expression: normExpression })
+    }
   }
 
   // Token generators
@@ -264,6 +290,15 @@ export function extractModel(provider, filePath, className) {
   const broadcasts =
     MODEL_PATTERNS.broadcastsTo.test(content) ||
     MODEL_PATTERNS.broadcasts.test(content)
+
+  // Strict loading
+  const strict_loading = MODEL_PATTERNS.strictLoading.test(content)
+
+  // Turbo 8 morphing
+  const turboRefreshesMatch = content.match(MODEL_PATTERNS.turboRefreshes)
+  const turbo_refreshes_with = turboRefreshesMatch
+    ? turboRefreshesMatch[1]
+    : null
 
   // Devise modules
   let devise_modules = []
@@ -343,6 +378,7 @@ export function extractModel(provider, filePath, className) {
     let inPrivate = false
     let currentMethodName = null
     let currentMethodStart = null
+    let methodDepth = 0
     for (let i = 0; i < methodLines.length; i++) {
       const line = methodLines[i]
       const lineNumber = i + 1
@@ -356,6 +392,7 @@ export function extractModel(provider, filePath, className) {
         }
         inPrivate = true
         currentMethodName = null
+        methodDepth = 0
         continue
       }
 
@@ -373,8 +410,32 @@ export function extractModel(provider, filePath, className) {
           public_methods.push(mm[1])
           currentMethodName = mm[1]
           currentMethodStart = lineNumber
+          methodDepth = 1
         } else {
           currentMethodName = null
+        }
+        continue
+      }
+
+      if (currentMethodName && !inPrivate) {
+        if (
+          /\bdo\b|\bif\b(?!.*\bthen\b.*\bend\b)|\bcase\b|\bbegin\b/.test(
+            line,
+          ) &&
+          !/\bend\b/.test(line)
+        ) {
+          methodDepth++
+        }
+        if (/^\s*end\b/.test(line)) {
+          methodDepth--
+          if (methodDepth <= 0) {
+            method_line_ranges[currentMethodName] = {
+              start: currentMethodStart,
+              end: lineNumber,
+            }
+            currentMethodName = null
+            methodDepth = 0
+          }
         }
       }
     }
@@ -415,6 +476,8 @@ export function extractModel(provider, filePath, className) {
     table_name,
     default_scope,
     broadcasts,
+    strict_loading,
+    turbo_refreshes_with,
     devise_modules,
     searchable,
     friendly_id,

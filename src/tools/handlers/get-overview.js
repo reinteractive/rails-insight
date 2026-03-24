@@ -141,6 +141,10 @@ export function register(server, state) {
           mounted: (index.extractions?.uploaders?.mounted || []).length,
         },
         pwa: index.pwa || { detected: false },
+        extraction_errors: (index.extraction_errors || []).length,
+        ...(index.extraction_errors?.length > 0
+          ? { extraction_error_details: index.extraction_errors }
+          : {}),
       }
 
       return respond(overview)

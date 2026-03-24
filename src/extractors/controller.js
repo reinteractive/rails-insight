@@ -60,6 +60,7 @@ export function extractController(provider, filePath) {
   let inPublic = true
   let currentActionName = null
   let currentActionStart = null
+  let methodDepth = 0
   const visRe = /^\s*(private|protected)\s*$/
   const methodRe = /^\s*def\s+(\w+)/
   for (let i = 0; i < lines.length; i++) {
@@ -76,6 +77,7 @@ export function extractController(provider, filePath) {
       }
       inPublic = false
       currentActionName = null
+      methodDepth = 0
       continue
     }
 
@@ -93,8 +95,30 @@ export function extractController(provider, filePath) {
         actions.push(mm[1])
         currentActionName = mm[1]
         currentActionStart = lineNumber
+        methodDepth = 1
       } else {
         currentActionName = null
+      }
+      continue
+    }
+
+    if (currentActionName && inPublic) {
+      if (
+        /\bdo\b|\bif\b(?!.*\bthen\b.*\bend\b)|\bcase\b|\bbegin\b/.test(line) &&
+        !/\bend\b/.test(line)
+      ) {
+        methodDepth++
+      }
+      if (/^\s*end\b/.test(line)) {
+        methodDepth--
+        if (methodDepth <= 0) {
+          action_line_ranges[currentActionName] = {
+            start: currentActionStart,
+            end: lineNumber,
+          }
+          currentActionName = null
+          methodDepth = 0
+        }
       }
     }
   }

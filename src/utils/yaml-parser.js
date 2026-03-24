@@ -1,6 +1,6 @@
 /**
  * Simple YAML parser for Rails config files.
- * Handles key-value pairs, arrays, and nested structures.
+ * Handles key-value pairs, arrays, nested structures, and anchors/aliases.
  * Not a full YAML parser — designed for Rails convention YAML files.
  */
 
@@ -14,6 +14,7 @@ export function parseYaml(content) {
 
   const lines = content.split('\n')
   const result = {}
+  const anchors = {}
   const stack = [{ obj: result, indent: -1 }]
 
   for (let i = 0; i < lines.length; i++) {
@@ -29,13 +30,26 @@ export function parseYaml(content) {
     const indentMatch = cleanLine.match(/^(\s*)/)
     const indent = indentMatch ? indentMatch[1].length : 0
 
+    // Pop stack to correct parent
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      stack.pop()
+    }
+
+    // Merge key: <<: *alias
+    const mergeMatch = cleanLine.match(/^\s*<<:\s*\*(\w+)/)
+    if (mergeMatch) {
+      const aliasName = mergeMatch[1]
+      const source = anchors[aliasName]
+      if (source && typeof source === 'object') {
+        const parent = stack[stack.length - 1].obj
+        Object.assign(parent, structuredClone(source))
+      }
+      continue
+    }
+
     // Array item
     const arrayMatch = cleanLine.match(/^(\s*)-\s*(.+)$/)
     if (arrayMatch) {
-      // Find the parent
-      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
-        stack.pop()
-      }
       const parent = stack[stack.length - 1]
       if (parent.arrayKey) {
         if (!Array.isArray(parent.obj[parent.arrayKey])) {
@@ -46,32 +60,47 @@ export function parseYaml(content) {
       continue
     }
 
+    // Key-value with anchor: key: &anchor value
+    const kvAnchorMatch = cleanLine.match(
+      /^(\s*)(\w[\w\s-]*):\s*&(\w+)\s*(.*)$/,
+    )
+    if (kvAnchorMatch) {
+      const key = kvAnchorMatch[2].trim()
+      const anchorName = kvAnchorMatch[3]
+      const value = kvAnchorMatch[4].trim()
+      const parent = stack[stack.length - 1].obj
+
+      if (value === '' || value === '|' || value === '>') {
+        parent[key] = {}
+        anchors[anchorName] = parent[key]
+        stack.push({ obj: parent[key], indent, arrayKey: null })
+      } else {
+        parent[key] = parseYamlValue(value)
+        anchors[anchorName] = parent[key]
+      }
+      continue
+    }
+
+    // Key-value with alias: key: *alias
+    const kvAliasMatch = cleanLine.match(/^(\s*)(\w[\w\s-]*):\s*\*(\w+)/)
+    if (kvAliasMatch) {
+      const key = kvAliasMatch[2].trim()
+      const aliasName = kvAliasMatch[3]
+      const parent = stack[stack.length - 1].obj
+      const source = anchors[aliasName]
+      parent[key] = source !== undefined ? structuredClone(source) : null
+      continue
+    }
+
     // Key-value pair
     const kvMatch = cleanLine.match(/^(\s*)(\w[\w\s-]*):\s*(.*)$/)
     if (kvMatch) {
       const key = kvMatch[2].trim()
       const value = kvMatch[3].trim()
-
-      // Pop stack to find correct parent
-      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
-        stack.pop()
-      }
       const parent = stack[stack.length - 1].obj
 
       if (value === '' || value === '|' || value === '>') {
-        // Nested object or block scalar
         parent[key] = {}
-        stack.push({ obj: parent, indent, key, arrayKey: key })
-        // Update the nested object to be a child in the stack
-        stack[stack.length - 1] = {
-          obj: parent,
-          indent,
-          key,
-          arrayKey: key,
-          nested: parent[key],
-        }
-        // Actually push the nested object
-        stack.pop()
         stack.push({ obj: parent[key], indent, arrayKey: null })
       } else {
         parent[key] = parseYamlValue(value)
@@ -79,6 +108,8 @@ export function parseYaml(content) {
     }
   }
 
+  // Resolve anchors: for any anchor that points to an object, update the reference
+  // since nested keys were added after the anchor was stored
   return result
 }
 

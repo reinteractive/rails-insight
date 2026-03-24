@@ -2,16 +2,15 @@
  * Shared helpers and constants for tool handlers.
  */
 
+import { tableize } from '../../utils/inflector.js'
+
 /**
  * Convert a PascalCase model name to a snake_case plural table name.
  * @param {string} name e.g. "UserProfile"
  * @returns {string} e.g. "user_profiles"
  */
 export function toTableName(name) {
-  const snake = name
-    .replace(/([A-Z])/g, (m, l, i) => (i === 0 ? l : `_${l}`))
-    .toLowerCase()
-  return snake.endsWith('s') ? snake : `${snake}s`
+  return tableize(name)
 }
 
 /**
@@ -29,22 +28,28 @@ export function pathToClassName(path) {
 
 /** MCP response when no index has been built yet. */
 export function noIndex() {
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({
-          error: 'Index not built. Call index_project first.',
-        }),
-      },
-    ],
-  }
+  return respondError('Index not built. Call index_project first.')
 }
 
 /** Wrap data as an MCP text response. */
 export function respond(data) {
   return {
     content: [{ type: 'text', text: JSON.stringify(data) }],
+  }
+}
+
+/**
+ * Wrap an error as an MCP error response.
+ * @param {string} message - Error message
+ * @param {Object} [details] - Additional details
+ * @returns {Object} MCP response with isError flag
+ */
+export function respondError(message, details = {}) {
+  return {
+    content: [
+      { type: 'text', text: JSON.stringify({ error: message, ...details }) },
+    ],
+    isError: true,
   }
 }
 

@@ -34,6 +34,7 @@ export function extractEmail(provider, entries) {
 
     const mailer = {
       class: classMatch[1],
+      file: entry.path,
       superclass: classMatch[2],
       methods: [],
       default_from: null,

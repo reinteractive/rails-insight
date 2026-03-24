@@ -4,6 +4,8 @@
  * using Gemfile detection and file existence checks.
  */
 
+import { detectSpecStyle } from '../utils/spec-style-detector.js'
+
 /**
  * Extract Tier 2 information across categories #18-40.
  * @param {import('../providers/interface.js').FileProvider} provider
@@ -99,27 +101,6 @@ function extractTesting(provider, entries, gems) {
   if (gems.vcr) result.mocking.push('vcr')
 
   return result
-}
-
-/**
- * Detect whether the project uses request specs or controller specs.
- * @param {Array<{path: string}>} entries
- * @returns {{primary: string, request_count: number, controller_count: number, has_mixed: boolean}}
- */
-function detectSpecStyle(entries) {
-  const requestCount = entries.filter((e) =>
-    e.path.startsWith('spec/requests/'),
-  ).length
-  const controllerCount = entries.filter((e) =>
-    e.path.startsWith('spec/controllers/'),
-  ).length
-
-  return {
-    primary: requestCount >= controllerCount ? 'request' : 'controller',
-    request_count: requestCount,
-    controller_count: controllerCount,
-    has_mixed: requestCount > 0 && controllerCount > 0,
-  }
 }
 
 /**
