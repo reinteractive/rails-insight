@@ -6,6 +6,82 @@
 import { MODEL_PATTERNS } from '../core/patterns.js'
 
 /**
+ * Join lines where a declaration continues on the next line (ends with comma).
+ * This handles multi-line belongs_to, has_many, etc. options.
+ * @param {string} content
+ * @returns {string}
+ */
+const STATEMENT_START =
+  /^(?:belongs_to|has_many|has_one|has_and_belongs_to_many|has_and_belongs|scope\s|validates?\s|def\s|class\s|module\s|end\b|include\s|extend\s|enum\s|before_|after_|around_|delegate\s|attr_|#|private\b|protected\b|accepts_nested)/
+
+function joinContinuationLines(content) {
+  const lines = content.split('\n')
+  const joined = []
+  for (let i = 0; i < lines.length; i++) {
+    if (
+      joined.length > 0 &&
+      joined[joined.length - 1].trimEnd().endsWith(',')
+    ) {
+      const nextTrimmed = lines[i].trim()
+      if (nextTrimmed && !STATEMENT_START.test(nextTrimmed)) {
+        joined[joined.length - 1] =
+          joined[joined.length - 1].trimEnd() + ' ' + nextTrimmed
+        continue
+      }
+    }
+    joined.push(lines[i])
+  }
+  return joined.join('\n')
+}
+
+/**
+ * Extract scope body using brace-balanced scanning (handles nested braces and
+ * multi-line lambda/proc bodies).
+ * @param {string} content
+ * @returns {Record<string, string>} map of scope name → body string
+ */
+function extractScopeBodies(content) {
+  const result = {}
+  const lines = content.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const declMatch = lines[i].match(
+      /^\s*scope\s+:(\w+),\s*(?:->|lambda|proc)/,
+    )
+    if (!declMatch) continue
+    const name = declMatch[1]
+    // Scan forward to find brace-balanced body
+    let depth = 0
+    let started = false
+    const bodyChars = []
+    outer: for (let j = i; j < lines.length; j++) {
+      const line = j === i ? lines[j] : lines[j]
+      for (const ch of line) {
+        if (ch === '{') {
+          depth++
+          if (depth === 1) {
+            started = true
+            continue // skip the opening brace itself
+          }
+        }
+        if (ch === '}') {
+          depth--
+          if (depth === 0 && started) break outer
+        }
+        if (started) bodyChars.push(ch)
+      }
+      if (started && depth > 0) bodyChars.push(' ')
+    }
+    if (bodyChars.length > 0) {
+      result[name] = bodyChars
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+  }
+  return result
+}
+
+/**
  * Extract all model information from a single model file.
  * @param {import('../providers/interface.js').FileProvider} provider
  * @param {string} filePath
@@ -56,8 +132,9 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
-  // Associations
+  // Associations (join continuation lines first so multi-line options are captured)
   const associations = []
+  const assocContent = joinContinuationLines(content)
   const assocTypes = [
     { key: 'belongsTo', type: 'belongs_to' },
     { key: 'hasMany', type: 'has_many' },
@@ -66,7 +143,7 @@ export function extractModel(provider, filePath, className) {
   ]
   for (const { key, type } of assocTypes) {
     const re = new RegExp(MODEL_PATTERNS[key].source, 'gm')
-    while ((m = re.exec(content))) {
+    while ((m = re.exec(assocContent))) {
       const entry = { type, name: m[1], options: m[2] || null }
       // Check for through
       if (entry.options) {
@@ -102,17 +179,16 @@ export function extractModel(provider, filePath, className) {
   // Scopes — names array (backward-compat) + scope_queries dict with bodies
   const scopes = []
   const scope_queries = {}
-  // Extended pattern: capture the body inside { } after ->
-  const scopeBodyRe =
-    /^\s*scope\s+:(\w+),\s*->\s*(?:\([^)]*\)\s*)?\{\s*([^}]+)\}/gm
-  const scopeSimpleRe = new RegExp(MODEL_PATTERNS.scope.source, 'gm')
   const scopeNamesFound = new Set()
-  while ((m = scopeBodyRe.exec(content))) {
-    scopes.push(m[1])
-    scope_queries[m[1]] = m[2].trim().replace(/\s+/g, ' ')
-    scopeNamesFound.add(m[1])
+  // Use brace-balanced extractor for scope bodies (handles multi-line and nested braces)
+  const extractedBodies = extractScopeBodies(content)
+  for (const [name, body] of Object.entries(extractedBodies)) {
+    scopes.push(name)
+    scope_queries[name] = body
+    scopeNamesFound.add(name)
   }
   // Fall back to name-only for scopes we couldn't extract a body from
+  const scopeSimpleRe = new RegExp(MODEL_PATTERNS.scope.source, 'gm')
   while ((m = scopeSimpleRe.exec(content))) {
     if (!scopeNamesFound.has(m[1])) scopes.push(m[1])
   }
@@ -366,6 +442,14 @@ export function extractModel(provider, filePath, className) {
 
   // Audited
   const audited = MODEL_PATTERNS.audited.test(content)
+  const has_associated_audits = /^\s*has_associated_audits/m.test(content)
+
+  // accepts_nested_attributes_for
+  const nested_attributes = []
+  const nestedAttrsRe = /^\s*accepts_nested_attributes_for\s+:(\w+)(?:,\s*(.+))?$/gm
+  while ((m = nestedAttrsRe.exec(content))) {
+    nested_attributes.push({ name: m[1], options: m[2]?.trim() || null })
+  }
 
   // STI base detection (has subclasses inheriting from this, detected elsewhere)
   const sti_base = false
@@ -396,7 +480,7 @@ export function extractModel(provider, filePath, className) {
         continue
       }
 
-      const mm = line.match(/^\s*def\s+(\w+[?!=]?)/)
+      const mm = line.match(/^\s*def\s+((?:self\.)?\w+[?!=]?)/)
       if (mm) {
         // Close previous method
         if (currentMethodName && !inPrivate) {
@@ -485,6 +569,8 @@ export function extractModel(provider, filePath, className) {
     state_machine,
     paper_trail,
     audited,
+    has_associated_audits,
+    nested_attributes,
     public_methods,
     method_line_ranges,
   }
