@@ -63,9 +63,9 @@ Add to your Claude Code MCP configuration:
 }
 ```
 
-## Cursor / VS Code Integration
+## Cursor Integration
 
-In your `.cursor/mcp.json` or VS Code MCP settings:
+In your `.cursor/mcp.json`:
 
 ```json
 {
@@ -80,41 +80,58 @@ In your `.cursor/mcp.json` or VS Code MCP settings:
 
 The server uses the workspace directory as the project root automatically, so no path argument is needed for normal project-local use.
 
+## VS Code Integration
+
+In your VS Code `.mcp.json` file:
+
+```json
+{
+  "servers": {
+    "railsinsight": {
+      "command": "npx",
+      "args": ["@reinteractive/railsinsight"]
+    }
+  }
+}
+```
+
+This configuration is required for the VS Code MCP extension, which expects the `servers` block and the package name to be `@reinteractive/railsinsight` (no hyphen).
+
 ## Available Tools
 
 All 17 tools are available with no tier restrictions.
 
 ### Core Tools
 
-| Tool                | Description                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `index_project`     | Re-index the Rails project. In local mode, re-scans the project root. Accepts `force` (boolean) to bypass cache. Returns statistics and duration.                                                                                                                                                                                                                                                                  |
-| `get_overview`      | Project summary: Rails/Ruby versions, database, auth strategy, key models and controllers, frontend stack, file counts. Call this first.                                                                                                                                                                                                                                                                           |
-| `get_full_index`    | Complete index JSON trimmed to fit a specified token budget (default: 12,000 tokens).                                                                                                                                                                                                                                                                                                                              |
-| `get_model`         | Deep extraction for a specific model: associations, validations, scopes with queries, enums with values, callbacks, public methods, database columns. Requires `name`.                                                                                                                                                                                                                                             |
-| `get_controller`    | Deep extraction for a specific controller: actions with routes, filters, rate limiting, strong params, rescue handlers. Requires `name`.                                                                                                                                                                                                                                                                           |
-| `get_routes`        | Complete route map with namespaces, nested resources, member/collection routes.                                                                                                                                                                                                                                                                                                                                    |
-| `get_schema`        | Database schema with tables, columns, indexes, foreign keys, and model-to-table mapping.                                                                                                                                                                                                                                                                                                                           |
-| `get_subgraph`      | Skill-scoped relationship subgraph with ranked files. Skills: `authentication`, `database`, `frontend`, `api`, `jobs`, `email`.                                                                                                                                                                                                                                                                                    |
-| `search_patterns`   | Search across all extractions for a specific Rails pattern type (e.g. `has_many_through`, `before_action`, `turbo_broadcast`).                                                                                                                                                                                                                                                                                     |
-| `get_deep_analysis` | Deep analysis for a specific category. Categories: `authentication`, `authorization`, `jobs`, `email`, `storage`, `caching`, `realtime`, `api_patterns`, `dependencies`, `components`, `stimulus`, `views`, `convention_drift`, `manifest`, `detected_stack`, `related`, `model_list`, `controller_list`, `component_list`. Accepts optional `name` (entity name) and `depth` (BFS hops for `related`, default 2). |
+| Tool                | Description                                                                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index_project`     | Re-index the Rails project. In local mode, re-scans the project root. Accepts `force` (boolean) to bypass cache. Returns statistics and duration.                           |
+| `get_overview`      | Project summary: Rails/Ruby versions, database, auth strategy, key models and controllers, frontend stack, file counts. Call this first.                                    |
+| `get_full_index`    | Complete index JSON trimmed to fit a specified token budget (default: 12,000 tokens).                                                                                       |
+| `get_model`         | Deep extraction for a specific model: associations, validations, scopes with queries, enums with values, callbacks, public methods, database columns. Requires `name`.      |
+| `get_controller`    | Deep extraction for a specific controller: actions with routes, filters, rate limiting, strong params, rescue handlers. Requires `name`.                                    |
+| `get_routes`        | Complete route map with namespaces, nested resources, member/collection routes.                                                                                             |
+| `get_schema`        | Database schema with tables, columns, indexes, foreign keys, and model-to-table mapping.                                                                                    |
+| `get_subgraph`      | Skill-scoped relationship subgraph with ranked files. Skills: `authentication`, `database`, `frontend`, `api`, `jobs`, `email`.                                             |
+| `search_patterns`   | Search across all extractions for a specific Rails pattern type (e.g. `has_many_through`, `before_action`, `turbo_broadcast`).                                              |
+| `get_deep_analysis` | Deep analysis for a specific category. Categories: `authentication`, `authorization`, `jobs`, `email`, `storage`, `caching`, `realtime`, `api_patterns`, `dependencies`, `cela`|
 
 ### Test Intelligence Tools
 
-| Tool                       | Description                                                                                                                                                                                                                  |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_coverage_gaps`        | Prioritised list of files needing test coverage, with structural context and per-method coverage data from SimpleCov. Accepts optional `category`, `min_gap`, and `limit`.                                                   |
-| `get_test_conventions`     | Detected test patterns and conventions: spec style (request vs controller), let style, auth helper, factories, shared examples, custom matchers, and pattern reference files.                                                |
-| `get_domain_clusters`      | Domain-clustered file groups for parallel test generation. Files in the same cluster share associations and factories; different clusters can be worked on simultaneously. Accepts `max_cluster_size` and `include_covered`. |
-| `get_factory_registry`     | Parsed FactoryBot factory definitions including attributes, traits, sequences, and associations. Accepts optional `model` to filter by factory name.                                                                         |
-| `get_well_tested_examples` | High-quality existing spec files suitable as pattern references for test generation agents. Selected by structural complexity per spec category. Accepts `category` and `limit`.                                             |
+| Tool                       | Description                                                                                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_coverage_gaps`        | Prioritised list of files needing test coverage, with structural context and per-method coverage data from SimpleCov. Accepts optional `category`, `min_gap`, and `l... |
+| `get_test_conventions`     | Detected test patterns and conventions: spec style (request vs controller), let style, auth helper, factories, shared examples, custom matchers, and pattern referen... |
+| `get_domain_clusters`      | Domain-clustered file groups for parallel test generation. Files in the same cluster share associations and factories; different clusters can be worked on simultane... |
+| `get_factory_registry`     | Parsed FactoryBot factory definitions including attributes, traits, sequences, and associations. Accepts optional `model` to filter by factory name.                |
+| `get_well_tested_examples` | High-quality existing spec files suitable as pattern references for test generation agents. Selected by structural complexity per spec category. Accepts `category` ... |
 
 ### Blast Radius Tools
 
-| Tool                 | Description                                                                                                                                                                                                                                           |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_blast_radius`   | Analyse the impact of code changes. Accepts explicit file paths or auto-detects from git diff. Returns impacted entities classified by risk level (CRITICAL/HIGH/MEDIUM/LOW) with affected tests. Accepts `files`, `base_ref`, `staged`, `max_depth`. |
-| `get_review_context` | Build a token-budget-aware review summary for changed files. Combines blast radius analysis with relevant code context for AI-assisted code review. Accepts `files`, `base_ref`, `staged`, `token_budget`.                                            |
+| Tool                 | Description                                                                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_blast_radius`   | Analyse the impact of code changes. Accepts explicit file paths or auto-detects from git diff. Returns impacted entities classified by risk level (CRITICAL/HIGH/MEDIUM/LO... |
+| `get_review_context` | Build a token-budget-aware review summary for changed files. Combines blast radius analysis with relevant code context for AI-assisted code review. Accepts `files`, `base... |
 
 ## What It Detects
 
