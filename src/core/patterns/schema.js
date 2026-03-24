@@ -20,5 +20,6 @@ export const SCHEMA_PATTERNS = {
   idType: /id:\s*:(\w+)/,
   idUuid: /id:\s*:uuid/,
   idFalse: /id:\s*false/,
+  compositePrimaryKey: /primary_key:\s*\[([^\]]+)\]/,
   comment: /comment:\s*['"]([^'"]+)['"]/,
 }

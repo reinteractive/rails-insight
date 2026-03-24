@@ -17,7 +17,7 @@ import {
 export function register(server, state) {
   server.tool(
     'get_deep_analysis',
-    'Get deep analysis for a specific category. Categories: authentication, authorization, jobs, email, storage, caching, realtime, api_patterns, dependencies, components, stimulus, views, convention_drift, manifest, detected_stack, related, model_list, controller_list, component_list',
+    'Get deep analysis for a specific category. Categories: authentication, authorization, jobs, email, storage, caching, realtime, api_patterns, dependencies, components, stimulus, views, convention_drift, manifest, detected_stack, related, model_list, controller_list, component_list, testing, design_patterns, test_conventions, factory_registry, coverage_snapshot',
     {
       category: z.string().describe('The category to analyze'),
       name: z

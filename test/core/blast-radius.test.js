@@ -5,10 +5,11 @@ import {
   buildReviewContext,
 } from '../../src/core/blast-radius.js'
 import { buildIndex } from '../../src/core/indexer.js'
+import { buildGraph } from '../../src/core/graph.js'
 import { estimateTokensForObject } from '../../src/utils/token-counter.js'
 
 function createMockIndex() {
-  return {
+  const index = {
     extractions: {
       models: {
         User: {
@@ -89,15 +90,32 @@ function createMockIndex() {
       'app/models/user.rb': { entity: 'User', type: 'model' },
       'app/models/post.rb': { entity: 'Post', type: 'model' },
       'app/models/comment.rb': { entity: 'Comment', type: 'model' },
-      'app/controllers/posts_controller.rb': { entity: 'PostsController', type: 'controller' },
-      'app/controllers/users_controller.rb': { entity: 'UsersController', type: 'controller' },
-      'app/controllers/comments_controller.rb': { entity: 'CommentsController', type: 'controller' },
+      'app/controllers/posts_controller.rb': {
+        entity: 'PostsController',
+        type: 'controller',
+      },
+      'app/controllers/users_controller.rb': {
+        entity: 'UsersController',
+        type: 'controller',
+      },
+      'app/controllers/comments_controller.rb': {
+        entity: 'CommentsController',
+        type: 'controller',
+      },
       'db/schema.rb': { entity: '__schema__', type: 'schema' },
       'config/routes.rb': { entity: '__routes__', type: 'routes' },
-      'Gemfile': { entity: '__gemfile__', type: 'gemfile' },
-      'app/models/concerns/searchable.rb': { entity: 'Searchable', type: 'concern' },
+      Gemfile: { entity: '__gemfile__', type: 'gemfile' },
+      'app/models/concerns/searchable.rb': {
+        entity: 'Searchable',
+        type: 'concern',
+      },
     },
   }
+  // Build a real graph from mock extractions
+  const { graph, relationships } = buildGraph(index.extractions, index.manifest)
+  index.graph = graph
+  index.relationships = relationships
+  return index
 }
 
 describe('computeBlastRadius', () => {
@@ -142,7 +160,11 @@ describe('computeBlastRadius', () => {
     // Add test_conventions to trigger spec edges
     index.extractions.test_conventions = {}
     index.manifest.entries = [
-      { path: 'spec/models/user_spec.rb', category: 19, specCategory: 'model_specs' },
+      {
+        path: 'spec/models/user_spec.rb',
+        category: 19,
+        specCategory: 'model_specs',
+      },
     ]
     const result = computeBlastRadius(index, [
       { path: 'app/models/user.rb', status: 'modified' },
@@ -192,16 +214,21 @@ describe('computeBlastRadius', () => {
     const result = computeBlastRadius(index, [
       { path: 'app/models/user.rb', status: 'modified' },
     ])
-    const total = result.summary.CRITICAL + result.summary.HIGH +
-      result.summary.MEDIUM + result.summary.LOW
+    const total =
+      result.summary.CRITICAL +
+      result.summary.HIGH +
+      result.summary.MEDIUM +
+      result.summary.LOW
     expect(total).toBe(result.summary.total)
   })
 
   it('respects maxDepth', () => {
     const index = createMockIndex()
-    const result = computeBlastRadius(index, [
-      { path: 'app/models/user.rb', status: 'modified' },
-    ], { maxDepth: 1 })
+    const result = computeBlastRadius(
+      index,
+      [{ path: 'app/models/user.rb', status: 'modified' }],
+      { maxDepth: 1 },
+    )
     for (const entity of result.impacted) {
       expect(entity.distance).toBeLessThanOrEqual(1)
     }

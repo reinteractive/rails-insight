@@ -1,7 +1,27 @@
 /**
  * Token estimation utilities.
- * Uses the approximation: 4 characters ≈ 1 token.
+ * Uses content-aware character-per-token ratios for more accurate estimation.
  */
+
+/** Characters-per-token ratio for different content types. */
+const CHARS_PER_TOKEN_PROSE = 4.0
+const CHARS_PER_TOKEN_JSON = 3.0
+const CHARS_PER_TOKEN_CODE = 3.5
+
+/**
+ * Detect content type and return appropriate chars-per-token ratio.
+ * @param {string} text
+ * @returns {number}
+ */
+function detectContentRatio(text) {
+  if (text.length < 10) return CHARS_PER_TOKEN_PROSE
+  const sample = text.slice(0, 200)
+  const jsonIndicators = (sample.match(/[{}\[\]:,"]/g) || []).length
+  const ratio = jsonIndicators / sample.length
+  if (ratio > 0.15) return CHARS_PER_TOKEN_JSON
+  if (ratio > 0.05) return CHARS_PER_TOKEN_CODE
+  return CHARS_PER_TOKEN_PROSE
+}
 
 /**
  * Estimate tokens for a text string.
@@ -10,7 +30,8 @@
  */
 export function estimateTokens(text) {
   if (!text) return 0
-  return Math.ceil(text.length / 4)
+  const ratio = detectContentRatio(text)
+  return Math.ceil(text.length / ratio)
 }
 
 /**

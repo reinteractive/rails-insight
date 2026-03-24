@@ -62,6 +62,7 @@ export function extractRealtime(provider, entries, gemInfo = {}) {
 
     const channel = {
       class: classMatch[1],
+      file: entry.path,
       streams_from: [],
       streams_for: [],
       authenticated: false,

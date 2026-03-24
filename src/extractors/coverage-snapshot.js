@@ -242,19 +242,14 @@ function mapUncoveredMethods(
  * @returns {string|null}
  */
 function normaliseToRelative(filePath) {
-  // Already relative?
   if (filePath.startsWith('app/') || filePath.startsWith('lib/')) {
     return filePath
   }
 
-  // SimpleCov uses absolute paths. Find the app/ or lib/ prefix.
-  // Prefer app/ match first since it's unambiguous
-  const appIdx = filePath.indexOf('/app/')
+  const appIdx = filePath.lastIndexOf('/app/')
   if (appIdx !== -1) return filePath.slice(appIdx + 1)
 
-  // For lib/, only match if it appears to be a project lib/ (not inside a gem path)
-  // Gem paths typically contain /gems/ before /lib/
-  const libIdx = filePath.indexOf('/lib/')
+  const libIdx = filePath.lastIndexOf('/lib/')
   if (libIdx !== -1 && !filePath.includes('/gems/')) {
     return filePath.slice(libIdx + 1)
   }

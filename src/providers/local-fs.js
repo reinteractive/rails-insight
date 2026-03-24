@@ -1,4 +1,10 @@
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
+import {
+  readFileSync,
+  readdirSync,
+  existsSync,
+  statSync,
+  realpathSync,
+} from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -98,7 +104,8 @@ export class LocalFSProvider {
   glob(pattern) {
     const results = []
     const parts = pattern.split('/')
-    this._globWalk('', parts, results)
+    const visited = new Set()
+    this._globWalk('', parts, results, visited)
     return results.sort()
   }
 
@@ -122,8 +129,9 @@ export class LocalFSProvider {
    * @param {string} currentRel - Current relative directory
    * @param {string[]} patternParts - Remaining pattern segments
    * @param {string[]} results - Accumulator
+   * @param {Set<string>} visited - Visited real paths for circular symlink protection
    */
-  _globWalk(currentRel, patternParts, results) {
+  _globWalk(currentRel, patternParts, results, visited) {
     if (patternParts.length === 0) return
 
     const currentAbs = join(this._root, currentRel)
@@ -133,7 +141,7 @@ export class LocalFSProvider {
     if (segment === '**') {
       // Match zero or more directories
       // Try matching remaining pattern at current level (zero dirs)
-      this._globWalk(currentRel, remaining, results)
+      this._globWalk(currentRel, remaining, results, visited)
 
       // Also recurse into all subdirectories with ** still active
       let entries
@@ -145,11 +153,19 @@ export class LocalFSProvider {
 
       for (const entry of entries) {
         if (this._shouldSkip(currentRel, entry.name)) continue
-        if (entry.isDirectory()) {
+        const isDir =
+          entry.isDirectory() ||
+          (entry.isSymbolicLink() &&
+            this._isDirectoryLink(currentRel, entry.name))
+        if (isDir) {
           const childRel = currentRel
             ? `${currentRel}/${entry.name}`
             : entry.name
-          this._globWalk(childRel, patternParts, results)
+          const childAbs = join(this._root, childRel)
+          const childReal = this._realPath(childAbs)
+          if (childReal && visited.has(childReal)) continue
+          if (childReal) visited.add(childReal)
+          this._globWalk(childRel, patternParts, results, visited)
         }
       }
     } else if (remaining.length === 0) {
@@ -179,15 +195,48 @@ export class LocalFSProvider {
       }
 
       for (const entry of entries) {
-        if (!entry.isDirectory()) continue
+        const isDir =
+          entry.isDirectory() ||
+          (entry.isSymbolicLink() &&
+            this._isDirectoryLink(currentRel, entry.name))
+        if (!isDir) continue
         if (this._shouldSkip(currentRel, entry.name)) continue
         if (this._matchSegment(entry.name, segment)) {
           const childRel = currentRel
             ? `${currentRel}/${entry.name}`
             : entry.name
-          this._globWalk(childRel, remaining, results)
+          this._globWalk(childRel, remaining, results, visited)
         }
       }
+    }
+  }
+
+  /**
+   * Check if a symbolic link points to a directory.
+   * @param {string} currentRel - Current relative directory
+   * @param {string} entryName - Entry name
+   * @returns {boolean}
+   */
+  _isDirectoryLink(currentRel, entryName) {
+    try {
+      const full = join(this._root, currentRel, entryName)
+      const stat = statSync(full)
+      return stat.isDirectory()
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Resolve the real path for circular symlink detection.
+   * @param {string} absPath
+   * @returns {string|null}
+   */
+  _realPath(absPath) {
+    try {
+      return realpathSync(absPath)
+    } catch {
+      return null
     }
   }
 
@@ -256,9 +305,12 @@ export class LocalFSProvider {
       })
       return { stdout: stdout || '', stderr: stderr || '', exitCode: 0 }
     } catch (err) {
+      const isTimeout = err.killed && err.signal === 'SIGTERM'
       return {
         stdout: err.stdout || '',
-        stderr: err.stderr || '',
+        stderr: isTimeout
+          ? `Command timed out after ${EXEC_TIMEOUT_MS}ms: ${command}`
+          : err.stderr || '',
         exitCode: err.code || 1,
       }
     }

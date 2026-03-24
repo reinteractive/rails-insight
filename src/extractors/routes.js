@@ -18,6 +18,7 @@ export function extractRoutes(provider) {
     mounted_engines: [],
     concerns: [],
     drawn_files: [],
+    nested_relationships: [],
   }
 
   const content = provider.readFile('config/routes.rb')
@@ -36,7 +37,7 @@ export function extractRoutes(provider) {
 function parseRouteContent(content, result, provider, namespaceStack) {
   const lines = content.split('\n')
   const blockStack = [] // tracks do..end nesting for resources/member/collection
-  let currentResource = null
+  const resourceStack = []
   let inMember = false
   let inCollection = false
 
@@ -124,7 +125,7 @@ function parseRouteContent(content, result, provider, namespaceStack) {
 
       if (trimmed.includes('do')) {
         blockStack.push('resource')
-        currentResource = entry
+        resourceStack.push(entry)
       }
 
       result.resources.push(entry)
@@ -169,9 +170,24 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         nested: [],
       }
 
+      // Track nesting relationship
+      const parentResource = resourceStack[resourceStack.length - 1] || null
+      if (parentResource) {
+        result.nested_relationships.push({
+          parent: parentResource.name,
+          child: name,
+          parent_controller: parentResource.controller,
+          child_controller: ns ? `${ns}/${name}` : name,
+        })
+        entry.parent_resource = parentResource.name
+        if (parentResource.nested) {
+          parentResource.nested.push(name)
+        }
+      }
+
       if (trimmed.includes('do')) {
         blockStack.push('resources')
-        currentResource = entry
+        resourceStack.push(entry)
       }
 
       result.resources.push(entry)
@@ -203,11 +219,13 @@ function parseRouteContent(content, result, provider, namespaceStack) {
           .match(/^\s*(get|post|put|patch|delete)\s/)?.[1]
           ?.toUpperCase() || 'GET'
 
-      if (inMember && currentResource) {
+      if (inMember && resourceStack.length > 0) {
         // Extract action name from path
+        const currentResource = resourceStack[resourceStack.length - 1]
         const memberAction = path.replace(/^\//, '').split('/')[0]
         currentResource.member_routes.push(memberAction)
-      } else if (inCollection && currentResource) {
+      } else if (inCollection && resourceStack.length > 0) {
+        const currentResource = resourceStack[resourceStack.length - 1]
         const collAction = path.replace(/^\//, '').split('/')[0]
         currentResource.collection_routes.push(collAction)
       } else {
@@ -226,7 +244,7 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       } else if (popped === 'collection') {
         inCollection = false
       } else if (popped === 'resources' || popped === 'resource') {
-        currentResource = null
+        resourceStack.pop()
       }
     }
   }

@@ -82,12 +82,30 @@ export function extractSchema(provider) {
 
       const commentMatch = options.match(SCHEMA_PATTERNS.comment)
 
-      currentTable = {
-        name: tableMatch[1],
-        primary_key: pkType ? { type: pkType, auto: pkAuto } : null,
-        columns: [],
-        indexes: [],
-        comment: commentMatch ? commentMatch[1] : null,
+      // Composite primary key detection
+      const compositePkMatch = options.match(
+        SCHEMA_PATTERNS.compositePrimaryKey,
+      )
+      if (compositePkMatch) {
+        const columns =
+          compositePkMatch[1]
+            .match(/['":]\w+/g)
+            ?.map((c) => c.replace(/['":]/, '')) || []
+        currentTable = {
+          name: tableMatch[1],
+          primary_key: { type: 'composite', columns },
+          columns: [],
+          indexes: [],
+          comment: commentMatch ? commentMatch[1] : null,
+        }
+      } else {
+        currentTable = {
+          name: tableMatch[1],
+          primary_key: pkType ? { type: pkType, auto: pkAuto } : null,
+          columns: [],
+          indexes: [],
+          comment: commentMatch ? commentMatch[1] : null,
+        }
       }
       result.tables.push(currentTable)
       continue

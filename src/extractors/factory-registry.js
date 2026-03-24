@@ -6,6 +6,7 @@
  */
 
 import { FACTORY_PATTERNS } from '../core/patterns.js'
+import { classify as inflectorClassify } from '../utils/inflector.js'
 
 /**
  * Extract factory definitions from factory files.
@@ -68,6 +69,9 @@ function parseFactoryFile(content, filePath) {
 
     // Skip comments and blanks
     if (!trimmed || trimmed.startsWith('#')) continue
+
+    // Skip FactoryBot.define wrapper — don't track its depth
+    if (/FactoryBot\.define\s+do/.test(trimmed)) continue
 
     // Factory definition
     const factoryMatch = trimmed.match(FACTORY_PATTERNS.factoryDef)
@@ -217,8 +221,5 @@ function parseFactoryFile(content, filePath) {
  * @returns {string}
  */
 function classify(str) {
-  return str
-    .split(/[_\s]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join('')
+  return inflectorClassify(str)
 }

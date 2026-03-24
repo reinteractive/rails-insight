@@ -89,6 +89,13 @@ export const MODEL_PATTERNS = {
   broadcastsTo: /^\s*broadcasts_to\s+(.+)/m,
   broadcasts: /^\s*broadcasts\b/m,
 
+  // === STRICT LOADING ===
+  strictLoading: /^\s*self\.strict_loading_by_default\s*=\s*true/m,
+  strictLoadingAssoc: /strict_loading:\s*true/,
+
+  // === TURBO 8 MORPHING ===
+  turboRefreshes: /^\s*turbo_refreshes_with\s+:(\w+)/m,
+
   // === SOFT DELETE ===
   discardModel: /include\s+Discard::Model/,
   paranoid: /acts_as_paranoid/,

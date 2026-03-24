@@ -6,6 +6,8 @@
  * @module test-conventions
  */
 
+import { detectSpecStyle } from '../utils/spec-style-detector.js'
+
 /**
  * Extract test conventions from existing spec files.
  * @param {import('../providers/interface.js').FileProvider} provider
@@ -168,27 +170,6 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
   result.pattern_reference_files = findPatternReferences(provider, specEntries)
 
   return result
-}
-
-/**
- * Detect spec style (request vs controller specs).
- * @param {Array<{path: string}>} entries
- * @returns {{primary: string, request_count: number, controller_count: number, has_mixed: boolean}}
- */
-function detectSpecStyle(entries) {
-  const requestCount = entries.filter((e) =>
-    e.path.startsWith('spec/requests/'),
-  ).length
-  const controllerCount = entries.filter((e) =>
-    e.path.startsWith('spec/controllers/'),
-  ).length
-
-  return {
-    primary: requestCount >= controllerCount ? 'request' : 'controller',
-    request_count: requestCount,
-    controller_count: controllerCount,
-    has_mixed: requestCount > 0 && controllerCount > 0,
-  }
 }
 
 /**

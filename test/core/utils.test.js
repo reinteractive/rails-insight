@@ -223,7 +223,8 @@ describe('token-counter', () => {
     it('estimates tokens for an object', () => {
       const obj = { name: 'User', count: 5 }
       const json = JSON.stringify(obj)
-      expect(estimateTokensForObject(obj)).toBe(Math.ceil(json.length / 4))
+      // JSON content uses 3.0 chars-per-token ratio
+      expect(estimateTokensForObject(obj)).toBe(Math.ceil(json.length / 3))
     })
 
     it('returns 0 for null', () => {

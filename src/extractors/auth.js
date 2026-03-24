@@ -552,6 +552,17 @@ export function extractAuth(
       }
       native.models['User'] = userInfo
       native.related_files.push('app/models/user.rb')
+
+      // Token generators (generates_token_for)
+      const tokenGenerators = []
+      const tokenGenRe = /generates_token_for\s+:(\w+)/g
+      let tm
+      while ((tm = tokenGenRe.exec(userContent))) {
+        tokenGenerators.push(tm[1])
+      }
+      if (tokenGenerators.length > 0) {
+        userInfo.auth_features.token_generators = tokenGenerators
+      }
     }
 
     // 4. Auth concern (ApplicationController includes Authentication)
@@ -761,6 +772,13 @@ export function extractAuth(
     if (sessionContent) {
       native.security_features.session_tracking =
         'IP address and user agent stored per session'
+    }
+
+    // Cross-reference token generators with security features
+    const userTokenGens = native.models['User']?.auth_features?.token_generators
+    if (userTokenGens?.includes('password_reset')) {
+      native.security_features.password_reset_tokens =
+        'generates_token_for :password_reset'
     }
 
     // Remove duplicates from related_files

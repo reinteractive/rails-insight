@@ -72,10 +72,13 @@ export function computeBlastRadius(index, changedFiles, options = {}) {
     }
   }
 
-  const graph = rebuildGraph(index)
+  const graph = index.graph
+  if (!graph) {
+    return emptyResult('No graph available — re-index required')
+  }
   const seedIds = extractSeedIds(seeds, index)
   const bfsResults = graph.bfsFromSeeds(seedIds, maxDepth, {
-    excludeEdgeTypes: new Set(['contains']),
+    excludeEdgeTypes: new Set(['contains', 'tests']),
   })
 
   const impacted = buildImpactedEntities(bfsResults, seeds, index)
@@ -252,36 +255,6 @@ function addRouteSeeds(ids, index) {
   for (const name of Object.keys(controllers)) {
     ids.push(name)
   }
-}
-
-function rebuildGraph(index) {
-  const { buildGraph } = requireBuildGraph()
-  const { graph } = buildGraph(index.extractions, index.manifest)
-  return graph
-}
-
-function requireBuildGraph() {
-  // Lazy import to avoid circular dependency at module level
-  return { buildGraph: rebuildGraphFromImport }
-}
-
-let _buildGraphFn = null
-async function _loadBuildGraph() {
-  const mod = await import('./graph.js')
-  return mod.buildGraph
-}
-
-function rebuildGraphFromImport(extractions, manifest) {
-  // Sync re-implementation leveraging the same graph building logic.
-  // We import buildGraph at the top of the file through a direct import.
-  return _syncBuildGraph(extractions, manifest)
-}
-
-// Direct graph rebuild without async import
-import { buildGraph as _buildGraphDirect } from './graph.js'
-
-function _syncBuildGraph(extractions, manifest) {
-  return _buildGraphDirect(extractions, manifest)
 }
 
 function buildImpactedEntities(bfsResults, seeds, index) {

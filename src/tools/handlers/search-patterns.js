@@ -48,7 +48,7 @@ export function register(server, state) {
           for (const cb of model.callbacks) {
             if (
               cb.type?.toLowerCase().includes(lowerPattern) ||
-              cb.name?.toLowerCase().includes(lowerPattern)
+              cb.method?.toLowerCase().includes(lowerPattern)
             ) {
               matches.push({ type: 'callback', detail: cb })
             }
@@ -84,7 +84,7 @@ export function register(server, state) {
         extractions.controllers || {},
       )) {
         const matches = []
-        const filters = ctrl.before_actions || ctrl.filters || []
+        const filters = ctrl.filters || []
         for (const f of filters) {
           const filterStr = typeof f === 'string' ? f : f.name || f.method || ''
           if (filterStr.toLowerCase().includes(lowerPattern))
