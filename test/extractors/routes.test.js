@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { extractRoutes } from '../../src/extractors/routes.js'
 
 function mockProvider(files) {
@@ -201,6 +201,97 @@ end`
       )
       const settings = result.resources.find((r) => r.name === 'settings')
       expect(settings.namespace).toBe('api/v1/admin')
+    })
+  })
+
+  // === BUG REGRESSION TESTS ===
+
+  describe('Bug 1 — member and collection blocks are parsed', () => {
+    let result
+    beforeAll(() => {
+      const fixture = `
+Rails.application.routes.draw do
+  resources :asset_reviews do
+    collection do
+      get :add_row
+      post :submit
+    end
+    member do
+      get :edit_row
+      put :approve
+      put :reject
+    end
+  end
+end`
+      result = extractRoutes(mockProvider({ 'config/routes.rb': fixture }))
+    })
+
+    it('captures collection routes from collection do block', () => {
+      const r = result.resources.find((r) => r.name === 'asset_reviews')
+      expect(r.collection_routes).toContain('add_row')
+      expect(r.collection_routes).toContain('submit')
+    })
+
+    it('captures member routes from member do block', () => {
+      const r = result.resources.find((r) => r.name === 'asset_reviews')
+      expect(r.member_routes).toContain('edit_row')
+      expect(r.member_routes).toContain('approve')
+      expect(r.member_routes).toContain('reject')
+    })
+
+    it('does not bleed member/collection routes into child resources', () => {
+      const fixture = `
+Rails.application.routes.draw do
+  resources :orders do
+    member do
+      put :cancel
+    end
+    resources :line_items
+  end
+end`
+      const r2 = extractRoutes(mockProvider({ 'config/routes.rb': fixture }))
+      const orders = r2.resources.find((r) => r.name === 'orders')
+      const lineItems = r2.resources.find((r) => r.name === 'line_items')
+      expect(orders.member_routes).toContain('cancel')
+      expect(lineItems.member_routes).toHaveLength(0)
+    })
+  })
+
+  describe('Bug 2 — only: with single symbol (non-array) form', () => {
+    it('restricts actions when only: :symbol is used', () => {
+      const fixture = `
+Rails.application.routes.draw do
+  resources :styleguides, only: :index
+end`
+      const result = extractRoutes(
+        mockProvider({ 'config/routes.rb': fixture }),
+      )
+      const r = result.resources.find((r) => r.name === 'styleguides')
+      expect(r.actions).toEqual(['index'])
+    })
+
+    it('still works with only: [:array] form', () => {
+      const fixture = `
+Rails.application.routes.draw do
+  resources :approvals, only: [:index, :create]
+end`
+      const result = extractRoutes(
+        mockProvider({ 'config/routes.rb': fixture }),
+      )
+      const r = result.resources.find((r) => r.name === 'approvals')
+      expect(r.actions).toEqual(['index', 'create'])
+    })
+
+    it('handles singular resource with only: :symbol', () => {
+      const fixture = `
+Rails.application.routes.draw do
+  resource :profile, only: :show
+end`
+      const result = extractRoutes(
+        mockProvider({ 'config/routes.rb': fixture }),
+      )
+      const r = result.resources.find((r) => r.name === 'profile')
+      expect(r.actions).toEqual(['show'])
     })
   })
 })

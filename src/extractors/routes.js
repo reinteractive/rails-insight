@@ -112,7 +112,8 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       let actions = ['show', 'new', 'create', 'edit', 'update', 'destroy']
       const onlyMatch = options.match(ROUTE_PATTERNS.only)
       if (onlyMatch) {
-        actions = onlyMatch[1].match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
+        const raw = onlyMatch[1] ?? `:${onlyMatch[2]}`
+        actions = raw.match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
       }
 
       const entry = {
@@ -151,12 +152,13 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       ]
       const onlyMatch = options.match(ROUTE_PATTERNS.only)
       if (onlyMatch) {
-        actions = onlyMatch[1].match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
+        const raw = onlyMatch[1] ?? `:${onlyMatch[2]}`
+        actions = raw.match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
       }
       const exceptMatch = options.match(ROUTE_PATTERNS.except)
       if (exceptMatch) {
-        const except =
-          exceptMatch[1].match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
+        const raw = exceptMatch[1] ?? `:${exceptMatch[2]}`
+        const except = raw.match(/:(\w+)/g)?.map((a) => a.slice(1)) || []
         actions = actions.filter((a) => !except.includes(a))
       }
 
@@ -206,6 +208,20 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       inCollection = true
       blockStack.push('collection')
       continue
+    }
+
+    // Symbol-form verb routes inside member/collection blocks: `get :action_name`
+    if (inMember || inCollection) {
+      const symbolVerbMatch = trimmed.match(ROUTE_PATTERNS.httpVerbSymbol)
+      if (symbolVerbMatch) {
+        const action = symbolVerbMatch[1]
+        const currentResource = resourceStack[resourceStack.length - 1]
+        if (currentResource) {
+          if (inMember) currentResource.member_routes.push(action)
+          else currentResource.collection_routes.push(action)
+        }
+        continue
+      }
     }
 
     // HTTP verb routes
