@@ -341,4 +341,101 @@ end`,
       expect(result.foreign_keys).toEqual([])
     })
   })
+
+  // === BUG REGRESSION TESTS ===
+
+  describe('Bug 1 — functional/expression index not treated as phantom column', () => {
+    let result
+    beforeAll(() => {
+      const provider = mockProvider({
+        'db/schema.rb': `
+ActiveRecord::Schema[7.1].define(version: 2024_01_01_000000) do
+  create_table "metric_categories", force: :cascade do |t|
+    t.string "title"
+    t.datetime "discarded_at"
+    t.index "lower((title)::text)", name: "index_metric_categories_on_active_lower_title_unique", unique: true, where: "(discarded_at IS NULL)"
+  end
+end`,
+      })
+      result = extractSchema(provider)
+    })
+
+    it('does not add a phantom "lower" column', () => {
+      const table = result.tables.find((t) => t.name === 'metric_categories')
+      const lowerCol = table.columns.find((c) => c.name === 'lower')
+      expect(lowerCol).toBeUndefined()
+    })
+
+    it('records the expression index in the indexes array', () => {
+      const table = result.tables.find((t) => t.name === 'metric_categories')
+      expect(table.indexes).toHaveLength(1)
+      const idx = table.indexes[0]
+      expect(idx.name).toBe('index_metric_categories_on_active_lower_title_unique')
+      expect(idx.expression).toBe('lower((title)::text)')
+    })
+  })
+
+  describe('Bug 2 — partial index WHERE clause is captured', () => {
+    let result
+    beforeAll(() => {
+      const provider = mockProvider({
+        'db/schema.rb': `
+ActiveRecord::Schema[7.1].define(version: 2024_01_01_000000) do
+  create_table "metrics", force: :cascade do |t|
+    t.bigint "metric_sub_section_id"
+    t.bigint "metric_category_id"
+    t.index ["metric_sub_section_id", "metric_category_id"], name: "index_metrics_on_sub_section_and_category_unique", unique: true, where: "((metric_sub_section_id IS NOT NULL) AND (metric_category_id IS NOT NULL))"
+  end
+end`,
+      })
+      result = extractSchema(provider)
+    })
+
+    it('captures the where clause on a composite partial index', () => {
+      const table = result.tables.find((t) => t.name === 'metrics')
+      const idx = table.indexes.find(
+        (i) => i.name === 'index_metrics_on_sub_section_and_category_unique',
+      )
+      expect(idx).toBeDefined()
+      expect(idx.where).toContain('metric_sub_section_id IS NOT NULL')
+    })
+  })
+
+  describe('Bug 3 — GIN index using clause is captured', () => {
+    let result
+    beforeAll(() => {
+      const provider = mockProvider({
+        'db/schema.rb': `
+ActiveRecord::Schema[7.1].define(version: 2024_01_01_000000) do
+  create_table "comments", force: :cascade do |t|
+    t.string "tags", array: true
+    t.index ["tags"], name: "index_comments_on_tags", using: :gin
+  end
+end`,
+      })
+      result = extractSchema(provider)
+    })
+
+    it('captures using: :gin on the index', () => {
+      const table = result.tables.find((t) => t.name === 'comments')
+      const idx = table.indexes.find((i) => i.name === 'index_comments_on_tags')
+      expect(idx).toBeDefined()
+      expect(idx.using).toBe('gin')
+    })
+
+    it('does not set using when not present', () => {
+      const provider = mockProvider({
+        'db/schema.rb': `
+ActiveRecord::Schema[7.1].define(version: 2024_01_01_000000) do
+  create_table "posts", force: :cascade do |t|
+    t.string "title"
+    t.index ["title"], name: "index_posts_on_title"
+  end
+end`,
+      })
+      const r = extractSchema(provider)
+      const idx = r.tables[0].indexes[0]
+      expect(idx.using).toBeNull()
+    })
+  })
 })

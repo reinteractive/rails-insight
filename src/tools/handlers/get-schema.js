@@ -15,9 +15,10 @@ export function register(server, state) {
       const schema = state.index.extractions?.schema || {}
       const models = state.index.extractions?.models || {}
 
-      // Add model ↔ table mapping
+      // Add model ↔ table mapping (concrete AR models only, not concerns/modules)
       const modelTableMap = {}
       for (const [modelName, modelData] of Object.entries(models)) {
+        if (modelData.type === 'concern') continue
         const tableName = modelData.table_name || toTableName(modelName)
         modelTableMap[modelName] = tableName
       }
