@@ -10,7 +10,7 @@ export const SCHEMA_PATTERNS = {
     /^\s*t\.(?:references|belongs_to)\s+['"]?:?(\w+)['"]?(?:,\s*(.+))?/m,
   timestamps: /^\s*t\.timestamps/m,
   index:
-    /^\s*(?:t\.index|add_index)\s+(?:\[([^\]]+)\]|['"](\w+)['"]),?\s*(.+)?/m,
+    /^\s*(?:t\.index|add_index)\s+(?:\[([^\]]+)\]|['"]([^'"]+)['"]),?\s*(.+)?/m,
   foreignKey:
     /^\s*add_foreign_key\s+['"](\w+)['"],\s*['"](\w+)['"](?:,\s*(.+))?/m,
   checkConstraint:

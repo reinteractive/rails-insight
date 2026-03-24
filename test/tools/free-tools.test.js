@@ -541,6 +541,24 @@ describe('Free Tools — MCP Handlers', () => {
       expect(data.model_table_map).toBeDefined()
       expect(data.fk_arrows).toBeDefined()
     })
+
+    it('Bug 4 — excludes concerns from model_table_map', async () => {
+      const customIndex = {
+        ...builtIndex,
+        extractions: {
+          ...builtIndex.extractions,
+          models: {
+            ...builtIndex.extractions.models,
+            Searchable: { type: 'concern' },
+          },
+        },
+      }
+      const freshMock = createFreshMock(customIndex)
+      const result = await freshMock.callTool('get_schema', {})
+      const data = parseResponse(result)
+      expect(data.model_table_map['Searchable']).toBeUndefined()
+      expect(data.model_table_map['User']).toBeDefined()
+    })
   })
 
   describe('get_subgraph', () => {

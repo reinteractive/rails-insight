@@ -149,16 +149,22 @@ export function extractSchema(provider) {
     // Index
     const indexMatch = trimmed.match(SCHEMA_PATTERNS.index)
     if (indexMatch) {
+      const isExpression = indexMatch[1] === undefined && indexMatch[2] !== undefined && /[^a-zA-Z0-9_]/.test(indexMatch[2])
       const columns = indexMatch[1]
         ? indexMatch[1]
             .match(/['"](\w+)['"]/g)
             ?.map((c) => c.replace(/['"]/g, '')) || []
-        : [indexMatch[2]]
+        : isExpression
+          ? []
+          : [indexMatch[2]]
       const opts = indexMatch[3] || ''
       currentTable.indexes.push({
         columns,
+        ...(isExpression ? { expression: indexMatch[2] } : {}),
         unique: /unique:\s*true/.test(opts),
         name: opts.match(/name:\s*['"]([^'"]+)['"]/)?.[1] || null,
+        where: opts.match(/where:\s*['"]([^'"]+)['"]/)?.[1] || null,
+        using: opts.match(/using:\s*:(\w+)/)?.[1] || null,
       })
       continue
     }
