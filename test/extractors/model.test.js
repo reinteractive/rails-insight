@@ -633,4 +633,247 @@ end`
       expect(result.method_line_ranges).toEqual({})
     })
   })
+
+  // === REGRESSION TESTS FOR 5 BUGS ===
+
+  describe('Bug 1: multi-line association options', () => {
+    const fixture = `
+class Review < ApplicationRecord
+  belongs_to :resubmit_asker, class_name: 'User', foreign_key: 'resubmit_ask_by_id',
+                              inverse_of: :resubmit_asked_reviews, optional: true
+  belongs_to :resubmit_assigned_to,
+             class_name: 'User',
+             inverse_of: :resubmit_assigned_reviews,
+             optional: true
+end`
+
+    it('captures options from the same line as the association', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/review.rb': fixture }),
+        'app/models/review.rb',
+        'Review',
+      )
+      const asker = result.associations.find((a) => a.name === 'resubmit_asker')
+      expect(asker).toBeDefined()
+      expect(asker.options).toContain('optional: true')
+    })
+
+    it('captures options from continuation lines', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/review.rb': fixture }),
+        'app/models/review.rb',
+        'Review',
+      )
+      const assigned = result.associations.find(
+        (a) => a.name === 'resubmit_assigned_to',
+      )
+      expect(assigned).toBeDefined()
+      expect(assigned.options).toContain('optional: true')
+    })
+
+    it('does not collapse two separate associations', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/review.rb': fixture }),
+        'app/models/review.rb',
+        'Review',
+      )
+      expect(result.associations).toHaveLength(2)
+    })
+  })
+
+  describe('Bug 2: def self.method_name captured correctly', () => {
+    const fixture = `
+class MetricSection < ApplicationRecord
+  def self.sort_by_metric_section(sections)
+    sections.sort_by { |s| s.title }
+  end
+
+  def self.active_sections
+    where(active: true)
+  end
+
+  def instance_method
+    true
+  end
+end`
+
+    it('captures self.method_name as the full method name', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/metric_section.rb': fixture }),
+        'app/models/metric_section.rb',
+        'MetricSection',
+      )
+      expect(result.public_methods).toContain('self.sort_by_metric_section')
+      expect(result.public_methods).toContain('self.active_sections')
+    })
+
+    it('does not emit bare "self" as a method name', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/metric_section.rb': fixture }),
+        'app/models/metric_section.rb',
+        'MetricSection',
+      )
+      expect(result.public_methods).not.toContain('self')
+    })
+
+    it('still captures regular instance methods', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/metric_section.rb': fixture }),
+        'app/models/metric_section.rb',
+        'MetricSection',
+      )
+      expect(result.public_methods).toContain('instance_method')
+    })
+  })
+
+  describe('Bug 3: multi-line and lambda scope bodies', () => {
+    const fixture = `
+class Asset < ApplicationRecord
+  scope :argos_push_eligible, lambda {
+    where(status: 'approved', argos_synced_at: nil)
+      .joins(:curtailment_code)
+      .where(metric_sections: { title: ['Condition', 'Supplier Type'] })
+  }
+
+  scope :active, -> { where(deactivated_at: nil) }
+
+  scope :with_data, -> {
+    includes(:metrics)
+      .where.not(data: nil)
+  }
+end`
+
+    it('extracts multi-line lambda { } scope body', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/asset.rb': fixture }),
+        'app/models/asset.rb',
+        'Asset',
+      )
+      expect(result.scopes).toContain('argos_push_eligible')
+      expect(result.scope_queries.argos_push_eligible).toBeDefined()
+      expect(result.scope_queries.argos_push_eligible).toContain('where')
+    })
+
+    it('extracts multi-line -> { } scope body', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/asset.rb': fixture }),
+        'app/models/asset.rb',
+        'Asset',
+      )
+      expect(result.scopes).toContain('with_data')
+      expect(result.scope_queries.with_data).toBeDefined()
+      expect(result.scope_queries.with_data).toContain('includes')
+    })
+
+    it('still extracts single-line scope bodies', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/asset.rb': fixture }),
+        'app/models/asset.rb',
+        'Asset',
+      )
+      expect(result.scopes).toContain('active')
+      expect(result.scope_queries.active).toBeDefined()
+      expect(result.scope_queries.active).toContain('deactivated_at')
+    })
+
+    it('handles nested braces in scope body without truncating', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/asset.rb': fixture }),
+        'app/models/asset.rb',
+        'Asset',
+      )
+      // Body should contain the nested hash with inner braces intact
+      expect(result.scope_queries.argos_push_eligible).toContain(
+        'metric_sections',
+      )
+    })
+  })
+
+  describe('Bug 4: accepts_nested_attributes_for', () => {
+    const fixture = `
+class Invoice < ApplicationRecord
+  has_many :line_items
+  accepts_nested_attributes_for :line_items, allow_destroy: true
+  accepts_nested_attributes_for :address
+end`
+
+    it('extracts nested_attributes array', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/invoice.rb': fixture }),
+        'app/models/invoice.rb',
+        'Invoice',
+      )
+      expect(result.nested_attributes).toBeDefined()
+      expect(result.nested_attributes.map((a) => a.name)).toContain(
+        'line_items',
+      )
+      expect(result.nested_attributes.map((a) => a.name)).toContain('address')
+    })
+
+    it('captures options for nested_attributes entry', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/invoice.rb': fixture }),
+        'app/models/invoice.rb',
+        'Invoice',
+      )
+      const li = result.nested_attributes.find((a) => a.name === 'line_items')
+      expect(li.options).toContain('allow_destroy: true')
+    })
+
+    it('sets options to null when no options given', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/invoice.rb': fixture }),
+        'app/models/invoice.rb',
+        'Invoice',
+      )
+      const addr = result.nested_attributes.find((a) => a.name === 'address')
+      expect(addr.options).toBeNull()
+    })
+
+    it('returns empty nested_attributes when none present', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/invoice.rb': `class Order < ApplicationRecord\nend` }),
+        'app/models/invoice.rb',
+        'Order',
+      )
+      expect(result.nested_attributes).toEqual([])
+    })
+  })
+
+  describe('Bug 5: has_associated_audits detection', () => {
+    const fixture = `
+class Company < ApplicationRecord
+  audited
+  has_associated_audits
+end`
+
+    it('detects has_associated_audits as true', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/company.rb': fixture }),
+        'app/models/company.rb',
+        'Company',
+      )
+      expect(result.has_associated_audits).toBe(true)
+    })
+
+    it('audited remains true when has_associated_audits is also present', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/company.rb': fixture }),
+        'app/models/company.rb',
+        'Company',
+      )
+      expect(result.audited).toBe(true)
+    })
+
+    it('has_associated_audits is false when not present', () => {
+      const result = extractModel(
+        mockProvider({
+          'app/models/post.rb': `class Post < ApplicationRecord\n  audited\nend`,
+        }),
+        'app/models/post.rb',
+        'Post',
+      )
+      expect(result.has_associated_audits).toBe(false)
+    })
+  })
 })
