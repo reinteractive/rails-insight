@@ -23,6 +23,7 @@ export function register(server, state) {
       const controllers = index.extractions?.controllers || {}
       const tier2 = index.extractions?.tier2 || {}
       const tier3 = index.extractions?.tier3 || {}
+      const jobs = index.extractions?.jobs || {}
 
       // Auth summary
       const authSummary = {
@@ -114,7 +115,7 @@ export function register(server, state) {
         frontend_stack: v.frontend || [],
         authentication: authSummary,
         authorization: authzSummary,
-        job_adapter: config.queue_adapter || 'unknown',
+        job_adapter: config.queue_adapter || jobs.adapter || 'unknown',
         cache_store: caching.store || 'unknown',
         test_framework: v.test_framework || 'unknown',
         key_models: keyModels,
@@ -124,12 +125,14 @@ export function register(server, state) {
         workers: {
           sidekiq_native_count: Object.keys(index.extractions?.workers || {})
             .length,
+          active_job_count: (jobs.jobs || []).length,
           queues: [
-            ...new Set(
-              Object.values(index.extractions?.workers || {}).map(
+            ...new Set([
+              ...Object.values(index.extractions?.workers || {}).map(
                 (w) => w.queue,
               ),
-            ),
+              ...(jobs.jobs || []).map((j) => j.queue),
+            ]),
           ],
         },
         helpers: {
