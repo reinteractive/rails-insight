@@ -146,6 +146,22 @@ RSpec.describe 'Posts', type: :request do
     end
   end
 end`,
+    'app/jobs/export_reports_job.rb': `
+class ExportReportsJob < ApplicationJob
+  queue_as :default
+
+  def perform(user_id)
+    # export
+  end
+end`,
+    'app/jobs/send_notifications_job.rb': `
+class SendNotificationsJob < ApplicationJob
+  queue_as :mailers
+
+  def perform(notification_id)
+    # notify
+  end
+end`,
   }
 
   return {
@@ -433,6 +449,21 @@ describe('Free Tools — MCP Handlers', () => {
       expect(data.key_models).toBeDefined()
       expect(data.key_controllers).toBeDefined()
       expect(data.file_counts).toBeDefined()
+    })
+
+    it('detects sidekiq adapter from gemfile when queue_adapter is set', async () => {
+      const result = await mock.callTool('get_overview', {})
+      const data = parseResponse(result)
+      expect(data.job_adapter).toBe('sidekiq')
+    })
+
+    it('reports active_job_count and queues from Active Jobs', async () => {
+      const result = await mock.callTool('get_overview', {})
+      const data = parseResponse(result)
+      expect(data.workers).toBeDefined()
+      expect(data.workers.active_job_count).toBe(2)
+      expect(data.workers.queues).toContain('default')
+      expect(data.workers.queues).toContain('mailers')
     })
   })
 
