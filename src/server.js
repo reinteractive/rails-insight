@@ -57,6 +57,17 @@ export async function startLocal(projectRoot, options = {}) {
   const transport = new StdioServerTransport()
   await server.connect(transport)
 
+  // Keep the event loop alive so Node.js doesn't exit when startLocal returns.
+  // StdioServerTransport adds a 'data' listener to stdin but does not call
+  // resume(), so without this the process exits immediately on idle stdin.
+  process.stdin.resume()
+
+  // Yield to the event loop before running the synchronous buildIndex pipeline.
+  // This lets the MCP SDK process the VS Code initialize handshake that arrived
+  // on stdin while we were awaiting connect(), preventing a timeout on the
+  // client side before any tools have been registered.
+  await new Promise((resolve) => setImmediate(resolve))
+
   if (verbose) {
     process.stderr.write(`[railsinsight] Indexing ${projectRoot}...\n`)
   }

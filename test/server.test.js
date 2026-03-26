@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
   const stderrWriteMock = vi.fn(() => true)
   const consoleErrorMock = vi.fn()
   const processExitMock = vi.fn()
+  const stdinResumeMock = vi.fn()
   const McpServerMock = vi.fn().mockImplementation(() => ({
     connect: connectMock,
   }))
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => {
     stderrWriteMock,
     consoleErrorMock,
     processExitMock,
+    stdinResumeMock,
     McpServerMock,
     StdioServerTransportMock,
   }
@@ -61,6 +63,7 @@ describe('server bootstrap', () => {
     vi.spyOn(process.stderr, 'write').mockImplementation(mocks.stderrWriteMock)
     vi.spyOn(console, 'error').mockImplementation(mocks.consoleErrorMock)
     vi.spyOn(process, 'exit').mockImplementation(mocks.processExitMock)
+    vi.spyOn(process.stdin, 'resume').mockImplementation(mocks.stdinResumeMock)
   })
 
   it('creates an MCP server and registers tools', () => {
@@ -104,6 +107,7 @@ describe('server bootstrap', () => {
     )
     expect(mocks.StdioServerTransportMock).toHaveBeenCalledTimes(1)
     expect(mocks.connectMock).toHaveBeenCalledWith({ kind: 'stdio' })
+    expect(mocks.stdinResumeMock).toHaveBeenCalledTimes(1)
     expect(mocks.stderrWriteMock).toHaveBeenCalledWith(
       '[railsinsight] Indexing /tmp/rails-app...\n',
     )
