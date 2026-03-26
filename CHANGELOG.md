@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-03-26
+
+### Fixed
+
+- Connect MCP stdio transport before building the index so VS Code's initialization handshake completes immediately instead of timing out
+- Correct package name in VS Code `mcp.json` documentation (`@reinteractive/rails-insight`, not `railsinsight`)
+- Add required `"type": "stdio"` field to VS Code MCP config example
+- Add `-y` flag to all `npx` invocations to skip interactive install prompts
+
 ## [0.3.0] - 2026-03-20
 
 ### Added
