@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   const connectMock = vi.fn()
-  const registerToolsMock = vi.fn()
+  const registerToolsMock = vi.fn().mockReturnValue({ index: null })
   const buildIndexMock = vi.fn()
   const providerCtorMock = vi.fn()
   const stderrWriteMock = vi.fn(() => true)
@@ -92,10 +92,11 @@ describe('server bootstrap', () => {
         verbose: true,
       },
     )
+    // Transport connects before index is built (so VS Code handshake completes immediately)
     expect(mocks.registerToolsMock).toHaveBeenCalledWith(
       expect.objectContaining({ connect: mocks.connectMock }),
       {
-        index: { statistics: { total_files: 12 } },
+        index: null,
         provider: { projectRoot: '/tmp/rails-app', type: 'provider' },
         tier: 'team',
         verbose: true,
@@ -107,7 +108,7 @@ describe('server bootstrap', () => {
       '[railsinsight] Indexing /tmp/rails-app...\n',
     )
     expect(mocks.stderrWriteMock).toHaveBeenCalledWith(
-      '[railsinsight] Index built. Starting MCP server...\n',
+      '[railsinsight] Index built.\n',
     )
   })
 

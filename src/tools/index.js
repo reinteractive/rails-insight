@@ -31,4 +31,6 @@ export function registerTools(server, options) {
   if (tier === 'pro' || tier === 'team') {
     registerProTools(server, state)
   }
+
+  return state
 }
