@@ -38,6 +38,25 @@ export async function startLocal(projectRoot, options = {}) {
   const provider = new LocalFSProvider(projectRoot)
   const verbose = options.verbose || false
 
+  // Connect the transport immediately so VS Code's MCP handshake completes
+  // without waiting for the index to be built. Tools return a "not ready"
+  // response until state.index is populated below.
+  const server = new McpServer({
+    name: 'railsinsight',
+    version: PKG_VERSION,
+    capabilities: { tools: {} },
+  })
+
+  const state = registerTools(server, {
+    index: null,
+    provider,
+    tier: options.tier || 'pro',
+    verbose,
+  })
+
+  const transport = new StdioServerTransport()
+  await server.connect(transport)
+
   if (verbose) {
     process.stderr.write(`[railsinsight] Indexing ${projectRoot}...\n`)
   }
@@ -47,19 +66,11 @@ export async function startLocal(projectRoot, options = {}) {
     verbose,
   })
 
+  state.index = index
+
   if (verbose) {
-    process.stderr.write(`[railsinsight] Index built. Starting MCP server...\n`)
+    process.stderr.write(`[railsinsight] Index built.\n`)
   }
-
-  const server = createServer({
-    index,
-    provider,
-    tier: options.tier || 'pro',
-    verbose,
-  })
-
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
 }
 
 /**
