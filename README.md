@@ -1,6 +1,6 @@
 # RailsInsight
 
-[![npm version](https://img.shields.io/npm/v/@reinteractive/railsinsight.svg)](https://www.npmjs.com/package/@reinteractive/railsinsight)
+[![npm version](https://img.shields.io/npm/v/@reinteractive/rails-insight.svg)](https://www.npmjs.com/package/@reinteractive/rails-insight)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
 A Rails-aware codebase indexer that runs as an MCP (Model Context Protocol) server, giving AI coding agents deep structural understanding of your Rails application — models, associations, routes, schema, authentication, jobs, components, and 56 total file categories — without reading every file.
@@ -57,7 +57,7 @@ Add to your Claude Code MCP configuration:
   "mcpServers": {
     "railsinsight": {
       "command": "npx",
-      "args": ["@reinteractive/rails-insight"]
+      "args": ["-y", "@reinteractive/rails-insight"]
     }
   }
 }
@@ -72,7 +72,7 @@ In your `.cursor/mcp.json`:
   "mcpServers": {
     "railsinsight": {
       "command": "npx",
-      "args": ["@reinteractive/rails-insight"]
+      "args": ["-y", "@reinteractive/rails-insight"]
     }
   }
 }
@@ -88,14 +88,15 @@ In your VS Code `.mcp.json` file:
 {
   "servers": {
     "railsinsight": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["@reinteractive/railsinsight"]
+      "args": ["-y", "@reinteractive/rails-insight"]
     }
   }
 }
 ```
 
-This configuration is required for the VS Code MCP extension, which expects the `servers` block and the package name to be `@reinteractive/railsinsight` (no hyphen).
+Note: VS Code MCP configuration uses the `servers` block (not `mcpServers` as used by Claude Desktop/Cursor). The `"type": "stdio"` field is required.
 
 ## Available Tools
 
