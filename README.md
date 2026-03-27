@@ -50,14 +50,14 @@ npx @reinteractive/rails-insight --project-root /path/to/your/rails/app
 
 ## Claude Code Integration
 
-Add to your Claude Code MCP configuration:
+Add to your Claude Code MCP configuration (`~/.claude/claude_desktop_config.json` or via `claude mcp add`):
 
 ```json
 {
   "mcpServers": {
     "railsinsight": {
-      "command": "npx",
-      "args": ["-y", "@reinteractive/rails-insight"]
+      "command": "node",
+      "args": ["/opt/homebrew/lib/node_modules/@reinteractive/rails-insight/bin/railsinsight.js", "-p", "."]
     }
   }
 }
@@ -71,14 +71,22 @@ In your `.cursor/mcp.json`:
 {
   "mcpServers": {
     "railsinsight": {
-      "command": "npx",
-      "args": ["-y", "@reinteractive/rails-insight"]
+      "command": "node",
+      "args": ["/opt/homebrew/lib/node_modules/@reinteractive/rails-insight/bin/railsinsight.js", "-p", "."]
     }
   }
 }
 ```
 
-The server uses the workspace directory as the project root automatically, so no path argument is needed for normal project-local use.
+First install globally, then confirm the path:
+
+```bash
+npm install -g @reinteractive/rails-insight
+npm root -g
+# e.g. /opt/homebrew/lib/node_modules — update args above to match
+```
+
+The `-p .` flag sets the project root to your current workspace directory.
 
 ## VS Code Integration
 
