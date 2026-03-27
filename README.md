@@ -1,4 +1,4 @@
-# RailsInsight
+# RailsInsight [Experimental Beta version]
 
 [![npm version](https://img.shields.io/npm/v/@reinteractive/rails-insight.svg)](https://www.npmjs.com/package/@reinteractive/rails-insight)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
@@ -11,46 +11,15 @@ Generic code-analysis tools treat Ruby files as plain text. RailsInsight underst
 
 ## Installation
 
-```bash
-npx @reinteractive/rails-insight
-```
-
-Or install globally:
+First insall the package globally, which will install the MCP server locally, allowing your AI agents to run the indexing tooling.
 
 ```bash
 npm install -g @reinteractive/rails-insight
 ```
 
-## Quick Start
-
-Run from your Rails project root:
-
-```bash
-npx @reinteractive/rails-insight
-```
-
-This starts a local MCP server over stdio. The indexer scans your project structure, extracts Rails conventions, builds a relationship graph, and exposes everything through MCP tools.
-
-To point at a different Rails app:
-
-```bash
-npx @reinteractive/rails-insight --project-root /path/to/your/rails/app
-```
-
-### CLI Options
-
-| Flag                    | Description                                      |
-| ----------------------- | ------------------------------------------------ |
-| `--project-root <path>` | Path to the Rails project (defaults to cwd)      |
-| `--claude-md <path>`    | Path to a `claude.md` / `CLAUDE.md` context file |
-| `--mode local\|remote`  | Transport mode (default: `local`)                |
-| `--port <number>`       | Port for remote mode (default: `3000`)           |
-| `--verbose`             | Enable verbose logging to stderr                 |
-| `--help`                | Show help                                        |
-
 ## Claude Code Integration
 
-Add to your Claude Code MCP configuration (`~/.claude/claude_desktop_config.json` or via `claude mcp add`):
+Add to your Claude Code MCP configuration:
 
 ```json
 {
@@ -78,16 +47,6 @@ In your `.cursor/mcp.json`:
 }
 ```
 
-First install globally, then confirm the path:
-
-```bash
-npm install -g @reinteractive/rails-insight
-npm root -g
-# e.g. /opt/homebrew/lib/node_modules — update args above to match
-```
-
-The `-p .` flag sets the project root to your current workspace directory.
-
 ## VS Code Integration
 
 In your VS Code `.mcp.json` file (or `.vscode/mcp.json`):
@@ -103,23 +62,6 @@ In your VS Code `.mcp.json` file (or `.vscode/mcp.json`):
   }
 }
 ```
-
-First install globally:
-
-```bash
-npm install -g @reinteractive/rails-insight
-```
-
-Then update the path in `args` to match the output of:
-
-```bash
-npm root -g
-# e.g. /opt/homebrew/lib/node_modules
-```
-
-> **Why not `npx`?** On macOS with Homebrew, VS Code may resolve `npx` to a different Node.js installation than your terminal (e.g. `/usr/local/bin/npx` vs `/opt/homebrew/bin/npx`). Using `node` with an explicit path to the globally installed script avoids this ambiguity.
-
-Note: VS Code MCP configuration uses the `servers` block (not `mcpServers` as used by Claude Desktop/Cursor). The `"type": "stdio"` field is required.
 
 ## Available Tools
 
