@@ -5,6 +5,7 @@
 
 import { CONFIG_PATTERNS } from '../core/patterns.js'
 import { parseYaml } from '../utils/yaml-parser.js'
+import { stripRubyComments } from '../utils/ruby-parser.js'
 
 /**
  * Extract config information.
@@ -66,11 +67,12 @@ export function extractConfig(provider) {
     const content = provider.readFile(`config/environments/${env}.rb`)
     if (!content) continue
 
+    const activeContent = stripRubyComments(content)
     const envConfig = {}
-    const csMatch = content.match(CONFIG_PATTERNS.cacheStore)
+    const csMatch = activeContent.match(CONFIG_PATTERNS.cacheStore)
     if (csMatch) envConfig.cache_store = csMatch[1]
 
-    if (CONFIG_PATTERNS.forceSSL.test(content)) envConfig.force_ssl = true
+    if (CONFIG_PATTERNS.forceSSL.test(activeContent)) envConfig.force_ssl = true
 
     if (Object.keys(envConfig).length > 0) {
       result.environments[env] = envConfig

@@ -876,4 +876,47 @@ end`
       expect(result.has_associated_audits).toBe(false)
     })
   })
+
+  describe('ISSUE-02: Devise module extraction', () => {
+    it('extracts only devise modules, not subsequent model attributes', () => {
+      const content = `class User < ApplicationRecord
+  devise :database_authenticatable, :recoverable,
+         :rememberable, :validatable
+
+  enum role: { user: 0, admin: 1 }
+  before_save :set_display_name
+
+  has_many :reviews
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+        'User',
+      )
+      expect(result.devise_modules).toContain('database_authenticatable')
+      expect(result.devise_modules).toContain('recoverable')
+      expect(result.devise_modules).toContain('rememberable')
+      expect(result.devise_modules).toContain('validatable')
+      expect(result.devise_modules).not.toContain('role')
+      expect(result.devise_modules).not.toContain('set_display_name')
+      expect(result.devise_modules).not.toContain('reviews')
+    })
+
+    it('captures devise modules from multiple devise calls', () => {
+      const content = `class User < ApplicationRecord
+  devise :two_factor_authenticatable, :two_factor_backupable
+  devise :recoverable, :rememberable, :trackable, :validatable
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+        'User',
+      )
+      expect(result.devise_modules).toContain('two_factor_authenticatable')
+      expect(result.devise_modules).toContain('two_factor_backupable')
+      expect(result.devise_modules).toContain('recoverable')
+      expect(result.devise_modules).toContain('validatable')
+      expect(result.devise_modules.length).toBeGreaterThanOrEqual(4)
+    })
+  })
 })

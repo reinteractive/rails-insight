@@ -232,7 +232,8 @@ export async function buildIndex(provider, options = {}) {
         extractionErrors,
       )
       if (ctrl) {
-        const name = pathToClassName(entry.path)
+        // Use the controller's own fully-qualified class name to avoid namespace collisions
+        const name = ctrl.class || pathToClassName(entry.path)
         extractions.controllers[name] = ctrl
       }
     } else if (entry.categoryName === 'components') {
@@ -581,7 +582,9 @@ function computeStatistics(manifest, extractions, relationships) {
   const entries = manifest.entries || []
   return {
     total_files: entries.length,
-    models: Object.keys(extractions.models || {}).length,
+    models: Object.values(extractions.models || {}).filter(
+      (m) => m.type !== 'concern' && !m.abstract,
+    ).length,
     controllers: Object.keys(extractions.controllers || {}).length,
     components: Object.keys(extractions.components || {}).length,
     relationships: relationships.length,

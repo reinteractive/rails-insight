@@ -19,6 +19,7 @@ export function extractRoutes(provider) {
     concerns: [],
     drawn_files: [],
     nested_relationships: [],
+    devise_routes: [],
   }
 
   const content = provider.readFile('config/routes.rb')
@@ -55,15 +56,32 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       continue
     }
 
-    // Draw (route splitting)
-    const drawMatch = trimmed.match(ROUTE_PATTERNS.draw)
-    if (drawMatch) {
-      const drawFile = drawMatch[1]
+    // Draw (route splitting) — handles both `draw :name` and `draw_routes :name`
+    const drawRawMatch = trimmed.match(
+      /^\s*(?:draw_routes|draw)\s*\(?:?(\w+)\)?/,
+    )
+    if (drawRawMatch) {
+      const drawFile = drawRawMatch[1]
       result.drawn_files.push(drawFile)
-      const drawContent = provider.readFile('config/routes/' + drawFile + '.rb')
+      // Try config/routes/<name>.rb and config/routes/<name>_routes.rb
+      const drawContent =
+        provider.readFile(`config/routes/${drawFile}.rb`) ||
+        provider.readFile(`config/routes/${drawFile}_routes.rb`)
       if (drawContent) {
         parseRouteContent(drawContent, result, provider, [...namespaceStack])
       }
+      continue
+    }
+
+    // devise_for
+    const deviseForMatch = trimmed.match(
+      /^\s*devise_for\s+:(\w+)(?:,\s*(.+))?/,
+    )
+    if (deviseForMatch) {
+      result.devise_routes.push({
+        model: deviseForMatch[1],
+        options: deviseForMatch[2] || null,
+      })
       continue
     }
 

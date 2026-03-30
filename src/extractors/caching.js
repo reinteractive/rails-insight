@@ -4,6 +4,7 @@
  */
 
 import { CACHING_PATTERNS } from '../core/patterns.js'
+import { stripRubyComments } from '../utils/ruby-parser.js'
 
 /**
  * Extract caching information.
@@ -23,7 +24,8 @@ export function extractCaching(provider, entries) {
   for (const env of ['production', 'development', 'test']) {
     const content = provider.readFile(`config/environments/${env}.rb`)
     if (content) {
-      const storeMatch = content.match(CACHING_PATTERNS.cacheStore)
+      const activeContent = stripRubyComments(content)
+      const storeMatch = activeContent.match(CACHING_PATTERNS.cacheStore)
       if (storeMatch) {
         result.store[env] = storeMatch[1]
       }

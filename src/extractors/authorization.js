@@ -575,7 +575,26 @@ export function extractAuthorization(
   // CanCanCan
   if (hasCanCan) {
     if (!result.strategy) result.strategy = 'cancancan'
-    const abilityContent = provider.readFile('app/models/ability.rb')
+    let abilityContent = provider.readFile('app/models/ability.rb')
+    // Fallback: scan model files for CanCan::Ability
+    if (!abilityContent || !AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent)) {
+      const modelEntries = entries.filter(
+        (e) =>
+          (e.category === 'model' || e.categoryName === 'models') &&
+          e.path.endsWith('.rb'),
+      )
+      for (const entry of modelEntries) {
+        const c = provider.readFile(entry.path)
+        if (
+          c &&
+          AUTHORIZATION_PATTERNS.abilityClass.test(c) &&
+          AUTHORIZATION_PATTERNS.includeCanCan.test(c)
+        ) {
+          abilityContent = c
+          break
+        }
+      }
+    }
     if (
       abilityContent &&
       AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent)

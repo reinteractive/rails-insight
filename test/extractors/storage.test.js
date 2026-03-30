@@ -106,4 +106,42 @@ end`,
       expect(result.image_processing).toBeNull()
     })
   })
+
+  describe('ISSUE-08: commented-out storage configuration', () => {
+    it('ignores commented-out services in storage.yml', () => {
+      const provider = mockProvider({
+        'config/storage.yml': `
+# amazon:
+#   service: S3
+#   bucket: myapp-production
+local:
+  service: Disk
+  root: storage`,
+      })
+      const result = extractStorage(provider, [], {})
+      expect(result.services.amazon).toBeUndefined()
+      expect(result.services.local).toBeDefined()
+      expect(result.services.local.service).toBe('Disk')
+    })
+  })
+
+  describe('ISSUE-15: numeric category for model entries', () => {
+    it('detects has_one_attached in models with numeric category', () => {
+      const provider = mockProvider({
+        'app/models/user.rb': `
+class User < ApplicationRecord
+  has_one_attached :avatar
+  has_many_attached :documents
+end`,
+      })
+      const entries = [
+        { path: 'app/models/user.rb', category: 1 },
+      ]
+      const result = extractStorage(provider, entries, {})
+      expect(result.attachments.find((a) => a.name === 'avatar')).toBeDefined()
+      expect(
+        result.attachments.find((a) => a.name === 'documents'),
+      ).toBeDefined()
+    })
+  })
 })

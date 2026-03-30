@@ -628,4 +628,37 @@ end`,
       expect(result.omniauth.providers).toContain('facebook')
     })
   })
+
+  describe('ISSUE-04: Devise secret redaction', () => {
+    it('redacts secret_key and pepper from Devise config output', () => {
+      const provider = mockProvider({
+        'config/initializers/devise.rb': `
+Devise.setup do |config|
+  config.secret_key = '0d9ad821776c991b1c5468abcdef1234567890'
+  config.pepper = 'super_secret_pepper_value'
+  config.mailer_sender = 'noreply@example.com'
+  config.timeout_in = 30.minutes
+end`,
+      })
+      const result = extractAuth(provider, [], { gems: { devise: {} } })
+      expect(result.devise.config.secret_key).toBe('[REDACTED]')
+      expect(result.devise.config.pepper).toBe('[REDACTED]')
+      expect(result.devise.config.mailer_sender).toBeDefined()
+      expect(result.devise.config.mailer_sender).not.toBe('[REDACTED]')
+      expect(result.devise.config.timeout_in).toBeDefined()
+    })
+
+    it('ignores commented-out Devise config lines', () => {
+      const provider = mockProvider({
+        'config/initializers/devise.rb': `
+Devise.setup do |config|
+  # config.secret_key = 'should_not_be_captured'
+  config.mailer_sender = 'noreply@example.com'
+end`,
+      })
+      const result = extractAuth(provider, [], { gems: { devise: {} } })
+      expect(result.devise.config.secret_key).toBeUndefined()
+      expect(result.devise.config.mailer_sender).toBeDefined()
+    })
+  })
 })

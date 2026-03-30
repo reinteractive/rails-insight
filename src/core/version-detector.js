@@ -110,7 +110,8 @@ function extractRubyVersion(gemfile, gemfileLock, provider) {
   // .ruby-version file
   const rubyVersion = provider.readFile('.ruby-version')
   if (rubyVersion) {
-    const ver = rubyVersion.trim().match(/^(\d+\.\d+\.\d+)/)
+    const cleaned = rubyVersion.trim().replace(/^ruby-/, '')
+    const ver = cleaned.match(/^(\d+\.\d+\.\d+)/)
     if (ver) return ver[1]
   }
 
@@ -196,7 +197,8 @@ function detectFramework(gemfile, gems, appConfig, provider) {
 
   // JS bundling
   let jsBundling = null
-  if (hasGem('webpacker')) jsBundling = 'webpacker'
+  if (hasGem('vite_rails') || hasGem('vite_ruby')) jsBundling = 'vite'
+  else if (hasGem('webpacker')) jsBundling = 'webpacker'
   else if (hasGem('importmap-rails')) jsBundling = 'importmap'
   else if (hasGem('jsbundling-rails')) {
     // Check package.json for specific bundler

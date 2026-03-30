@@ -25,25 +25,31 @@ export function extractStorage(provider, entries, gemInfo = {}) {
   // Storage services from config/storage.yml
   const storageYml = provider.readFile('config/storage.yml')
   if (storageYml) {
+    const activeYml = storageYml
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('#'))
+      .join('\n')
     const serviceRe = new RegExp(STORAGE_PATTERNS.storageService.source, 'g')
     let m
-    while ((m = serviceRe.exec(storageYml))) {
+    while ((m = serviceRe.exec(activeYml))) {
       result.services[m[1]] = { service: m[2] }
     }
 
     // Mirror service
-    if (STORAGE_PATTERNS.mirrorService.test(storageYml)) {
+    if (STORAGE_PATTERNS.mirrorService.test(activeYml)) {
       result.services.mirror = { service: 'Mirror' }
     }
 
     // Direct uploads
-    if (STORAGE_PATTERNS.directUpload.test(storageYml)) {
+    if (STORAGE_PATTERNS.directUpload.test(activeYml)) {
       result.direct_uploads = true
     }
   }
 
   // Attachments from model files
-  const modelEntries = entries.filter((e) => e.category === 'model')
+  const modelEntries = entries.filter(
+    (e) => e.category === 'model' || e.category === 1 || e.categoryName === 'models',
+  )
   for (const entry of modelEntries) {
     const content = provider.readFile(entry.path)
     if (!content) continue
@@ -79,6 +85,30 @@ export function extractStorage(provider, entries, gemInfo = {}) {
     const varRe = new RegExp(STORAGE_PATTERNS.variant.source, 'g')
     while (varRe.exec(content)) {
       result.variants_detected++
+    }
+  }
+
+  // Paperclip attachments
+  if (gems.paperclip) {
+    for (const entry of modelEntries) {
+      const content = provider.readFile(entry.path)
+      if (!content) continue
+      const className = entry.path
+        .split('/')
+        .pop()
+        .replace('.rb', '')
+        .split('_')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('')
+      const pcRe = /^\s*has_attached_file\s+:(\w+)/gm
+      let m
+      while ((m = pcRe.exec(content))) {
+        result.attachments.push({
+          model: className,
+          name: m[1],
+          type: 'has_attached_file',
+        })
+      }
     }
   }
 

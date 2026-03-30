@@ -89,6 +89,19 @@ export function extractIncludesExtends(content) {
 }
 
 /**
+ * Strip Ruby single-line comments from source content.
+ * Preserves string literals containing # characters.
+ * @param {string} content - Ruby file content
+ * @returns {string} Content with comment lines removed
+ */
+export function stripRubyComments(content) {
+  return content
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n')
+}
+
+/**
  * Extract the visibility sections (public/private/protected) from Ruby source.
  * Returns methods grouped by visibility.
  * @param {string} content

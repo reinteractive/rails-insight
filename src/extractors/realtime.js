@@ -4,6 +4,7 @@
  */
 
 import { REALTIME_PATTERNS } from '../core/patterns.js'
+import { parseYaml } from '../utils/yaml-parser.js'
 
 /**
  * Extract realtime information.
@@ -25,15 +26,9 @@ export function extractRealtime(provider, entries, gemInfo = {}) {
   // Cable config
   const cableYml = provider.readFile('config/cable.yml')
   if (cableYml) {
-    const sections = cableYml.split(/\n(?=\w)/)
-    for (const section of sections) {
-      const envMatch = section.match(/^(\w+):/)
-      if (envMatch) {
-        const adapterMatch = section.match(REALTIME_PATTERNS.cableAdapter)
-        if (adapterMatch) {
-          result.adapter[envMatch[1]] = adapterMatch[1]
-        }
-      }
+    const parsed = parseYaml(cableYml)
+    for (const [env, cfg] of Object.entries(parsed || {})) {
+      if (cfg && cfg.adapter) result.adapter[env] = cfg.adapter
     }
   }
 
@@ -71,7 +66,7 @@ export function extractRealtime(provider, entries, gemInfo = {}) {
     const fromRe = new RegExp(REALTIME_PATTERNS.streamFrom.source, 'g')
     let m
     while ((m = fromRe.exec(content))) {
-      channel.streams_from.push(m[1])
+      channel.streams_from.push(m[1] || m[2])
     }
 
     const forRe = new RegExp(REALTIME_PATTERNS.streamFor.source, 'g')

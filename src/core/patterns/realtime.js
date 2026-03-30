@@ -4,7 +4,7 @@
 export const REALTIME_PATTERNS = {
   channelClass: /class\s+(\w+Channel)\s*<\s*(\w+)/,
   subscribed: /def\s+subscribed/,
-  streamFrom: /stream_from\s+['"]?([^'"]+)['"]?/g,
+  streamFrom: /stream_from\s+(?:['"]([^'"]+)['"]|(\w+(?:\.\w+)*))/g,
   streamFor: /stream_for\s+(.+)/g,
   turboStreamFrom: /turbo_stream_from\s+(.+)/g,
   connectionConnect: /def\s+connect/,
