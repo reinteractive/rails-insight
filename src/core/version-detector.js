@@ -242,9 +242,13 @@ function detectFramework(gemfile, gems, appConfig, provider) {
   let cacheStore = null
   if (hasGem('solid_cache')) cacheStore = 'solid_cache'
   else if (hasGem('redis')) cacheStore = 'redis'
-  // Also check config
-  const prodConfig =
+  // Also check config — strip comment lines first to avoid false positives
+  const prodConfigRaw =
     provider.readFile('config/environments/production.rb') || ''
+  const prodConfig = prodConfigRaw
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('#'))
+    .join('\n')
   const cacheStoreMatch = prodConfig.match(/config\.cache_store\s*=\s*:(\w+)/)
   if (cacheStoreMatch) cacheStore = cacheStoreMatch[1]
 

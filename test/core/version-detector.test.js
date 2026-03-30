@@ -267,5 +267,36 @@ describe('Version Detector', () => {
       const result = detectVersions(provider)
       expect(result.framework.jsBundling).toBe('vite')
     })
+
+    it('ISSUE-A: ignores commented-out cache_store when detecting framework', () => {
+      const provider = createMockProvider({
+        Gemfile: "gem 'rails'",
+        'Gemfile.lock': '  specs:\n    rails (7.1.0)',
+        'config/application.rb': '',
+        'config/environments/production.rb': [
+          'Rails.application.configure do',
+          '  # config.cache_store = :mem_cache_store',
+          '  config.force_ssl = true',
+          'end',
+        ].join('\n'),
+      })
+      const result = detectVersions(provider)
+      expect(result.framework.cacheStore).not.toBe('mem_cache_store')
+    })
+
+    it('ISSUE-A: detects non-commented cache_store correctly', () => {
+      const provider = createMockProvider({
+        Gemfile: "gem 'rails'",
+        'Gemfile.lock': '  specs:\n    rails (7.1.0)',
+        'config/application.rb': '',
+        'config/environments/production.rb': [
+          'Rails.application.configure do',
+          '  config.cache_store = :mem_cache_store',
+          'end',
+        ].join('\n'),
+      })
+      const result = detectVersions(provider)
+      expect(result.framework.cacheStore).toBe('mem_cache_store')
+    })
   })
 })

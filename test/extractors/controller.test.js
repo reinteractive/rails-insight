@@ -444,4 +444,38 @@ end`
       expect(Object.keys(result.action_line_ranges)).toEqual(['index', 'show'])
     })
   })
+
+  describe('ISSUE-I: multi-method before_action expansion', () => {
+    it('expands before_action with multiple method symbols into separate filters', () => {
+      const content = `class ApplicationController < ActionController::Base
+  before_action :set_locale, :set_current_user, :track_visit
+  before_action :authenticate!, only: [:create, :update]
+end`
+      const result = extractController(
+        mockProvider({ 'app/controllers/application_controller.rb': content }),
+        'app/controllers/application_controller.rb',
+      )
+      const baFilters = result.filters.filter((f) => f.type === 'before_action')
+      expect(baFilters.length).toBe(4)
+      expect(baFilters.map((f) => f.method)).toContain('set_locale')
+      expect(baFilters.map((f) => f.method)).toContain('set_current_user')
+      expect(baFilters.map((f) => f.method)).toContain('track_visit')
+      expect(baFilters.map((f) => f.method)).toContain('authenticate!')
+      const authFilter = baFilters.find((f) => f.method === 'authenticate!')
+      expect(authFilter.options).toContain('only')
+    })
+
+    it('does not expand filters with keyword-only options', () => {
+      const content = `class ApplicationController < ActionController::Base
+  before_action :authenticate!, only: [:show, :edit]
+end`
+      const result = extractController(
+        mockProvider({ 'app/controllers/application_controller.rb': content }),
+        'app/controllers/application_controller.rb',
+      )
+      expect(result.filters).toHaveLength(1)
+      expect(result.filters[0].method).toBe('authenticate!')
+      expect(result.filters[0].options).toContain('only')
+    })
+  })
 })

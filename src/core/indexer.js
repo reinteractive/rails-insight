@@ -223,7 +223,11 @@ export async function buildIndex(provider, options = {}) {
         extractionErrors,
       )
       if (model) extractions.models[className] = model
-    } else if (entry.categoryName === 'controllers') {
+    } else if (
+      entry.categoryName === 'controllers' ||
+      (entry.categoryName === 'authentication' &&
+        entry.path.includes('_controller.rb'))
+    ) {
       const ctrl = safeExtract(
         `controller:${entry.path}`,
         () => extractController(provider, entry.path),
@@ -585,6 +589,7 @@ function computeStatistics(manifest, extractions, relationships) {
     models: Object.values(extractions.models || {}).filter(
       (m) => m.type !== 'concern' && !m.abstract,
     ).length,
+    models_in_manifest: (manifest.stats || {}).models || 0,
     controllers: Object.keys(extractions.controllers || {}).length,
     components: Object.keys(extractions.components || {}).length,
     relationships: relationships.length,

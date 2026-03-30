@@ -554,4 +554,66 @@ end`,
       expect(policy.permitted_actions).toContain('index')
     })
   })
+
+  describe('ISSUE-F: CanCan Ability in non-standard filename', () => {
+    it('finds CanCan Ability class in admin_ability.rb', () => {
+      const entries = [
+        {
+          path: 'app/models/admin_ability.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+      ]
+      const provider = mockProvider({
+        'app/models/ability.rb': null,
+        'app/models/admin_ability.rb': `class AdminAbility
+  include CanCan::Ability
+  def initialize(user)
+    if user.has_role?(:admin)
+      can :manage, :all
+    elsif user.has_role?(:editor)
+      can :read, Article
+    end
+  end
+end`,
+      })
+      const result = extractAuthorization(provider, entries, {
+        gems: { cancancan: {} },
+      })
+      expect(result.strategy).toBe('cancancan')
+      expect(result.abilities).not.toBeNull()
+      expect(result.abilities.length).toBeGreaterThan(0)
+    })
+
+    it('extracts roles from has_role? calls in ability class', () => {
+      const entries = [
+        {
+          path: 'app/models/admin_ability.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+      ]
+      const provider = mockProvider({
+        'app/models/ability.rb': null,
+        'app/models/admin_ability.rb': `class AdminAbility
+  include CanCan::Ability
+  def initialize(user)
+    if user.has_role?(:admin)
+      can :manage, :all
+    elsif user.has_role?(:editor)
+      can :read, Article
+    end
+  end
+end`,
+      })
+      const result = extractAuthorization(provider, entries, {
+        gems: { cancancan: {} },
+      })
+      expect(result.roles).toBeDefined()
+      expect(result.roles.roles).toContain('admin')
+      expect(result.roles.roles).toContain('editor')
+    })
+  })
 })

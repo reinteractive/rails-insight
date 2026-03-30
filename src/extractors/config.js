@@ -62,6 +62,31 @@ export function extractConfig(provider) {
     }
   }
 
+  // Fallback: try config/database.yml.example
+  if (!result.database.adapter) {
+    const dbExample = provider.readFile('config/database.yml.example')
+    if (dbExample) {
+      const parsed = parseYaml(dbExample)
+      const section =
+        parsed.production || parsed.development || parsed.default || {}
+      result.database.adapter = section.adapter || null
+      if (result.database.adapter) result.database.source = 'database.yml.example'
+    }
+  }
+
+  // Fallback: detect adapter from Gemfile when database.yml is absent
+  if (!result.database.adapter) {
+    const gemfile = provider.readFile('Gemfile') || ''
+    if (/gem\s+['"]mysql2['"]/.test(gemfile)) result.database.adapter = 'mysql2'
+    else if (/gem\s+['"]pg['"]/.test(gemfile))
+      result.database.adapter = 'postgresql'
+    else if (/gem\s+['"]sqlite3['"]/.test(gemfile))
+      result.database.adapter = 'sqlite3'
+    else if (/gem\s+['"]trilogy['"]/.test(gemfile))
+      result.database.adapter = 'trilogy'
+    if (result.database.adapter) result.database.source = 'gemfile'
+  }
+
   // config/environments/*.rb
   for (const env of ['production', 'development', 'test']) {
     const content = provider.readFile(`config/environments/${env}.rb`)

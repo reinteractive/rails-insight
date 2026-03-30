@@ -101,4 +101,43 @@ end`,
       expect(result.environments).toEqual({})
     })
   })
+
+  describe('ISSUE-E: database adapter fallback', () => {
+    it('detects mysql2 adapter from Gemfile when database.yml is absent', () => {
+      const provider = mockProvider({
+        Gemfile: "gem 'rails'\ngem 'mysql2', '~> 0.5'",
+      })
+      const result = extractConfig(provider)
+      expect(result.database.adapter).toBe('mysql2')
+      expect(result.database.source).toBe('gemfile')
+    })
+
+    it('detects pg adapter from Gemfile', () => {
+      const provider = mockProvider({
+        Gemfile: "gem 'rails'\ngem 'pg', '~> 1.5'",
+      })
+      const result = extractConfig(provider)
+      expect(result.database.adapter).toBe('postgresql')
+    })
+
+    it('detects adapter from database.yml.example when database.yml is absent', () => {
+      const provider = mockProvider({
+        'config/database.yml.example':
+          'development:\n  adapter: postgresql\n  database: myapp_dev',
+      })
+      const result = extractConfig(provider)
+      expect(result.database.adapter).toBe('postgresql')
+      expect(result.database.source).toBe('database.yml.example')
+    })
+
+    it('prefers database.yml over Gemfile', () => {
+      const provider = mockProvider({
+        'config/database.yml':
+          'production:\n  adapter: sqlite3\n  database: db/production.sqlite3',
+        Gemfile: "gem 'rails'\ngem 'mysql2'",
+      })
+      const result = extractConfig(provider)
+      expect(result.database.adapter).toBe('sqlite3')
+    })
+  })
 })
