@@ -11,17 +11,16 @@ import { VIEW_PATTERNS } from '../core/patterns.js'
  * @returns {string}
  */
 function detectEngine(entries) {
-  let erb = 0,
-    haml = 0,
-    slim = 0
+  const counts = { erb: 0, haml: 0, slim: 0 }
   for (const e of entries) {
-    if (e.path.endsWith('.erb')) erb++
-    else if (e.path.endsWith('.haml')) haml++
-    else if (e.path.endsWith('.slim')) slim++
+    if (e.path.endsWith('.erb')) counts.erb++
+    else if (e.path.endsWith('.haml')) counts.haml++
+    else if (e.path.endsWith('.slim')) counts.slim++
   }
-  if (haml > erb && haml > slim) return 'haml'
-  if (slim > erb && slim > haml) return 'slim'
-  return 'erb'
+  const found = Object.entries(counts).filter(([, c]) => c > 0)
+  if (found.length === 0) return 'erb'
+  if (found.length === 1) return found[0][0]
+  return found.map(([engine, count]) => `${engine}(${count})`).join(', ')
 }
 
 /**

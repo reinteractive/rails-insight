@@ -248,5 +248,24 @@ describe('Version Detector', () => {
       expect(result.ruby).toBeNull()
       expect(result.framework).toBeDefined()
     })
+
+    it('ISSUE-34: strips ruby- prefix from .ruby-version', () => {
+      const provider = createMockProvider({
+        Gemfile: "gem 'rails'",
+        '.ruby-version': 'ruby-3.2.2\n',
+        'config/application.rb': '',
+      })
+      const result = detectVersions(provider)
+      expect(result.ruby).toBe('3.2.2')
+    })
+
+    it('ISSUE-25: detects vite_rails as js bundling', () => {
+      const provider = createMockProvider({
+        Gemfile: "gem 'rails'\ngem 'vite_rails'",
+        'config/application.rb': '',
+      })
+      const result = detectVersions(provider)
+      expect(result.framework.jsBundling).toBe('vite')
+    })
   })
 })

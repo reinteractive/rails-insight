@@ -42,4 +42,15 @@ describe('detectSpecStyle', () => {
     expect(result.request_count).toBe(0)
     expect(result.controller_count).toBe(0)
   })
+
+  it('ISSUE-33: Minitest fallback when only test/ dir', () => {
+    const entries = [
+      { path: 'test/models/user_test.rb' },
+      { path: 'test/controllers/posts_controller_test.rb' },
+    ]
+    const result = detectSpecStyle(entries)
+    expect(result.primary).toBe('minitest')
+    expect(result.request_count).toBe(0)
+    expect(result.controller_count).toBe(0)
+  })
 })

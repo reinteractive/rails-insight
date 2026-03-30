@@ -24,6 +24,7 @@ export function register(server, state) {
         })
       }
       const start = Date.now()
+      state.index = null
       state.index = await buildIndex(state.provider, { verbose: state.verbose })
       const duration_ms = Date.now() - start
       return respond({

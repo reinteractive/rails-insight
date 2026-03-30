@@ -5,6 +5,15 @@
  */
 
 import { AUTH_PATTERNS } from '../core/patterns.js'
+import { stripRubyComments } from '../utils/ruby-parser.js'
+
+const REDACTED_DEVISE_KEYS = new Set([
+  'secret_key',
+  'pepper',
+  'secret_key_base',
+  'signing_salt',
+  'digest',
+])
 
 // -------------------------------------------------------
 // Helpers for reading native Rails 8 auth details
@@ -269,6 +278,22 @@ function scanForApiAuthPatterns(provider, entries) {
     const c = provider.readFile(entry.path)
     if (c) contents.push(c)
   }
+  // Also scan lib/ files for custom JWT implementations
+  const libEntries = entries.filter(
+    (e) => e.path.startsWith('lib/') && e.path.endsWith('.rb'),
+  )
+  for (const entry of libEntries) {
+    const c = provider.readFile(entry.path)
+    if (c) contents.push(c)
+  }
+  // If no lib entries in the index, try a glob
+  if (libEntries.length === 0) {
+    const libFiles = provider.glob?.('lib/**/*.rb') || []
+    for (const path of libFiles) {
+      const c = provider.readFile(path)
+      if (c) contents.push(c)
+    }
+  }
   const gemfileContent = provider.readFile('Gemfile') || ''
   const allContent = [...contents, gemfileContent].join('\n')
 
@@ -381,12 +406,19 @@ export function extractAuth(
     // Parse Devise initializer config
     const deviseConfig = provider.readFile('config/initializers/devise.rb')
     if (deviseConfig) {
+      const activeConfig = stripRubyComments(deviseConfig)
       const configRe = new RegExp(AUTH_PATTERNS.deviseConfig.source, 'g')
       let m
-      while ((m = configRe.exec(deviseConfig))) {
+      while ((m = configRe.exec(activeConfig))) {
         const key = m[1]
         const val = m[2].trim()
         result.devise.config[key] = val
+      }
+      // Redact sensitive keys
+      for (const key of Object.keys(result.devise.config)) {
+        if (REDACTED_DEVISE_KEYS.has(key)) {
+          result.devise.config[key] = '[REDACTED]'
+        }
       }
     }
 

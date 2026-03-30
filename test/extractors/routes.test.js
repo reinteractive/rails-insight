@@ -314,4 +314,44 @@ end`
       expect(r.actions).toEqual(['show'])
     })
   })
+
+  describe('ISSUE-13: devise_for and draw_routes', () => {
+    it('extracts devise_for declarations', () => {
+      const fixture = `
+Rails.application.routes.draw do
+  devise_for :users
+  devise_for :admins
+  resources :posts
+end`
+      const result = extractRoutes(mockProvider({ 'config/routes.rb': fixture }))
+      expect(result.devise_routes).toBeDefined()
+      expect(result.devise_routes.length).toBe(2)
+      expect(result.devise_routes[0].model).toBe('users')
+      expect(result.devise_routes[1].model).toBe('admins')
+    })
+
+    it('parses draw_routes helper files', () => {
+      const files = {
+        'config/routes.rb': `
+Rails.application.routes.draw do
+  draw_routes :admin
+end`,
+        'config/routes/admin_routes.rb': `resources :users`,
+      }
+      const result = extractRoutes(mockProvider(files))
+      expect(result.resources.some((r) => r.name === 'users')).toBe(true)
+    })
+
+    it('parses draw helper files', () => {
+      const files = {
+        'config/routes.rb': `
+Rails.application.routes.draw do
+  draw :api
+end`,
+        'config/routes/api.rb': `resources :products`,
+      }
+      const result = extractRoutes(mockProvider(files))
+      expect(result.resources.some((r) => r.name === 'products')).toBe(true)
+    })
+  })
 })

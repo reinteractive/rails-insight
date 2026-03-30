@@ -87,7 +87,11 @@ export function register(server, state) {
         const filters = ctrl.filters || []
         for (const f of filters) {
           const filterStr = typeof f === 'string' ? f : f.name || f.method || ''
-          if (filterStr.toLowerCase().includes(lowerPattern))
+          const filterType = typeof f === 'string' ? '' : f.type || ''
+          if (
+            filterStr.toLowerCase().includes(lowerPattern) ||
+            filterType.toLowerCase().includes(lowerPattern)
+          )
             matches.push({ type: 'filter', detail: f })
         }
         if (matches.length > 0)

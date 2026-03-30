@@ -345,5 +345,44 @@ describe('Gemfile Extractor', () => {
       const result = extractGemfile(provider)
       expect(result.gems[0].resolved).toBeNull()
     })
+
+    it('ISSUE-05: parses gem with inline comment and no version', () => {
+      const provider = {
+        readFile(path) {
+          if (path === 'Gemfile')
+            return `gem 'pundit' # For access control\n`
+          return null
+        },
+      }
+      const result = extractGemfile(provider)
+      expect(result.gems.some((g) => g.name === 'pundit')).toBe(true)
+    })
+
+    it('ISSUE-05: parses gem with version and inline comment', () => {
+      const provider = {
+        readFile(path) {
+          if (path === 'Gemfile')
+            return `gem 'rails', '~> 7.1' # Main framework\n`
+          return null
+        },
+      }
+      const result = extractGemfile(provider)
+      const rails = result.gems.find((g) => g.name === 'rails')
+      expect(rails).toBeDefined()
+      expect(rails.version).toBe('~> 7.1')
+    })
+
+    it('ISSUE-05: parses gem with options and inline comment', () => {
+      const provider = {
+        readFile(path) {
+          if (path === 'Gemfile')
+            return `gem 'devise', github: 'heartcombo/devise' # Auth gem\n`
+          return null
+        },
+      }
+      const result = extractGemfile(provider)
+      const devise = result.gems.find((g) => g.name === 'devise')
+      expect(devise).toBeDefined()
+    })
   })
 })

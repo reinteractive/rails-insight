@@ -49,8 +49,19 @@ export function register(server, state) {
         case 'email':
           return respond(extractions.email || {})
 
-        case 'storage':
-          return respond(extractions.storage || {})
+        case 'storage': {
+          const storage = extractions.storage || {}
+          const uploaders = extractions.uploaders || {}
+          return respond({
+            ...storage,
+            carrierwave_uploaders: uploaders.uploaders
+              ? Object.entries(uploaders.uploaders).map(([name, u]) => ({
+                  name,
+                  ...u,
+                }))
+              : [],
+          })
+        }
 
         case 'caching':
           return respond(extractions.caching || {})
