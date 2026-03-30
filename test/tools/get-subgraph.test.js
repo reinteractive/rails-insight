@@ -8,9 +8,20 @@ describe('ISSUE-I: Auth subgraph relevance filter', () => {
     const index = {
       extractions: {
         models: {
-          User: { devise_modules: ['database_authenticatable'], has_secure_password: false },
-          WpPost: { type: 'model', devise_modules: [], has_secure_password: false },
-          WpBase: { type: 'model', devise_modules: [], has_secure_password: false },
+          User: {
+            devise_modules: ['database_authenticatable'],
+            has_secure_password: false,
+          },
+          WpPost: {
+            type: 'model',
+            devise_modules: [],
+            has_secure_password: false,
+          },
+          WpBase: {
+            type: 'model',
+            devise_modules: [],
+            has_secure_password: false,
+          },
         },
         controllers: {
           SessionsController: {},

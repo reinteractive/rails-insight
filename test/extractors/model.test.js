@@ -832,7 +832,9 @@ end`
 
     it('returns empty nested_attributes when none present', () => {
       const result = extractModel(
-        mockProvider({ 'app/models/invoice.rb': `class Order < ApplicationRecord\nend` }),
+        mockProvider({
+          'app/models/invoice.rb': `class Order < ApplicationRecord\nend`,
+        }),
         'app/models/invoice.rb',
         'Order',
       )
@@ -934,7 +936,9 @@ end`
         'app/models/article.rb',
         'Article',
       )
-      expect(result.validations.some((v) => v.attributes.includes('title'))).toBe(true)
+      expect(
+        result.validations.some((v) => v.attributes.includes('title')),
+      ).toBe(true)
     })
 
     it('extracts validates_length_of', () => {
@@ -943,7 +947,9 @@ end`
         'app/models/article.rb',
         'Article',
       )
-      expect(result.validations.some((v) => v.attributes.includes('body'))).toBe(true)
+      expect(
+        result.validations.some((v) => v.attributes.includes('body')),
+      ).toBe(true)
     })
 
     it('extracts validates_uniqueness_of', () => {
@@ -952,7 +958,9 @@ end`
         'app/models/article.rb',
         'Article',
       )
-      expect(result.validations.some((v) => v.attributes.includes('slug'))).toBe(true)
+      expect(
+        result.validations.some((v) => v.attributes.includes('slug')),
+      ).toBe(true)
     })
 
     it('extracts all 4 validations including modern syntax', () => {

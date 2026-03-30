@@ -61,7 +61,10 @@ export function extractCaching(provider, entries) {
       result.fragment_caching.russian_doll_detected = true
     }
     // HAML Russian doll: - cache [parent, child] do
-    if (entry.path.endsWith('.haml') && /^\s*[-=]\s*cache\s+\[/m.test(content)) {
+    if (
+      entry.path.endsWith('.haml') &&
+      /^\s*[-=]\s*cache\s+\[/m.test(content)
+    ) {
       result.fragment_caching.russian_doll_detected = true
     }
   }

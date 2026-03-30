@@ -55,7 +55,9 @@ export function getSkillSeeds(skill, index) {
       break
     }
     case 'api': {
-      for (const [name, ctrl] of Object.entries(extractions.controllers || {})) {
+      for (const [name, ctrl] of Object.entries(
+        extractions.controllers || {},
+      )) {
         if (/api|v\d+|json/i.test(name) || ctrl.api_only) seeds.add(name)
       }
       break

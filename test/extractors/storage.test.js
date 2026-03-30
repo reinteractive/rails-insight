@@ -134,9 +134,7 @@ class User < ApplicationRecord
   has_many_attached :documents
 end`,
       })
-      const entries = [
-        { path: 'app/models/user.rb', category: 1 },
-      ]
+      const entries = [{ path: 'app/models/user.rb', category: 1 }]
       const result = extractStorage(provider, entries, {})
       expect(result.attachments.find((a) => a.name === 'avatar')).toBeDefined()
       expect(

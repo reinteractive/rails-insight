@@ -203,7 +203,9 @@ end`
       }
       const result = extractCaching(provider, entries)
       expect(result.low_level_caching.rails_cache_fetch_count).toBe(1)
-      expect(result.low_level_caching.rails_cache_ops_count).toBeGreaterThanOrEqual(3)
+      expect(
+        result.low_level_caching.rails_cache_ops_count,
+      ).toBeGreaterThanOrEqual(3)
     })
   })
 })

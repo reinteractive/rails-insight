@@ -44,9 +44,7 @@ function extractScopeBodies(content) {
   const result = {}
   const lines = content.split('\n')
   for (let i = 0; i < lines.length; i++) {
-    const declMatch = lines[i].match(
-      /^\s*scope\s+:(\w+),\s*(?:->|lambda|proc)/,
-    )
+    const declMatch = lines[i].match(/^\s*scope\s+:(\w+),\s*(?:->|lambda|proc)/)
     if (!declMatch) continue
     const name = declMatch[1]
     // Scan forward to find brace-balanced body
@@ -72,10 +70,7 @@ function extractScopeBodies(content) {
       if (started && depth > 0) bodyChars.push(' ')
     }
     if (bodyChars.length > 0) {
-      result[name] = bodyChars
-        .join('')
-        .replace(/\s+/g, ' ')
-        .trim()
+      result[name] = bodyChars.join('').replace(/\s+/g, ' ').trim()
     }
   }
   return result
@@ -489,7 +484,8 @@ export function extractModel(provider, filePath, className) {
 
   // accepts_nested_attributes_for
   const nested_attributes = []
-  const nestedAttrsRe = /^\s*accepts_nested_attributes_for\s+:(\w+)(?:,\s*(.+))?$/gm
+  const nestedAttrsRe =
+    /^\s*accepts_nested_attributes_for\s+:(\w+)(?:,\s*(.+))?$/gm
   while ((m = nestedAttrsRe.exec(content))) {
     nested_attributes.push({ name: m[1], options: m[2]?.trim() || null })
   }

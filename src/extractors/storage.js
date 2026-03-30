@@ -48,7 +48,8 @@ export function extractStorage(provider, entries, gemInfo = {}) {
 
   // Attachments from model files
   const modelEntries = entries.filter(
-    (e) => e.category === 'model' || e.category === 1 || e.categoryName === 'models',
+    (e) =>
+      e.category === 'model' || e.category === 1 || e.categoryName === 'models',
   )
   for (const entry of modelEntries) {
     const content = provider.readFile(entry.path)
