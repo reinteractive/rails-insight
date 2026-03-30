@@ -40,17 +40,71 @@ export function extractController(provider, filePath) {
   }
 
   // Filters — tag authorization guards
-  const filters = []
+  const rawFilters = []
   const filterRe = new RegExp(CONTROLLER_PATTERNS.filterType.source, 'gm')
   while ((m = filterRe.exec(content))) {
     const filterMethod = m[2]
     const isAuthzGuard = /^require_\w+!$/.test(filterMethod)
-    filters.push({
+    rawFilters.push({
       type: m[1],
       method: filterMethod,
       ...(isAuthzGuard ? { authorization_guard: true } : {}),
       options: m[3] || null,
     })
+  }
+
+  // Expand multi-method filters: `before_action :a, :b, :c` → separate entries
+  const filters = []
+  for (const filter of rawFilters) {
+    const opts = filter.options
+    if (!opts) {
+      filters.push(filter)
+      continue
+    }
+
+    // Top-level comma split (ignores commas inside brackets)
+    const parts = []
+    let depth = 0
+    let current = ''
+    for (const ch of opts) {
+      if (ch === '[' || ch === '(' || ch === '{') depth++
+      else if (ch === ']' || ch === ')' || ch === '}') depth--
+      if (ch === ',' && depth === 0) {
+        parts.push(current.trim())
+        current = ''
+      } else {
+        current += ch
+      }
+    }
+    if (current.trim()) parts.push(current.trim())
+
+    const additionalMethods = []
+    const realOptions = []
+
+    for (const part of parts) {
+      if (/^:(\w+!?)$/.test(part)) {
+        // Bare symbol — another method, not a keyword option
+        additionalMethods.push(part.replace(/^:/, ''))
+      } else {
+        // Keyword option like `only: [:show]`, `if: :condition`
+        realOptions.push(part)
+      }
+    }
+
+    filters.push({
+      ...filter,
+      options: realOptions.length > 0 ? realOptions.join(', ') : null,
+    })
+
+    for (const method of additionalMethods) {
+      const isAuthz = /^require_\w+!$/.test(method)
+      filters.push({
+        type: filter.type,
+        method,
+        ...(isAuthz ? { authorization_guard: true } : {}),
+        options: realOptions.length > 0 ? realOptions.join(', ') : null,
+      })
+    }
   }
 
   // Actions (public methods before private/protected) with line ranges

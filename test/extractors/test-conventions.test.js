@@ -335,4 +335,71 @@ end`,
       expect(result.described_class_usage).toBe(true)
     })
   })
+
+  describe('ISSUE-H: Minitest files in well-tested examples', () => {
+    it('finds well-tested examples from Minitest test files', () => {
+      const provider = {
+        readFile(path) {
+          if (path === 'test/models/user_test.rb')
+            return `class UserTest < ActiveSupport::TestCase
+  test "validates name presence" do
+    user = User.new(name: nil)
+    assert_not user.valid?
+  end
+
+  test "validates email format" do
+    user = User.new(email: "bad")
+    assert_not user.valid?
+  end
+
+  test "creates with valid attributes" do
+    user = User.new(name: "Test", email: "test@example.com")
+    assert user.valid?
+  end
+
+  test "has many posts" do
+    assert_respond_to User.new, :posts
+  end
+end`
+          return null
+        },
+      }
+      const entries = [
+        {
+          path: 'test/models/user_test.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_tests',
+        },
+      ]
+      const result = extractTestConventions(provider, entries)
+      expect(result.pattern_reference_files).not.toHaveLength(0)
+      expect(
+        result.pattern_reference_files.some((f) =>
+          f.path.includes('user_test.rb'),
+        ),
+      ).toBe(true)
+    })
+
+    it('includes _test.rb files in spec_counts', () => {
+      const provider = { readFile: () => null }
+      const entries = [
+        {
+          path: 'test/models/article_test.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_tests',
+        },
+        {
+          path: 'test/controllers/posts_controller_test.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'controller_tests',
+        },
+      ]
+      const result = extractTestConventions(provider, entries)
+      expect(result.spec_counts.model_tests).toBe(1)
+      expect(result.spec_counts.controller_tests).toBe(1)
+    })
+  })
 })

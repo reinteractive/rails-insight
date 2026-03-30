@@ -127,7 +127,7 @@ export function extractModel(provider, filePath, className) {
   }
   while ((m = extendRe.exec(content))) {
     const mod = m[1]
-    if (mod !== 'ActiveSupport::Concern' && mod !== 'FriendlyId') {
+    if (mod !== 'ActiveSupport::Concern') {
       extends_.push(mod)
     }
   }
@@ -178,6 +178,16 @@ export function extractModel(provider, filePath, className) {
   const vwRe = new RegExp(MODEL_PATTERNS.validatesWithValidator.source, 'gm')
   while ((m = vwRe.exec(content))) {
     custom_validators.push(`validates_with:${m[1]}`)
+  }
+  // Old-style validators: validates_presence_of, validates_length_of, etc.
+  const oldStyleRe = /^\s*validates_(\w+?)(?:_of)?\s+:(\w+)(?:,\s*(.+))?$/gm
+  while ((m = oldStyleRe.exec(content))) {
+    const validationType = m[1]
+    const attr = m[2]
+    validations.push({
+      attributes: [attr],
+      rules: `${validationType}: true${m[3] ? ', ' + m[3] : ''}`,
+    })
   }
 
   // Scopes — names array (backward-compat) + scope_queries dict with bodies

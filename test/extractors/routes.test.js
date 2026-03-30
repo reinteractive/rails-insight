@@ -354,4 +354,34 @@ end`,
       expect(result.resources.some((r) => r.name === 'products')).toBe(true)
     })
   })
+
+  describe('ISSUE-G: root route hash rocket syntax', () => {
+    it('extracts root route with hash rocket syntax', () => {
+      const provider = mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  root :to => 'homepage#index'\nend`,
+      })
+      const result = extractRoutes(provider)
+      expect(result.root).toBeDefined()
+      expect(result.root.controller).toBe('homepage')
+      expect(result.root.action).toBe('index')
+    })
+
+    it('still extracts root route with modern to: syntax', () => {
+      const provider = mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  root to: 'pages#home'\nend`,
+      })
+      const result = extractRoutes(provider)
+      expect(result.root).toBeDefined()
+      expect(result.root.controller).toBe('pages')
+    })
+
+    it('still extracts root route with bare string syntax', () => {
+      const provider = mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  root 'dashboard#show'\nend`,
+      })
+      const result = extractRoutes(provider)
+      expect(result.root).toBeDefined()
+      expect(result.root.controller).toBe('dashboard')
+    })
+  })
 })
