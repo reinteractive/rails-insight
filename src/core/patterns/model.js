@@ -22,6 +22,7 @@ export const MODEL_PATTERNS = {
   validates: /^\s*validates?\s+:?(\w+(?:,\s*:\w+)*)(?:,\s*(.+))?$/m,
   validate: /^\s*validate\s+:(\w+)/m,
   validatesWithValidator: /^\s*validates_with\s+(\S+)(?:,\s*(.+))?$/m,
+  validatesOldStyle: /^\s*validates_(\w+?)(?:_of)?\s+:(\w+)(?:,\s*(.+))?$/m,
 
   // === SCOPES ===
   scope: /^\s*scope\s+:(\w+),\s*(?:->|lambda|proc)/m,

@@ -66,9 +66,11 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
     pattern_reference_files: [],
   }
 
-  // Scan spec files for convention patterns
+  // Scan spec/test files for convention patterns
   const specEntries = entries.filter(
-    (e) => e.categoryName === 'testing' && e.path.endsWith('_spec.rb'),
+    (e) =>
+      e.categoryName === 'testing' &&
+      (e.path.endsWith('_spec.rb') || e.path.endsWith('_test.rb')),
   )
 
   // Count spec files by specCategory
@@ -319,9 +321,13 @@ function findPatternReferences(provider, specEntries) {
     const content = provider.readFile(entry.path)
     if (!content) continue
 
-    const describeCount = (content.match(/^\s*(?:describe|context)\s/gm) || [])
-      .length
-    const exampleCount = (content.match(/^\s*it\s/gm) || []).length
+    // Handle both RSpec and Minitest structural patterns
+    const describeCount = (
+      content.match(/^\s*(?:describe|context|class\s+\w+Test)\s/gm) || []
+    ).length
+    const exampleCount = (
+      content.match(/^\s*(?:it\s|def\s+test_|test\s+['"])/gm) || []
+    ).length
 
     // Skip trivially small files
     if (exampleCount < 3) continue

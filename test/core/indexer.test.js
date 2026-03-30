@@ -273,4 +273,59 @@ end`,
     expect(workerEntry).toBeDefined()
     expect(workerEntry.type).toBe('worker')
   })
+
+  it('ISSUE-B: extracts Devise sub-controllers classified as authentication', async () => {
+    const files = {
+      Gemfile: "gem 'rails'\ngem 'devise'",
+      'Gemfile.lock': '  specs:\n    rails (7.1.0)',
+      'config/application.rb': '',
+      'app/controllers/admin_users/sessions_controller.rb': `class AdminUsers::SessionsController < Devise::SessionsController
+  def new
+    super
+  end
+end`,
+      'app/controllers/members/registrations_controller.rb': `class Members::RegistrationsController < Devise::RegistrationsController
+  def create
+    super
+  end
+end`,
+    }
+
+    const provider = {
+      readFile(path) {
+        return files[path] || null
+      },
+      fileExists(path) {
+        return path in files
+      },
+      glob(pattern) {
+        return Object.keys(files).filter((p) => {
+          if (pattern.includes('**')) {
+            const suffix = pattern.split('**').pop().replace(/^\//, '')
+            if (suffix.includes('*')) {
+              const ext = suffix.replace('*', '')
+              return p.endsWith(ext)
+            }
+            return p.endsWith(suffix)
+          }
+          return false
+        })
+      },
+      listDir() {
+        return []
+      },
+    }
+
+    const index = await buildIndex(provider)
+    const controllerNames = Object.keys(index.extractions.controllers)
+    expect(controllerNames).toContain('AdminUsers::SessionsController')
+    expect(controllerNames).toContain('Members::RegistrationsController')
+  })
+
+  it('ISSUE-J: statistics.models_in_manifest is present', async () => {
+    const provider = createMockProvider()
+    const index = await buildIndex(provider)
+    expect(index.statistics).toHaveProperty('models_in_manifest')
+    expect(typeof index.statistics.models_in_manifest).toBe('number')
+  })
 })

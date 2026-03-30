@@ -919,4 +919,67 @@ end`
       expect(result.devise_modules.length).toBeGreaterThanOrEqual(4)
     })
   })
+
+  describe('ISSUE-C: old-style validators', () => {
+    const content = `class Article < ApplicationRecord
+  validates_presence_of :title
+  validates_length_of :body, minimum: 10
+  validates_uniqueness_of :slug
+  validates :status, presence: true
+end`
+
+    it('extracts validates_presence_of', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/article.rb': content }),
+        'app/models/article.rb',
+        'Article',
+      )
+      expect(result.validations.some((v) => v.attributes.includes('title'))).toBe(true)
+    })
+
+    it('extracts validates_length_of', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/article.rb': content }),
+        'app/models/article.rb',
+        'Article',
+      )
+      expect(result.validations.some((v) => v.attributes.includes('body'))).toBe(true)
+    })
+
+    it('extracts validates_uniqueness_of', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/article.rb': content }),
+        'app/models/article.rb',
+        'Article',
+      )
+      expect(result.validations.some((v) => v.attributes.includes('slug'))).toBe(true)
+    })
+
+    it('extracts all 4 validations including modern syntax', () => {
+      const result = extractModel(
+        mockProvider({ 'app/models/article.rb': content }),
+        'app/models/article.rb',
+        'Article',
+      )
+      expect(result.validations.length).toBe(4)
+    })
+  })
+
+  describe('ISSUE-D: FriendlyId in extends array', () => {
+    it('includes FriendlyId in extends array', () => {
+      const content = `class Article < ApplicationRecord
+  extend FriendlyId
+  extend Enumerize
+  friendly_id :title, use: :slugged
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/article.rb': content }),
+        'app/models/article.rb',
+        'Article',
+      )
+      expect(result.extends).toContain('FriendlyId')
+      expect(result.extends).toContain('Enumerize')
+      expect(result.friendly_id).toBeDefined()
+    })
+  })
 })

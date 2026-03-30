@@ -10,7 +10,7 @@ export const ROUTE_PATTERNS = {
   constraints: /^\s*constraints\s*(?:\((.+)\))?\s*do/m,
   httpVerb:
     /^\s*(?:get|post|put|patch|delete)\s+['"]([^'"]+)['"](?:.*?(?:to:|=>)\s*['"]([^'"#]+)#?([^'"]*)['"'])?/m,
-  root: /^\s*root\s+(?:to:\s*)?['"]([^'"#]+)#?([^'"]*)['"']/m,
+  root: /^\s*root\s+(?:(?::to\s*=>|to:)\s*)?['"]([^'"#]+)#?([^'"]*)['"']/m,
   mount:
     /^\s*mount\s+(\w+(?:(?:::|\.)\w+)*)\s*(?:=>|,\s*at:)\s*['"]([^'"]+)['"]/m,
   concern: /^\s*concern\s+:(\w+)\s+do/m,

@@ -576,28 +576,35 @@ export function extractAuthorization(
   if (hasCanCan) {
     if (!result.strategy) result.strategy = 'cancancan'
     let abilityContent = provider.readFile('app/models/ability.rb')
-    // Fallback: scan model files for CanCan::Ability
+    let abilityFile = 'app/models/ability.rb'
+    // Fallback: scan model and authorization files for CanCan::Ability
     if (!abilityContent || !AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent)) {
-      const modelEntries = entries.filter(
+      const abilityEntries = entries.filter(
         (e) =>
-          (e.category === 'model' || e.categoryName === 'models') &&
+          (e.category === 'model' ||
+            e.categoryName === 'models' ||
+            e.category === 1 ||
+            e.categoryName === 'authorization' ||
+            e.category === 9) &&
           e.path.endsWith('.rb'),
       )
-      for (const entry of modelEntries) {
+      for (const entry of abilityEntries) {
         const c = provider.readFile(entry.path)
         if (
           c &&
-          AUTHORIZATION_PATTERNS.abilityClass.test(c) &&
-          AUTHORIZATION_PATTERNS.includeCanCan.test(c)
+          (AUTHORIZATION_PATTERNS.abilityClass.test(c) ||
+            AUTHORIZATION_PATTERNS.includeCanCan.test(c))
         ) {
           abilityContent = c
+          abilityFile = entry.path
           break
         }
       }
     }
     if (
       abilityContent &&
-      AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent)
+      (AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent) ||
+        AUTHORIZATION_PATTERNS.includeCanCan.test(abilityContent))
     ) {
       const abilities = []
       const canRe = new RegExp(AUTHORIZATION_PATTERNS.canDef.source, 'gm')
@@ -610,6 +617,21 @@ export function extractAuthorization(
         abilities.push({ type: 'cannot', definition: m[1].trim() })
       }
       result.abilities = abilities
+
+      // Extract roles from has_role? calls in the ability file
+      const roleRe = /has_role\?\s*\(:?['"]?(\w+)['"]?\)/g
+      const roles = new Set()
+      while ((m = roleRe.exec(abilityContent))) {
+        roles.add(m[1])
+      }
+      if (roles.size > 0) {
+        result.roles = {
+          source: 'ability_class',
+          model: 'User',
+          roles: [...roles],
+          file: abilityFile,
+        }
+      }
     }
   }
 
