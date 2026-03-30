@@ -488,6 +488,48 @@ export function extractAuth(
         result.devise.custom_controllers.push(name)
       }
     }
+
+    // Path-based detection: Devise generates controllers under scope directories
+    if (result.devise?.models) {
+      const deviseModelNames = Object.keys(result.devise.models)
+      const deviseControllerTypes = [
+        'sessions',
+        'registrations',
+        'passwords',
+        'confirmations',
+        'unlocks',
+        'omniauth_callbacks',
+      ]
+
+      for (const modelName of deviseModelNames) {
+        // Convert model name to expected directory: AdminUser → admin_users, Member → members
+        const scopeDir =
+          modelName
+            .replace(/([A-Z])/g, (match, letter, offset) =>
+              offset === 0 ? letter.toLowerCase() : `_${letter.toLowerCase()}`,
+            )
+            .replace(/([a-z])([A-Z])/g, '$1_$2')
+            .toLowerCase() + 's'
+
+        const scopeDirSingular = scopeDir.slice(0, -1)
+
+        for (const ctrlType of deviseControllerTypes) {
+          for (const dir of [scopeDir, scopeDirSingular]) {
+            const expectedPath = `app/controllers/${dir}/${ctrlType}_controller.rb`
+            const ctrlContent = provider.readFile(expectedPath)
+            if (ctrlContent) {
+              const classMatch = ctrlContent.match(
+                /class\s+(\w+(?:::\w+)*Controller)/,
+              )
+              const name = classMatch ? classMatch[1] : `${dir}/${ctrlType}`
+              if (!result.devise.custom_controllers.includes(name)) {
+                result.devise.custom_controllers.push(name)
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   // Detect native Rails 8 auth

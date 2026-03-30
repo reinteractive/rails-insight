@@ -144,4 +144,21 @@ end`,
       ).toBeDefined()
     })
   })
+
+  describe('ISSUE-F: Paperclip image processing', () => {
+    it('detects Paperclip as image processing library', () => {
+      const result = extractStorage(mockProvider({}), [], {
+        gems: { paperclip: {} },
+      })
+      expect(result.image_processing).toBeDefined()
+      expect(result.image_processing.gem).toBe('paperclip')
+    })
+
+    it('detects mini_magick backend when both paperclip and mini_magick gems present', () => {
+      const result = extractStorage(mockProvider({}), [], {
+        gems: { paperclip: {}, mini_magick: {} },
+      })
+      expect(result.image_processing.backend).toBe('mini_magick')
+    })
+  })
 })

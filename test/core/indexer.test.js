@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildIndex } from '../../src/core/indexer.js'
+import { buildIndex, computeStatistics } from '../../src/core/indexer.js'
 
 /**
  * Mock provider simulating a small Rails app.
@@ -327,5 +327,23 @@ end`,
     const index = await buildIndex(provider)
     expect(index.statistics).toHaveProperty('models_in_manifest')
     expect(typeof index.statistics.models_in_manifest).toBe('number')
+  })
+})
+
+describe('ISSUE-K: Model count file_count in statistics', () => {
+  it('statistics includes both extracted model count and file count', () => {
+    const manifest = { entries: [], stats: { models: 10 } }
+    const extractions = {
+      models: { User: {}, Post: {}, Comment: {} },
+      controllers: {},
+      components: {},
+      gemfile: { gems: [] },
+      helpers: {},
+      workers: {},
+      uploaders: { uploaders: {} },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    expect(stats.models).toBe(3)
+    expect(stats.models_file_count).toBe(10)
   })
 })

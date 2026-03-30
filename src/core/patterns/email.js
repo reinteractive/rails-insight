@@ -2,7 +2,7 @@
  * Regex patterns for Rails mailer extraction.
  */
 export const EMAIL_PATTERNS = {
-  mailerClass: /class\s+(\w+Mailer)\s*<\s*(\w+)/,
+  mailerClass: /class\s+(\w+(?:::\w+)*Mailer)\s*<\s*(\w+(?:::\w+)*)/,
   mailerMethod: /^\s*def\s+(\w+)/m,
   defaultFrom: /default\s+from:\s*['"]([^'"]+)['"]/,
   mailerLayout: /^\s*layout\s+['"](\w+)['"]/m,

@@ -661,4 +661,65 @@ end`,
       expect(result.devise.config.mailer_sender).toBeDefined()
     })
   })
+
+  describe('ISSUE-C: Devise sub-controllers in scope directories', () => {
+    it('detects Devise sub-controllers in scope directories', () => {
+      const entries = [
+        {
+          path: 'app/controllers/admin_users/sessions_controller.rb',
+          category: 'controller',
+          categoryName: 'controllers',
+          type: 'ruby',
+        },
+        {
+          path: 'app/controllers/admin_users/passwords_controller.rb',
+          category: 'controller',
+          categoryName: 'controllers',
+          type: 'ruby',
+        },
+        {
+          path: 'app/controllers/members/registrations_controller.rb',
+          category: 'controller',
+          categoryName: 'controllers',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/admin_user.rb',
+          category: 'model',
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/member.rb',
+          category: 'model',
+          categoryName: 'models',
+          type: 'ruby',
+        },
+      ]
+      const provider = {
+        readFile(path) {
+          if (path === 'app/controllers/admin_users/sessions_controller.rb')
+            return 'class AdminUsers::SessionsController < Devise::SessionsController\nend'
+          if (path === 'app/controllers/admin_users/passwords_controller.rb')
+            return 'class AdminUsers::PasswordsController < Devise::PasswordsController\nend'
+          if (path === 'app/controllers/members/registrations_controller.rb')
+            return 'class Members::RegistrationsController < Devise::RegistrationsController\nend'
+          if (path === 'Gemfile') return "gem 'devise'"
+          if (path === 'app/models/admin_user.rb')
+            return 'class AdminUser < ApplicationRecord\n  devise :database_authenticatable\nend'
+          if (path === 'app/models/member.rb')
+            return 'class Member < ApplicationRecord\n  devise :database_authenticatable, :registerable\nend'
+          return null
+        },
+        fileExists() {
+          return false
+        },
+        glob() {
+          return []
+        },
+      }
+      const result = extractAuth(provider, entries, { gems: { devise: {} } })
+      expect(result.devise.custom_controllers.length).toBeGreaterThanOrEqual(3)
+    })
+  })
 })

@@ -124,6 +124,13 @@ export function extractStorage(provider, entries, gemInfo = {}) {
     if (vipsMatch) {
       result.image_processing.backend = vipsMatch[1]
     }
+  } else if (gems.paperclip) {
+    result.image_processing = { gem: 'paperclip', backend: 'imagemagick' }
+    if (gems.mini_magick) {
+      result.image_processing.backend = 'mini_magick'
+    }
+  } else if (gems.mini_magick) {
+    result.image_processing = { gem: 'mini_magick', backend: 'mini_magick' }
   }
 
   return result

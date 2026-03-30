@@ -242,8 +242,13 @@ function detectType(path) {
   if (path.endsWith('.js')) return 'javascript'
   if (path.endsWith('.ts')) return 'typescript'
   if (path.endsWith('.html.erb')) return 'erb'
+  if (path.endsWith('.text.erb')) return 'erb'
+  if (path.endsWith('.js.erb')) return 'erb'
+  if (path.endsWith('.xml.erb')) return 'erb'
   if (path.endsWith('.html.haml')) return 'haml'
+  if (path.endsWith('.text.haml')) return 'haml'
   if (path.endsWith('.html.slim')) return 'slim'
+  if (path.endsWith('.text.slim')) return 'slim'
   if (path.endsWith('.jbuilder')) return 'jbuilder'
   if (path.endsWith('.yml') || path.endsWith('.yaml')) return 'yaml'
   if (path.endsWith('.json.erb')) return 'json_erb'
@@ -337,9 +342,14 @@ export function scanStructure(provider) {
     ...provider.glob('app/**/*.js'),
     ...provider.glob('app/**/*.ts'),
     ...provider.glob('app/**/*.html.erb'),
+    ...provider.glob('app/**/*.text.erb'),
+    ...provider.glob('app/**/*.js.erb'),
+    ...provider.glob('app/**/*.xml.erb'),
     ...provider.glob('app/**/*.json.erb'),
     ...provider.glob('app/**/*.html.haml'),
+    ...provider.glob('app/**/*.text.haml'),
     ...provider.glob('app/**/*.html.slim'),
+    ...provider.glob('app/**/*.text.slim'),
     ...provider.glob('app/**/*.jbuilder'),
     ...provider.glob('config/**/*.rb'),
     ...provider.glob('config/**/*.yml'),

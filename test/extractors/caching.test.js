@@ -133,4 +133,77 @@ end`,
       expect(result.store.production).toBe('redis_cache_store')
     })
   })
+
+  describe('ISSUE-D: HAML fragment cache detection', () => {
+    it('counts fragment cache calls in HAML views', () => {
+      const entries = [
+        {
+          path: 'app/views/activities/show.html.haml',
+          category: 7,
+          categoryName: 'views',
+          type: 'haml',
+        },
+        {
+          path: 'app/views/articles/index.html.erb',
+          category: 7,
+          categoryName: 'views',
+          type: 'erb',
+        },
+      ]
+      const provider = {
+        readFile(path) {
+          if (path.endsWith('.haml'))
+            return `%h1 Activity
+- cache @activity do
+  = render @activity
+- cache ['v2', @sidebar] do
+  = render 'sidebar'`
+          if (path.endsWith('.erb'))
+            return `<% cache @article do %>
+  <%= render @article %>
+<% end %>`
+          return null
+        },
+      }
+      const result = extractCaching(provider, entries)
+      expect(result.fragment_caching.usage_count).toBe(3)
+    })
+  })
+
+  describe('ISSUE-E: Rails.cache ops counting', () => {
+    it('counts all Rails.cache operations, not just fetch', () => {
+      const entries = [
+        {
+          path: 'app/models/product.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+      ]
+      const provider = {
+        readFile(path) {
+          if (path === 'app/models/product.rb')
+            return `class Product < ApplicationRecord
+  def cached_price
+    Rails.cache.fetch("price_\#{id}") { calculate }
+  end
+  def update_cache
+    Rails.cache.write("price_\#{id}", price)
+  end
+  def clear_cache
+    Rails.cache.delete("price_\#{id}")
+    Rails.cache.delete_matched("products:*")
+  end
+  def cached?
+    Rails.cache.exist?("price_\#{id}")
+  end
+end`
+          return null
+        },
+      }
+      const result = extractCaching(provider, entries)
+      expect(result.low_level_caching.rails_cache_fetch_count).toBe(1)
+      expect(result.low_level_caching.rails_cache_ops_count).toBeGreaterThanOrEqual(3)
+    })
+  })
 })

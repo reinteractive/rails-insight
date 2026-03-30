@@ -139,6 +139,34 @@ export function extractApi(provider, entries, gemInfo = {}) {
     result.rate_limiting = null
   }
 
+  // Custom rate limiting heuristic: before_action :check_rate_limit, class RateLimiter, etc.
+  const customRateLimitPatterns = [
+    /before_action\s+:(?:check_rate_limit|rate_limit|throttle)/,
+    /class\s+RateLimiter/,
+    /def\s+(?:check_rate_limit|rate_limit!|throttle!)/,
+  ]
+  const customRateLimitFiles = []
+  for (const entry of controllerEntries) {
+    const content = provider.readFile(entry.path)
+    if (!content) continue
+    for (const pattern of customRateLimitPatterns) {
+      if (pattern.test(content)) {
+        const ctrlMatch = content.match(/class\s+(\w+(?:::\w+)*)/)
+        customRateLimitFiles.push({
+          controller: ctrlMatch ? ctrlMatch[1] : entry.path,
+          type: 'custom',
+        })
+        break
+      }
+    }
+  }
+  if (customRateLimitFiles.length > 0) {
+    if (!result.rate_limiting) {
+      result.rate_limiting = { gem: null, throttles: [], rails_native: null }
+    }
+    result.rate_limiting.custom = customRateLimitFiles
+  }
+
   // CORS
   const corsContent = provider.readFile('config/initializers/cors.rb')
   if (corsContent && API_PATTERNS.corsConfig.test(corsContent)) {

@@ -582,13 +582,14 @@ function mapMigrationFiles(map, manifest) {
 /**
  * Compute summary statistics.
  */
-function computeStatistics(manifest, extractions, relationships) {
+export function computeStatistics(manifest, extractions, relationships) {
   const entries = manifest.entries || []
   return {
     total_files: entries.length,
     models: Object.values(extractions.models || {}).filter(
       (m) => m.type !== 'concern' && !m.abstract,
     ).length,
+    models_file_count: (manifest.stats || {}).models || 0,
     models_in_manifest: (manifest.stats || {}).models || 0,
     controllers: Object.keys(extractions.controllers || {}).length,
     components: Object.keys(extractions.components || {}).length,
