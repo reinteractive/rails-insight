@@ -7,7 +7,7 @@ import { noIndex, respond } from './helpers.js'
  * @param {object} index
  * @returns {Set<string>}
  */
-function getSkillSeeds(skill, index) {
+export function getSkillSeeds(skill, index) {
   const extractions = index.extractions || {}
   const seeds = new Set()
 
@@ -55,7 +55,9 @@ function getSkillSeeds(skill, index) {
       break
     }
     case 'api': {
-      for (const [name, ctrl] of Object.entries(extractions.controllers || {})) {
+      for (const [name, ctrl] of Object.entries(
+        extractions.controllers || {},
+      )) {
         if (/api|v\d+|json/i.test(name) || ctrl.api_only) seeds.add(name)
       }
       break
@@ -123,7 +125,13 @@ export function register(server, state) {
 
       // BFS one hop from seeds using relationships
       const relevantEntities = new Set(seeds)
+
+      // For authentication subgraph, exclude irrelevant entities reached only via inherits edges
+      const authIrrelevantEdges =
+        skill === 'authentication' ? new Set(['inherits']) : new Set()
+
       for (const rel of allRels) {
+        if (authIrrelevantEdges.has(rel.type)) continue
         if (seeds.has(rel.from)) relevantEntities.add(rel.to)
         if (seeds.has(rel.to)) relevantEntities.add(rel.from)
       }

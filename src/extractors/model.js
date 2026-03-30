@@ -44,9 +44,7 @@ function extractScopeBodies(content) {
   const result = {}
   const lines = content.split('\n')
   for (let i = 0; i < lines.length; i++) {
-    const declMatch = lines[i].match(
-      /^\s*scope\s+:(\w+),\s*(?:->|lambda|proc)/,
-    )
+    const declMatch = lines[i].match(/^\s*scope\s+:(\w+),\s*(?:->|lambda|proc)/)
     if (!declMatch) continue
     const name = declMatch[1]
     // Scan forward to find brace-balanced body
@@ -72,10 +70,7 @@ function extractScopeBodies(content) {
       if (started && depth > 0) bodyChars.push(' ')
     }
     if (bodyChars.length > 0) {
-      result[name] = bodyChars
-        .join('')
-        .replace(/\s+/g, ' ')
-        .trim()
+      result[name] = bodyChars.join('').replace(/\s+/g, ' ').trim()
     }
   }
   return result
@@ -179,15 +174,29 @@ export function extractModel(provider, filePath, className) {
   while ((m = vwRe.exec(content))) {
     custom_validators.push(`validates_with:${m[1]}`)
   }
-  // Old-style validators: validates_presence_of, validates_length_of, etc.
-  const oldStyleRe = /^\s*validates_(\w+?)(?:_of)?\s+:(\w+)(?:,\s*(.+))?$/gm
+  // Old-style validators: validates_presence_of :name, :body, { message: "required" }
+  const oldStyleRe = /^\s*validates_(\w+?)(?:_of)?\s+(.+)$/gm
   while ((m = oldStyleRe.exec(content))) {
     const validationType = m[1]
-    const attr = m[2]
-    validations.push({
-      attributes: [attr],
-      rules: `${validationType}: true${m[3] ? ', ' + m[3] : ''}`,
-    })
+    const argString = m[2].trim()
+    const tokens = argString.split(',').map((t) => t.trim())
+    const attrs = []
+    const ruleParts = []
+    for (const token of tokens) {
+      if (/^:\w+$/.test(token)) {
+        attrs.push(token.replace(/^:/, ''))
+      } else if (/^\w+:/.test(token) || /^\{/.test(token)) {
+        ruleParts.push(token)
+      } else {
+        ruleParts.push(token)
+      }
+    }
+    if (attrs.length > 0) {
+      validations.push({
+        attributes: attrs,
+        rules: `${validationType}: true${ruleParts.length > 0 ? ', ' + ruleParts.join(', ') : ''}`,
+      })
+    }
   }
 
   // Scopes — names array (backward-compat) + scope_queries dict with bodies
@@ -294,6 +303,13 @@ export function extractModel(provider, filePath, className) {
     const method = m[2]
     if (method === 'do' || method === '{') continue
     callbacks.push({ type: m[1], method, options: m[3] || null })
+  }
+
+  // Block callbacks: before_save { ... } or before_save do ... end
+  const blockCbRe =
+    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+(?:do|\{)/gm
+  while ((m = blockCbRe.exec(cbLines))) {
+    callbacks.push({ type: m[1], method: null, options: null })
   }
 
   // Delegations
@@ -468,7 +484,8 @@ export function extractModel(provider, filePath, className) {
 
   // accepts_nested_attributes_for
   const nested_attributes = []
-  const nestedAttrsRe = /^\s*accepts_nested_attributes_for\s+:(\w+)(?:,\s*(.+))?$/gm
+  const nestedAttrsRe =
+    /^\s*accepts_nested_attributes_for\s+:(\w+)(?:,\s*(.+))?$/gm
   while ((m = nestedAttrsRe.exec(content))) {
     nested_attributes.push({ name: m[1], options: m[2]?.trim() || null })
   }

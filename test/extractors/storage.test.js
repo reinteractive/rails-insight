@@ -134,14 +134,29 @@ class User < ApplicationRecord
   has_many_attached :documents
 end`,
       })
-      const entries = [
-        { path: 'app/models/user.rb', category: 1 },
-      ]
+      const entries = [{ path: 'app/models/user.rb', category: 1 }]
       const result = extractStorage(provider, entries, {})
       expect(result.attachments.find((a) => a.name === 'avatar')).toBeDefined()
       expect(
         result.attachments.find((a) => a.name === 'documents'),
       ).toBeDefined()
+    })
+  })
+
+  describe('ISSUE-F: Paperclip image processing', () => {
+    it('detects Paperclip as image processing library', () => {
+      const result = extractStorage(mockProvider({}), [], {
+        gems: { paperclip: {} },
+      })
+      expect(result.image_processing).toBeDefined()
+      expect(result.image_processing.gem).toBe('paperclip')
+    })
+
+    it('detects mini_magick backend when both paperclip and mini_magick gems present', () => {
+      const result = extractStorage(mockProvider({}), [], {
+        gems: { paperclip: {}, mini_magick: {} },
+      })
+      expect(result.image_processing.backend).toBe('mini_magick')
     })
   })
 })

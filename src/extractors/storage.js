@@ -48,7 +48,8 @@ export function extractStorage(provider, entries, gemInfo = {}) {
 
   // Attachments from model files
   const modelEntries = entries.filter(
-    (e) => e.category === 'model' || e.category === 1 || e.categoryName === 'models',
+    (e) =>
+      e.category === 'model' || e.category === 1 || e.categoryName === 'models',
   )
   for (const entry of modelEntries) {
     const content = provider.readFile(entry.path)
@@ -124,6 +125,13 @@ export function extractStorage(provider, entries, gemInfo = {}) {
     if (vipsMatch) {
       result.image_processing.backend = vipsMatch[1]
     }
+  } else if (gems.paperclip) {
+    result.image_processing = { gem: 'paperclip', backend: 'imagemagick' }
+    if (gems.mini_magick) {
+      result.image_processing.backend = 'mini_magick'
+    }
+  } else if (gems.mini_magick) {
+    result.image_processing = { gem: 'mini_magick', backend: 'mini_magick' }
   }
 
   return result

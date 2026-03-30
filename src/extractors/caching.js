@@ -16,7 +16,7 @@ export function extractCaching(provider, entries) {
   const result = {
     store: {},
     fragment_caching: { usage_count: 0, russian_doll_detected: false },
-    low_level_caching: { rails_cache_fetch_count: 0 },
+    low_level_caching: { rails_cache_fetch_count: 0, rails_cache_ops_count: 0 },
     http_caching: { stale_usage: 0, fresh_when_usage: 0, expires_in_usage: 0 },
   }
 
@@ -47,9 +47,24 @@ export function extractCaching(provider, entries) {
       result.fragment_caching.usage_count++
     }
 
+    // HAML fragment caching: - cache key do / = cache key do
+    if (entry.path.endsWith('.haml')) {
+      const hamlCacheRe = /^\s*[-=]\s*cache[\s(]+/gm
+      while (hamlCacheRe.exec(content)) {
+        result.fragment_caching.usage_count++
+      }
+    }
+
     // Russian doll detection
     const rdRe = new RegExp(CACHING_PATTERNS.russianDoll.source, 'g')
     if (rdRe.test(content)) {
+      result.fragment_caching.russian_doll_detected = true
+    }
+    // HAML Russian doll: - cache [parent, child] do
+    if (
+      entry.path.endsWith('.haml') &&
+      /^\s*[-=]\s*cache\s+\[/m.test(content)
+    ) {
       result.fragment_caching.russian_doll_detected = true
     }
   }
@@ -63,6 +78,17 @@ export function extractCaching(provider, entries) {
     const fetchRe = new RegExp(CACHING_PATTERNS.railsCacheFetch.source, 'g')
     while (fetchRe.exec(content)) {
       result.low_level_caching.rails_cache_fetch_count++
+    }
+
+    // Count other Rails.cache operations: read, write, delete, exist?
+    const opsRe = new RegExp(CACHING_PATTERNS.railsCacheOps.source, 'g')
+    while (opsRe.exec(content)) {
+      result.low_level_caching.rails_cache_ops_count++
+    }
+    // Also count Rails.cache.delete_matched
+    const deleteMatchedRe = /Rails\.cache\.delete_matched\s*\(/g
+    while (deleteMatchedRe.exec(content)) {
+      result.low_level_caching.rails_cache_ops_count++
     }
 
     // HTTP caching

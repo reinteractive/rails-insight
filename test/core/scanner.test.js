@@ -374,4 +374,47 @@ describe('Scanner', () => {
       expect(entry.type).toBe('json_erb')
     })
   })
+
+  describe('ISSUE-L: Text-format template detection', () => {
+    it('detects text.erb as erb type', () => {
+      const entry = classifyFile('app/views/layouts/mailer.text.erb')
+      expect(entry).not.toBeNull()
+      expect(entry.type).toBe('erb')
+      expect(entry.category).toBe(7)
+    })
+
+    it('detects text.haml as haml type', () => {
+      const entry = classifyFile('app/views/layouts/mailer.text.haml')
+      expect(entry).not.toBeNull()
+      expect(entry.type).toBe('haml')
+      expect(entry.category).toBe(7)
+    })
+
+    it('counts text.erb templates via scanStructure', () => {
+      const provider = {
+        glob(pattern) {
+          if (pattern === 'app/**/*.text.erb')
+            return [
+              'app/views/layouts/mailer.text.erb',
+              'app/views/user_mailer/welcome.text.erb',
+            ]
+          return []
+        },
+        listDir() {
+          return []
+        },
+        fileExists() {
+          return false
+        },
+        readFile() {
+          return null
+        },
+      }
+      const result = scanStructure(provider)
+      const textErbEntries = result.entries.filter(
+        (e) => e.type === 'erb' && e.path.endsWith('.text.erb'),
+      )
+      expect(textErbEntries.length).toBeGreaterThanOrEqual(2)
+    })
+  })
 })

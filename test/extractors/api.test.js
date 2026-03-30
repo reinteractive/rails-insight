@@ -156,4 +156,30 @@ end`,
       expect(result.graphql).toBeNull()
     })
   })
+
+  describe('ISSUE-H: Custom rate limiting detection', () => {
+    it('detects custom rate limiting via before_action pattern', () => {
+      const entries = [
+        {
+          path: 'app/controllers/sessions_controller.rb',
+          category: 2,
+          categoryName: 'controllers',
+          type: 'ruby',
+        },
+      ]
+      const provider = {
+        readFile(path) {
+          if (path === 'app/controllers/sessions_controller.rb')
+            return `class SessionsController < Devise::SessionsController
+  before_action :check_rate_limit, only: [:create]
+end`
+          if (path === 'config/application.rb') return ''
+          return null
+        },
+      }
+      const result = extractApi(provider, entries, {})
+      expect(result.rate_limiting).toBeDefined()
+      expect(result.rate_limiting.custom).toHaveLength(1)
+    })
+  })
 })

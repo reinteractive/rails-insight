@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.14] - 2026-03-30
+
+### Fixed
+
+- **Anonymous block callbacks**: Detect `before_save { ... }` and `before_create do...end` block-style callbacks in models (previously only named method callbacks were captured)
+- **Multi-attribute old-style validators**: `validates_presence_of :name, :body` now correctly captures all attributes, not just the first
+- **Devise scope-directory controllers**: Path-based detection for custom Devise controllers in scope directories (e.g. `app/controllers/admin_users/sessions_controller.rb`), increasing detection from 4 to 12
+- **HAML fragment caching**: HAML `- cache key do` syntax is now counted alongside ERB `<% cache key do %>` fragment cache calls
+- **Rails.cache operation counting**: Add `rails_cache_ops_count` for `.read`, `.write`, `.delete`, `.delete_matched`, `.exist?` calls (previously only `.fetch` was counted)
+- **Paperclip image processing**: Paperclip gem is now reported as an image processing library with `imagemagick` backend
+- **Minitest test edges in blast radius graph**: `_test.rb` files now create `tests` edges in the relationship graph (previously only `_spec.rb` RSpec files did)
+- **Custom rate limiting detection**: Heuristic scan for `before_action :check_rate_limit`, `class RateLimiter`, and similar patterns in controllers
+- **Auth subgraph relevance filter**: Authentication subgraph BFS expansion now excludes `inherits` edges, preventing unrelated legacy models from ranking above actual auth models
+- **Mailer superclass full namespace**: `ActionMailer::Base` and `Devise::Mailer` are now captured in full instead of being truncated to the first component
+- **Model count visibility**: `statistics.models_file_count` added to expose the manifest file count alongside the extracted model count, making any extraction gap visible to AI agents
+- **Text-format template glob coverage**: Scanner now includes `.text.erb`, `.text.haml`, `.text.slim`, `.js.erb`, and `.xml.erb` templates, fixing undercounted view totals
+
 ## [1.0.11] - 2026-03-27
 
 ### Changed

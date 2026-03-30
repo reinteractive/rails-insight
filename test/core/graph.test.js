@@ -452,3 +452,29 @@ describe('buildGraph new edge types', () => {
     expect(graph.nodes.get('BulkIndexWorker').type).toBe('worker')
   })
 })
+
+describe('ISSUE-G: Minitest test edges', () => {
+  it('creates test edges for Minitest test files', () => {
+    const extractions = {
+      models: { User: { file: 'app/models/user.rb' } },
+      controllers: {},
+      test_conventions: {},
+    }
+    const manifest = {
+      entries: [
+        {
+          path: 'test/models/user_test.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'model_tests',
+          type: 'ruby',
+        },
+      ],
+    }
+    const { relationships } = buildGraph(extractions, manifest)
+    const testEdge = relationships.find(
+      (r) => r.type === 'tests' && r.to === 'User',
+    )
+    expect(testEdge).toBeDefined()
+  })
+})

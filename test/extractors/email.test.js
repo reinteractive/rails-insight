@@ -163,4 +163,26 @@ end`,
       expect(result.mailbox).toBeNull()
     })
   })
+
+  describe('ISSUE-J: Mailer superclass full namespace capture', () => {
+    it('captures full superclass name including namespace', () => {
+      const entries = [
+        {
+          path: 'app/mailers/notification_mailer.rb',
+          category: 11,
+          categoryName: 'email',
+          type: 'ruby',
+        },
+      ]
+      const provider = {
+        readFile(path) {
+          if (path === 'app/mailers/notification_mailer.rb')
+            return 'class NotificationMailer < ActionMailer::Base\n  def welcome\n    mail(to: @user.email)\n  end\nend'
+          return null
+        },
+      }
+      const result = extractEmail(provider, entries)
+      expect(result.mailers[0].superclass).toBe('ActionMailer::Base')
+    })
+  })
 })

@@ -395,42 +395,84 @@ export function buildGraph(extractions, manifest, skills = []) {
     const specEntries =
       manifest.entries?.filter(
         (e) =>
-          e.category === 19 && e.specCategory && e.path.endsWith('_spec.rb'),
+          e.category === 19 &&
+          (e.path.endsWith('_spec.rb') ||
+            (e.specCategory && e.path.endsWith('_test.rb'))),
       ) || []
 
     for (const entry of specEntries) {
       // Derive the model/controller name from the spec path
-      const basename = entry.path.split('/').pop().replace('_spec.rb', '')
+      const isTest = entry.path.endsWith('_test.rb')
+      const basename = entry.path
+        .split('/')
+        .pop()
+        .replace(isTest ? '_test.rb' : '_spec.rb', '')
       const className = classify(basename)
 
-      if (entry.specCategory === 'model_specs') {
+      if (
+        entry.specCategory === 'model_specs' ||
+        entry.specCategory === 'model_tests'
+      ) {
         if (extractions.models && extractions.models[className]) {
-          graph.addNode(`spec:${className}`, 'spec', `${className} spec`)
-          graph.addEdge(`spec:${className}`, className, 'tests')
+          const nodePrefix = isTest ? 'test' : 'spec'
+          graph.addNode(
+            `${nodePrefix}:${className}`,
+            nodePrefix,
+            `${className} ${nodePrefix}`,
+          )
+          graph.addEdge(`${nodePrefix}:${className}`, className, 'tests')
           relationships.push({
-            from: `spec:${className}`,
+            from: `${nodePrefix}:${className}`,
             to: className,
             type: 'tests',
           })
         }
       } else if (
         entry.specCategory === 'request_specs' ||
-        entry.specCategory === 'controller_specs'
+        entry.specCategory === 'controller_specs' ||
+        entry.specCategory === 'controller_tests'
       ) {
+        const nodePrefix = isTest ? 'test' : 'spec'
         // Controller names are plural (UsersController), so don't singularize
         const ctrlBaseName = basename
+          .replace('_controller', '')
           .split('_')
           .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
           .join('')
         const ctrlName = ctrlBaseName + 'Controller'
         if (extractions.controllers && extractions.controllers[ctrlName]) {
-          graph.addNode(`spec:${ctrlName}`, 'spec', `${ctrlName} spec`)
-          graph.addEdge(`spec:${ctrlName}`, ctrlName, 'tests')
+          graph.addNode(
+            `${nodePrefix}:${ctrlName}`,
+            nodePrefix,
+            `${ctrlName} ${nodePrefix}`,
+          )
+          graph.addEdge(`${nodePrefix}:${ctrlName}`, ctrlName, 'tests')
           relationships.push({
-            from: `spec:${ctrlName}`,
+            from: `${nodePrefix}:${ctrlName}`,
             to: ctrlName,
             type: 'tests',
           })
+        }
+      } else if (!isTest) {
+        // Legacy RSpec path (no specCategory but ends in _spec.rb)
+        if (
+          entry.specCategory === 'request_specs' ||
+          entry.specCategory === 'controller_specs'
+        ) {
+          const ctrlBaseName = basename
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join('')
+          const ctrlName = ctrlBaseName + 'Controller'
+          if (extractions.controllers && extractions.controllers[ctrlName]) {
+            graph.addNode(`spec:${ctrlName}`, 'spec', `${ctrlName} spec`)
+            graph.addEdge(`spec:${ctrlName}`, ctrlName, 'tests')
+            relationships.push({
+              from: `spec:${ctrlName}`,
+              to: ctrlName,
+              type: 'tests',
+            })
+          }
         }
       }
     }

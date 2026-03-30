@@ -832,7 +832,9 @@ end`
 
     it('returns empty nested_attributes when none present', () => {
       const result = extractModel(
-        mockProvider({ 'app/models/invoice.rb': `class Order < ApplicationRecord\nend` }),
+        mockProvider({
+          'app/models/invoice.rb': `class Order < ApplicationRecord\nend`,
+        }),
         'app/models/invoice.rb',
         'Order',
       )
@@ -934,7 +936,9 @@ end`
         'app/models/article.rb',
         'Article',
       )
-      expect(result.validations.some((v) => v.attributes.includes('title'))).toBe(true)
+      expect(
+        result.validations.some((v) => v.attributes.includes('title')),
+      ).toBe(true)
     })
 
     it('extracts validates_length_of', () => {
@@ -943,7 +947,9 @@ end`
         'app/models/article.rb',
         'Article',
       )
-      expect(result.validations.some((v) => v.attributes.includes('body'))).toBe(true)
+      expect(
+        result.validations.some((v) => v.attributes.includes('body')),
+      ).toBe(true)
     })
 
     it('extracts validates_uniqueness_of', () => {
@@ -952,7 +958,9 @@ end`
         'app/models/article.rb',
         'Article',
       )
-      expect(result.validations.some((v) => v.attributes.includes('slug'))).toBe(true)
+      expect(
+        result.validations.some((v) => v.attributes.includes('slug')),
+      ).toBe(true)
     })
 
     it('extracts all 4 validations including modern syntax', () => {
@@ -980,6 +988,64 @@ end`
       expect(result.extends).toContain('FriendlyId')
       expect(result.extends).toContain('Enumerize')
       expect(result.friendly_id).toBeDefined()
+    })
+  })
+
+  describe('ISSUE-A: Anonymous block callbacks', () => {
+    it('extracts anonymous block callbacks', () => {
+      const content = `class Activity < ApplicationRecord
+  before_validation { self.url.clear if self.url == "http://" }
+  after_save :notify_admin
+  before_create do
+    self.token = SecureRandom.hex(10)
+  end
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/activity.rb': content }),
+        'app/models/activity.rb',
+        'Activity',
+      )
+      expect(result.callbacks).toHaveLength(3)
+
+      const blockCb = result.callbacks.find(
+        (c) => c.type === 'before_validation' && c.method === null,
+      )
+      expect(blockCb).toBeDefined()
+
+      const namedCb = result.callbacks.find((c) => c.method === 'notify_admin')
+      expect(namedCb).toBeDefined()
+
+      const doCb = result.callbacks.find(
+        (c) => c.type === 'before_create' && c.method === null,
+      )
+      expect(doCb).toBeDefined()
+    })
+  })
+
+  describe('ISSUE-B: Multi-attribute old-style validators', () => {
+    it('extracts validates_presence_of with multiple attributes', () => {
+      const content = `class Article < ApplicationRecord
+  validates_presence_of :title, :body
+  validates_length_of :summary, maximum: 200
+  validates_uniqueness_of :slug, :permalink
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/article.rb': content }),
+        'app/models/article.rb',
+        'Article',
+      )
+
+      const presenceVal = result.validations.find((v) =>
+        v.rules.includes('presence'),
+      )
+      expect(presenceVal.attributes).toContain('title')
+      expect(presenceVal.attributes).toContain('body')
+
+      const uniqueVal = result.validations.find((v) =>
+        v.rules.includes('uniqueness'),
+      )
+      expect(uniqueVal.attributes).toContain('slug')
+      expect(uniqueVal.attributes).toContain('permalink')
     })
   })
 })
