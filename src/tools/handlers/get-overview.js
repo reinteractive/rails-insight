@@ -98,26 +98,27 @@ export function register(server, state) {
         .map(([n]) => n)
 
       // Custom pattern counts
+      const dp = tier2.design_patterns || {}
       const customPatterns = {
-        services: tier2.services?.length || tier2.service_objects?.length || 0,
+        services: dp.services || 0,
         concerns: Object.values(models).filter((m) => m.type === 'concern')
           .length,
-        form_objects: tier2.form_objects?.length || 0,
-        presenters: tier2.presenters?.length || 0,
-        policies: tier3.policies?.count || 0,
+        form_objects: dp.forms || 0,
+        presenters: dp.presenters || 0,
+        policies: (index.extractions?.authorization?.policies || []).length || 0,
       }
 
       const overview = {
         rails_version: v.rails || 'unknown',
         ruby_version: v.ruby || 'unknown',
         database: config.database || v.database || 'unknown',
-        asset_pipeline: v.asset_pipeline || 'unknown',
+        asset_pipeline: v.framework?.assetPipeline || v.asset_pipeline || 'unknown',
         frontend_stack: v.frontend || [],
         authentication: authSummary,
         authorization: authzSummary,
         job_adapter: config.queue_adapter || jobs.adapter || 'unknown',
         cache_store: caching.store || 'unknown',
-        test_framework: v.test_framework || 'unknown',
+        test_framework: v.framework?.testFramework || v.test_framework || 'unknown',
         key_models: keyModels,
         key_controllers: keyControllers,
         custom_patterns: customPatterns,

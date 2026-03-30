@@ -4,7 +4,7 @@
 export const AUTHORIZATION_PATTERNS = {
   // Pundit
   policyClass: /class\s+(\w+)Policy\s*<\s*(\w+)/,
-  policyMethod: /def\s+(index|show|create|new|update|edit|destroy)\?/g,
+  policyMethod: /def\s+(\w+)\?/g,
   policyScopeClass: /class\s+Scope\s*<\s*(?:ApplicationPolicy::)?Scope/,
   policyScopeResolve: /def\s+resolve/,
   authorize: /authorize\s+(@?\w+)(?:,\s*:(\w+)\?)?/g,

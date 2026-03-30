@@ -2,6 +2,87 @@ import { z } from 'zod'
 import { noIndex, respond } from './helpers.js'
 
 /**
+ * Collect seed entity names for a given skill from the index extractions.
+ * @param {string} skill
+ * @param {object} index
+ * @returns {Set<string>}
+ */
+function getSkillSeeds(skill, index) {
+  const extractions = index.extractions || {}
+  const seeds = new Set()
+
+  switch (skill) {
+    case 'authentication': {
+      // Models with Devise, has_secure_password, or Session/Current naming
+      for (const [name, model] of Object.entries(extractions.models || {})) {
+        if (
+          model.has_secure_password ||
+          (model.devise_modules && model.devise_modules.length > 0) ||
+          /^(User|Session|Current|Account|Identity)$/.test(name)
+        ) {
+          seeds.add(name)
+        }
+      }
+      // Controllers related to auth
+      for (const [name] of Object.entries(extractions.controllers || {})) {
+        if (
+          /session|registration|password|confirmation|login|signup|auth/i.test(
+            name,
+          )
+        ) {
+          seeds.add(name)
+        }
+      }
+      break
+    }
+    case 'database': {
+      // All non-concern, non-abstract AR models
+      for (const [name, model] of Object.entries(extractions.models || {})) {
+        if (model.type !== 'concern' && !model.abstract) seeds.add(name)
+      }
+      break
+    }
+    case 'frontend': {
+      for (const sc of extractions.stimulus_controllers || []) {
+        seeds.add(sc.identifier || sc.class)
+      }
+      for (const [name] of Object.entries(extractions.components || {})) {
+        seeds.add(name)
+      }
+      for (const [name] of Object.entries(extractions.controllers || {})) {
+        if (/pages|home|static|landing/i.test(name)) seeds.add(name)
+      }
+      break
+    }
+    case 'api': {
+      for (const [name, ctrl] of Object.entries(extractions.controllers || {})) {
+        if (/api|v\d+|json/i.test(name) || ctrl.api_only) seeds.add(name)
+      }
+      break
+    }
+    case 'jobs': {
+      for (const [name] of Object.entries(extractions.workers || {})) {
+        seeds.add(name)
+      }
+      for (const job of extractions.jobs?.jobs || []) {
+        seeds.add(job.class || job.name)
+      }
+      break
+    }
+    case 'email': {
+      for (const [name] of Object.entries(extractions.mailers || {})) {
+        seeds.add(name)
+      }
+      break
+    }
+    default:
+      break
+  }
+
+  return seeds
+}
+
+/**
  * Register the get_subgraph tool.
  * @param {import('@modelcontextprotocol/sdk/server/mcp.js').McpServer} server
  * @param {Object} state - Mutable state with { index, provider, verbose }
@@ -20,47 +101,31 @@ export function register(server, state) {
     async ({ skill }) => {
       if (!state.index) return noIndex()
 
-      const skillDomains = {
-        authentication: [
-          'auth',
-          'devise',
-          'session',
-          'current',
-          'password',
-          'registration',
-          'confirmation',
-        ],
-        database: ['model', 'schema', 'migration', 'concern'],
-        frontend: ['component', 'stimulus', 'view', 'turbo', 'hotwire'],
-        api: ['api', 'serializer', 'blueprint', 'graphql'],
-        jobs: ['job', 'worker', 'sidekiq', 'queue'],
-        email: ['mailer', 'mail', 'mailbox'],
-      }
+      const KNOWN_SKILLS = [
+        'authentication',
+        'database',
+        'frontend',
+        'api',
+        'jobs',
+        'email',
+      ]
 
-      const domains = skillDomains[skill]
-      if (!domains) {
+      if (!KNOWN_SKILLS.includes(skill)) {
         return respond({
           error: `Unknown skill '${skill}'`,
-          available: Object.keys(skillDomains),
+          available: KNOWN_SKILLS,
         })
       }
 
+      const seeds = getSkillSeeds(skill, state.index)
       const allRels = state.index.relationships || []
       const rankings = state.index.rankings || {}
-      const relevantEntities = new Set()
+
+      // BFS one hop from seeds using relationships
+      const relevantEntities = new Set(seeds)
       for (const rel of allRels) {
-        const fromMatch = domains.some((d) =>
-          rel.from.toLowerCase().includes(d),
-        )
-        const toMatch = domains.some((d) => rel.to.toLowerCase().includes(d))
-        if (fromMatch || toMatch) {
-          relevantEntities.add(rel.from)
-          relevantEntities.add(rel.to)
-        }
-      }
-      for (const key of Object.keys(rankings)) {
-        if (domains.some((d) => key.toLowerCase().includes(d)))
-          relevantEntities.add(key)
+        if (seeds.has(rel.from)) relevantEntities.add(rel.to)
+        if (seeds.has(rel.to)) relevantEntities.add(rel.from)
       }
 
       const subgraphRels = allRels.filter(

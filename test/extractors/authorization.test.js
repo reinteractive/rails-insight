@@ -514,4 +514,44 @@ end`,
       expect(output.length).toBeGreaterThanOrEqual(3000)
     })
   })
+
+  describe('ISSUE-12: custom policy action methods beyond CRUD', () => {
+    it('extracts non-CRUD policy predicate methods', () => {
+      const files = {
+        'app/policies/asset_review_policy.rb': `
+class AssetReviewPolicy < ApplicationPolicy
+  def index?
+    user.admin?
+  end
+
+  def approve?
+    user.reviewer?
+  end
+
+  def reject?
+    user.reviewer?
+  end
+
+  def publish?
+    user.admin?
+  end
+end`,
+      }
+      const entries = [
+        { path: 'app/policies/asset_review_policy.rb', category: 'policy' },
+      ]
+      const provider = mockProvider(files)
+      const result = extractAuthorization(provider, entries, {
+        gems: { pundit: { version: '2.3' } },
+      })
+      const policy = result.policies?.find(
+        (p) => p.resource === 'AssetReview' || p.class === 'AssetReviewPolicy',
+      )
+      expect(policy).toBeDefined()
+      expect(policy.permitted_actions).toContain('approve')
+      expect(policy.permitted_actions).toContain('reject')
+      expect(policy.permitted_actions).toContain('publish')
+      expect(policy.permitted_actions).toContain('index')
+    })
+  })
 })

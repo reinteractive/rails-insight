@@ -107,4 +107,30 @@ end`,
       expect(result.low_level_caching.rails_cache_fetch_count).toBe(0)
     })
   })
+
+  describe('ISSUE-08: commented-out cache configuration', () => {
+    it('ignores commented-out cache_store in production.rb', () => {
+      const provider = mockProvider({
+        'config/environments/production.rb': `
+Rails.application.configure do
+  # config.cache_store = :mem_cache_store
+  config.force_ssl = true
+end`,
+      })
+      const result = extractCaching(provider, [])
+      expect(result.store.production).toBeUndefined()
+    })
+
+    it('detects uncommented cache_store in production.rb', () => {
+      const provider = mockProvider({
+        'config/environments/production.rb': `
+Rails.application.configure do
+  # config.cache_store = :mem_cache_store
+  config.cache_store = :redis_cache_store
+end`,
+      })
+      const result = extractCaching(provider, [])
+      expect(result.store.production).toBe('redis_cache_store')
+    })
+  })
 })

@@ -175,6 +175,10 @@ export function extractModel(provider, filePath, className) {
   while ((m = validateRe.exec(content))) {
     custom_validators.push(m[1])
   }
+  const vwRe = new RegExp(MODEL_PATTERNS.validatesWithValidator.source, 'gm')
+  while ((m = vwRe.exec(content))) {
+    custom_validators.push(`validates_with:${m[1]}`)
+  }
 
   // Scopes — names array (backward-compat) + scope_queries dict with bodies
   const scopes = []
@@ -269,11 +273,17 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
-  // Callbacks
+  // Callbacks — strip inline comments before matching; skip block-only callbacks
+  const cbLines = content
+    .split('\n')
+    .map((l) => l.replace(/#[^{].*$/, '').trimEnd())
+    .join('\n')
   const callbacks = []
   const cbRe = new RegExp(MODEL_PATTERNS.callbackType.source, 'gm')
-  while ((m = cbRe.exec(content))) {
-    callbacks.push({ type: m[1], method: m[2], options: m[3] || null })
+  while ((m = cbRe.exec(cbLines))) {
+    const method = m[2]
+    if (method === 'do' || method === '{') continue
+    callbacks.push({ type: m[1], method, options: m[3] || null })
   }
 
   // Delegations
@@ -376,26 +386,28 @@ export function extractModel(provider, filePath, className) {
     ? turboRefreshesMatch[1]
     : null
 
-  // Devise modules
+  // Devise modules — use matchAll to handle multiple devise() calls
   let devise_modules = []
-  const deviseMatch = content.match(MODEL_PATTERNS.devise)
-  if (deviseMatch) {
-    // Devise declaration can span multiple lines
+  const deviseGlobalRe = /^\s*devise\s+(.+)/gm
+  let deviseMatch
+  while ((deviseMatch = deviseGlobalRe.exec(content))) {
     let deviseStr = deviseMatch[1]
-    // Continue capturing if line ends with comma
-    const deviseStartIdx = content.indexOf(deviseMatch[0])
-    const afterMatch = content.slice(deviseStartIdx + deviseMatch[0].length)
-    const continuationLines = afterMatch.split('\n')
-    for (const line of continuationLines) {
-      const trimmed = line.trim()
-      if (trimmed.length === 0) continue
-      if (/^:/.test(trimmed) || /^,/.test(trimmed) || /^\w+.*:/.test(trimmed)) {
-        deviseStr += ' ' + trimmed
-      } else {
-        break
+    // Only continue if line ends with comma (argument list continues)
+    const afterMatch = content.slice(deviseMatch.index + deviseMatch[0].length)
+    if (deviseMatch[0].trimEnd().endsWith(',')) {
+      const continuationLines = afterMatch.split('\n')
+      for (const line of continuationLines) {
+        const trimmed = line.trim()
+        if (trimmed.length === 0) continue
+        if (/^:/.test(trimmed) || /^,\s*:/.test(trimmed)) {
+          deviseStr += ' ' + trimmed
+        } else {
+          break
+        }
       }
     }
-    devise_modules = (deviseStr.match(/:(\w+)/g) || []).map((s) => s.slice(1))
+    const modules = (deviseStr.match(/:(\w+)/g) || []).map((s) => s.slice(1))
+    devise_modules.push(...modules)
   }
 
   // Searchable
