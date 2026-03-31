@@ -534,3 +534,48 @@ describe('class_name override — no phantom nodes', () => {
     expect(graph.nodes.has('Creator')).toBe(false)
   })
 })
+
+describe('ISSUE-I: convention_pair prefers un-namespaced controller', () => {
+  it('creates convention_pair only from un-namespaced controller when both exist', () => {
+    const extractions = {
+      models: { Email: { associations: [], concerns: [] } },
+      controllers: {
+        EmailsController: { class: 'EmailsController', actions: ['index'] },
+        'Webhook::V1::EmailsController': {
+          class: 'Webhook::V1::EmailsController',
+          actions: ['create'],
+        },
+      },
+      test_conventions: null,
+    }
+    const manifest = { entries: [] }
+    const { relationships } = buildGraph(extractions, manifest)
+
+    const conventionPairs = relationships.filter(
+      (r) => r.type === 'convention_pair' && r.to === 'Email',
+    )
+    expect(conventionPairs).toHaveLength(1)
+    expect(conventionPairs[0].from).toBe('EmailsController')
+  })
+
+  it('creates convention_pair from namespaced controller when no un-namespaced version', () => {
+    const extractions = {
+      models: { Email: { associations: [], concerns: [] } },
+      controllers: {
+        'Webhook::V1::EmailsController': {
+          class: 'Webhook::V1::EmailsController',
+          actions: ['create'],
+        },
+      },
+      test_conventions: null,
+    }
+    const manifest = { entries: [] }
+    const { relationships } = buildGraph(extractions, manifest)
+
+    const conventionPairs = relationships.filter(
+      (r) => r.type === 'convention_pair' && r.to === 'Email',
+    )
+    expect(conventionPairs).toHaveLength(1)
+    expect(conventionPairs[0].from).toBe('Webhook::V1::EmailsController')
+  })
+})

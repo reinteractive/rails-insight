@@ -362,8 +362,15 @@ export function buildGraph(extractions, manifest, skills = []) {
   if (extractions.controllers) {
     for (const [name, ctrl] of Object.entries(extractions.controllers)) {
       graph.addNode(name, 'controller', name)
-      // Convention: PostsController → Post model
-      const modelName = name.replace(/Controller$/, '').replace(/s$/, '')
+      // Convention: PostsController → Post model (use base name, ignoring namespace prefix)
+      const baseName = name.split('::').pop()
+      const modelName = baseName.replace(/Controller$/, '').replace(/s$/, '')
+
+      // Skip convention_pair for namespaced controllers if an un-namespaced version exists
+      if (name.includes('::') && extractions.controllers[baseName]) {
+        continue
+      }
+
       if (extractions.models && extractions.models[modelName]) {
         graph.addEdge(name, modelName, 'convention_pair')
         relationships.push({

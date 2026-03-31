@@ -17,8 +17,30 @@ export function extractController(provider, filePath) {
 
   // Class declaration
   const classMatch = content.match(CONTROLLER_PATTERNS.classDeclaration)
-  const className = classMatch ? classMatch[1] : null
+  let className = classMatch ? classMatch[1] : null
   const superclass = classMatch ? classMatch[2] : null
+
+  // If class name doesn't contain ::, check for wrapping module declarations
+  if (className && !className.includes('::') && classMatch) {
+    const preClassContent = content.slice(0, classMatch.index)
+    const preLines = preClassContent.split('\n')
+    let moduleDepth = 0
+    const activeModules = []
+    for (const line of preLines) {
+      const modMatch = line.match(/^\s*module\s+(\w+(?:::\w+)*)/)
+      if (modMatch) {
+        moduleDepth++
+        activeModules.push(modMatch[1])
+      }
+      if (/^\s*end\b/.test(line) && moduleDepth > 0) {
+        moduleDepth--
+        activeModules.pop()
+      }
+    }
+    if (activeModules.length > 0) {
+      className = activeModules.join('::') + '::' + className
+    }
+  }
 
   // Derive namespace from class name
   let namespace = null
@@ -40,9 +62,25 @@ export function extractController(provider, filePath) {
   }
 
   // Filters — tag authorization guards
+  // Pre-process: join lines where [ is opened but not closed (multi-line options)
+  const lines = content.split('\n')
+  const joinedLines = []
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i]
+    while (
+      (line.match(/\[/g) || []).length > (line.match(/\]/g) || []).length &&
+      i + 1 < lines.length
+    ) {
+      i++
+      line = line.trimEnd() + ' ' + lines[i].trim()
+    }
+    joinedLines.push(line)
+  }
+  const joinedContent = joinedLines.join('\n')
+
   const rawFilters = []
   const filterRe = new RegExp(CONTROLLER_PATTERNS.filterType.source, 'gm')
-  while ((m = filterRe.exec(content))) {
+  while ((m = filterRe.exec(joinedContent))) {
     const filterMethod = m[2]
     const isAuthzGuard = /^require_\w+!$/.test(filterMethod)
     rawFilters.push({
@@ -110,15 +148,15 @@ export function extractController(provider, filePath) {
   // Actions (public methods before private/protected) with line ranges
   const actions = []
   const action_line_ranges = {}
-  const lines = content.split('\n')
+  const contentLines = content.split('\n')
   let inPublic = true
   let currentActionName = null
   let currentActionStart = null
   let methodDepth = 0
   const visRe = /^\s*(private|protected)\s*$/
   const methodRe = /^\s*def\s+(\w+)/
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  for (let i = 0; i < contentLines.length; i++) {
+    const line = contentLines[i]
     const lineNumber = i + 1
 
     if (visRe.test(line)) {
@@ -181,7 +219,7 @@ export function extractController(provider, filePath) {
   if (currentActionName && inPublic) {
     action_line_ranges[currentActionName] = {
       start: currentActionStart,
-      end: lines.length,
+      end: contentLines.length,
     }
   }
 

@@ -58,3 +58,37 @@ describe('ISSUE-I: Auth subgraph relevance filter', () => {
     expect(relevantEntities.has('Authenticatable')).toBe(true)
   })
 })
+
+describe('ISSUE-F: email subgraph seeds from models/controllers', () => {
+  it('email subgraph includes Email model and EmailsController when no mailers exist', () => {
+    const index = {
+      extractions: {
+        models: {
+          Email: { file: 'app/models/email.rb', associations: [] },
+          User: { file: 'app/models/user.rb', associations: [] },
+        },
+        controllers: {
+          EmailsController: {
+            file: 'app/controllers/emails_controller.rb',
+            actions: ['index'],
+          },
+          UsersController: {
+            file: 'app/controllers/users_controller.rb',
+            actions: ['index'],
+          },
+        },
+        email: { mailers: [] },
+        mailers: {},
+      },
+      relationships: [],
+      rankings: { Email: 0.05, EmailsController: 0.03 },
+    }
+
+    const seeds = getSkillSeeds('email', index)
+    expect(seeds.has('Email')).toBe(true)
+    expect(seeds.has('EmailsController')).toBe(true)
+    // Non-email entities should not be seeded
+    expect(seeds.has('User')).toBe(false)
+    expect(seeds.has('UsersController')).toBe(false)
+  })
+})

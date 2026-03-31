@@ -140,4 +140,36 @@ end`,
       expect(result.database.adapter).toBe('sqlite3')
     })
   })
+
+  describe('ISSUE-D: multi-DB detection requires adapter key', () => {
+    it('does not report pool/password as database names in single-DB config', () => {
+      const provider = mockProvider({
+        'config/database.yml': `production:
+  adapter: postgresql
+  database: kollaras_production
+  pool: 5
+  username: app
+  password: secret`,
+      })
+      const result = extractConfig(provider)
+      expect(result.database.multi_db).toBeFalsy()
+      expect(result.database.databases).toBeUndefined()
+      expect(result.database.adapter).toBe('postgresql')
+    })
+
+    it('correctly detects multi-DB when sub-sections have adapter keys', () => {
+      const provider = mockProvider({
+        'config/database.yml': `production:
+  primary:
+    adapter: postgresql
+    database: app_primary
+  secondary:
+    adapter: postgresql
+    database: app_secondary`,
+      })
+      const result = extractConfig(provider)
+      expect(result.database.multi_db).toBe(true)
+      expect(result.database.databases).toEqual(['primary', 'secondary'])
+    })
+  })
 })

@@ -72,8 +72,25 @@ export function getSkillSeeds(skill, index) {
       break
     }
     case 'email': {
+      // Mailer classes (from extractions.mailers or extractions.email.mailers)
       for (const [name] of Object.entries(extractions.mailers || {})) {
         seeds.add(name)
+      }
+      for (const mailer of extractions.email?.mailers || []) {
+        if (mailer.class) seeds.add(mailer.class)
+      }
+      // Mailbox classes
+      if (extractions.email?.mailbox?.mailboxes) {
+        for (const mb of extractions.email.mailbox.mailboxes) {
+          seeds.add(mb)
+        }
+      }
+      // Models and controllers with email/mail in the name
+      for (const [name] of Object.entries(extractions.models || {})) {
+        if (/email|mail/i.test(name)) seeds.add(name)
+      }
+      for (const [name] of Object.entries(extractions.controllers || {})) {
+        if (/email|mail/i.test(name)) seeds.add(name)
       }
       break
     }

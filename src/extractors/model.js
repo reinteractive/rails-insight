@@ -297,19 +297,53 @@ export function extractModel(provider, filePath, className) {
     .split('\n')
     .map((l) => l.replace(/#[^{].*$/, '').trimEnd())
     .join('\n')
-  const callbacks = []
+  const rawCallbacks = []
   const cbRe = new RegExp(MODEL_PATTERNS.callbackType.source, 'gm')
   while ((m = cbRe.exec(cbLines))) {
     const method = m[2]
     if (method === 'do' || method === '{') continue
-    callbacks.push({ type: m[1], method, options: m[3] || null })
+    rawCallbacks.push({ type: m[1], method, options: m[3] || null })
   }
 
   // Block callbacks: before_save { ... } or before_save do ... end
   const blockCbRe =
-    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+(?:do|\{)/gm
+    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit))\s+(?:do|\{)/gm
   while ((m = blockCbRe.exec(cbLines))) {
-    callbacks.push({ type: m[1], method: null, options: null })
+    rawCallbacks.push({ type: m[1], method: null, options: null })
+  }
+
+  // Expand callbacks with multiple method symbols: after_save_commit :a, :b → 2 entries
+  const callbacks = []
+  for (const cb of rawCallbacks) {
+    if (!cb.options) {
+      callbacks.push(cb)
+      continue
+    }
+
+    const parts = cb.options.split(',').map((p) => p.trim())
+    const additionalMethods = []
+    const realOptions = []
+
+    for (const part of parts) {
+      if (/^:(\w+[!?]?)$/.test(part)) {
+        additionalMethods.push(part.replace(/^:/, ''))
+      } else {
+        realOptions.push(part)
+      }
+    }
+
+    callbacks.push({
+      ...cb,
+      options: realOptions.length > 0 ? realOptions.join(', ') : null,
+    })
+
+    for (const method of additionalMethods) {
+      callbacks.push({
+        type: cb.type,
+        method,
+        options: realOptions.length > 0 ? realOptions.join(', ') : null,
+      })
+    }
   }
 
   // Delegations

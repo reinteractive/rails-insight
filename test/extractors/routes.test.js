@@ -464,4 +464,37 @@ end`,
       expect(users.actions).toHaveLength(7)
     })
   })
+
+  describe('ISSUE-E: resources with only: [] produces zero actions', () => {
+    it('resources with only: [] produces zero actions', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :emails, only: [] do
+    member do
+      post :deliver
+    end
+  end
+end`,
+        }),
+      )
+      const emails = result.resources.find((r) => r.name === 'emails')
+      expect(emails).toBeDefined()
+      expect(emails.actions).toEqual([])
+      expect(emails.member_routes).toContain('deliver')
+    })
+
+    it('resources with only: [] and hash rocket produces zero actions', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :webhooks, :only => []
+end`,
+        }),
+      )
+      const webhooks = result.resources.find((r) => r.name === 'webhooks')
+      expect(webhooks).toBeDefined()
+      expect(webhooks.actions).toEqual([])
+    })
+  })
 })

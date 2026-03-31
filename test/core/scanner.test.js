@@ -85,6 +85,33 @@ describe('Scanner', () => {
       )
     })
 
+    it('classifies nested sidecar components', () => {
+      expect(
+        classifyFile(
+          'app/components/counter_widget/counter_widget_component.rb',
+        ).categoryName,
+      ).toBe('components')
+      expect(
+        classifyFile(
+          'app/components/dashboard/stats_component.rb',
+        ).categoryName,
+      ).toBe('components')
+    })
+
+    it('counts components in nested sidecar directories via scanStructure', () => {
+      const componentFiles = [
+        'app/components/alert_component.rb',
+        'app/components/counter_widget/counter_widget_component.rb',
+        'app/components/dashboard/stats_component.rb',
+      ]
+      const provider = createMockProvider(componentFiles)
+      const manifest = scanStructure(provider)
+      const componentEntries = manifest.entries.filter(
+        (e) => e.categoryName === 'components',
+      )
+      expect(componentEntries).toHaveLength(3)
+    })
+
     it('classifies stimulus controllers', () => {
       expect(
         classifyFile('app/javascript/controllers/dropdown_controller.js')

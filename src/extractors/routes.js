@@ -129,19 +129,23 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       const onlyMatch = options.match(ROUTE_PATTERNS.only)
       if (onlyMatch) {
         const raw =
-          onlyMatch[1] ||
-          onlyMatch[2] ||
-          onlyMatch[3] ||
+          onlyMatch[1] ??
+          onlyMatch[2] ??
+          onlyMatch[3] ??
           (onlyMatch[4] ? `:${onlyMatch[4]}` : '')
-        actions =
-          raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
+        if (raw.trim() === '') {
+          actions = []
+        } else {
+          actions =
+            raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
+        }
       }
       const exceptMatch = options.match(ROUTE_PATTERNS.except)
       if (exceptMatch) {
         const raw =
-          exceptMatch[1] ||
-          exceptMatch[2] ||
-          exceptMatch[3] ||
+          exceptMatch[1] ??
+          exceptMatch[2] ??
+          exceptMatch[3] ??
           (exceptMatch[4] ? `:${exceptMatch[4]}` : '')
         const excluded =
           raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
@@ -187,12 +191,16 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       const onlyMatch = options.match(ROUTE_PATTERNS.only)
       if (onlyMatch) {
         const raw =
-          onlyMatch[1] ||
-          onlyMatch[2] ||
-          onlyMatch[3] ||
+          onlyMatch[1] ??
+          onlyMatch[2] ??
+          onlyMatch[3] ??
           (onlyMatch[4] ? `:${onlyMatch[4]}` : '')
-        actions =
-          raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
+        if (raw.trim() === '') {
+          actions = []
+        } else {
+          actions =
+            raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
+        }
       }
       const exceptMatch = options.match(ROUTE_PATTERNS.except)
       if (exceptMatch) {

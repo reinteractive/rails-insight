@@ -53,9 +53,10 @@ export function extractConfig(provider) {
     // Multi-DB detection: check for primary/secondary or multiple named DBs under production
     const prodSection = parsed.production || {}
     const prodKeys = Object.keys(prodSection)
-    const subDbs = prodKeys.filter(
-      (k) => typeof prodSection[k] === 'object' && prodSection[k] !== null,
-    )
+    const subDbs = prodKeys.filter((k) => {
+      const val = prodSection[k]
+      return typeof val === 'object' && val !== null && val.adapter
+    })
     if (subDbs.length > 1) {
       result.database.multi_db = true
       result.database.databases = subDbs

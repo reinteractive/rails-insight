@@ -1048,4 +1048,74 @@ end`
       expect(uniqueVal.attributes).toContain('permalink')
     })
   })
+
+  describe('ISSUE-G: after_save_commit and compound commit callbacks', () => {
+    it('extracts after_save_commit callbacks', () => {
+      const content = `class User < ApplicationRecord
+  after_save_commit :unassign_role!, :assign_role!
+  after_create_commit :send_welcome
+  after_destroy_commit :cleanup_data
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+        'User',
+      )
+      const commitCallbacks = result.callbacks.filter((c) =>
+        c.type.includes('commit'),
+      )
+      expect(commitCallbacks.length).toBeGreaterThanOrEqual(4)
+      expect(
+        commitCallbacks.some(
+          (c) => c.type === 'after_save_commit' && c.method === 'unassign_role!',
+        ),
+      ).toBe(true)
+      expect(
+        commitCallbacks.some(
+          (c) => c.type === 'after_save_commit' && c.method === 'assign_role!',
+        ),
+      ).toBe(true)
+      expect(
+        commitCallbacks.some(
+          (c) => c.type === 'after_create_commit' && c.method === 'send_welcome',
+        ),
+      ).toBe(true)
+      expect(
+        commitCallbacks.some(
+          (c) =>
+            c.type === 'after_destroy_commit' && c.method === 'cleanup_data',
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('ISSUE-J: multi-method callback expansion', () => {
+    it('expands callbacks with multiple method symbols', () => {
+      const content = `class User < ApplicationRecord
+  after_save_commit :unassign_role!, :assign_role!
+  before_save :normalize_name, :set_defaults, if: :active?
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+        'User',
+      )
+
+      const commitCbs = result.callbacks.filter(
+        (c) => c.type === 'after_save_commit',
+      )
+      expect(commitCbs).toHaveLength(2)
+      expect(commitCbs.map((c) => c.method)).toContain('unassign_role!')
+      expect(commitCbs.map((c) => c.method)).toContain('assign_role!')
+
+      const saveCbs = result.callbacks.filter((c) => c.type === 'before_save')
+      expect(saveCbs).toHaveLength(2)
+      expect(saveCbs.map((c) => c.method)).toContain('normalize_name')
+      expect(saveCbs.map((c) => c.method)).toContain('set_defaults')
+      // Both should carry the if: condition
+      expect(saveCbs.every((c) => c.options && c.options.includes('if:'))).toBe(
+        true,
+      )
+    })
+  })
 })

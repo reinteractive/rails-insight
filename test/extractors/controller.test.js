@@ -478,4 +478,77 @@ end`
       expect(result.filters[0].options).toContain('only')
     })
   })
+
+  describe('ISSUE-C: module-wrapped controller namespace extraction', () => {
+    it('extracts fully qualified class name from module-wrapped controller', () => {
+      const content = `module Backend
+  class AiTrainingController < ApplicationController
+    def index
+    end
+  end
+end`
+      const result = extractController(
+        mockProvider({
+          'app/controllers/backend/ai_training_controller.rb': content,
+        }),
+        'app/controllers/backend/ai_training_controller.rb',
+      )
+      expect(result.class).toBe('Backend::AiTrainingController')
+      expect(result.namespace).toBe('backend')
+    })
+
+    it('handles deeply nested module wrapping', () => {
+      const content = `module Api
+  module V1
+    class UsersController < ApplicationController
+      def index; end
+    end
+  end
+end`
+      const result = extractController(
+        mockProvider({
+          'app/controllers/api/v1/users_controller.rb': content,
+        }),
+        'app/controllers/api/v1/users_controller.rb',
+      )
+      expect(result.class).toBe('Api::V1::UsersController')
+      expect(result.namespace).toBe('api/v1')
+    })
+
+    it('does not double-namespace controllers already using :: in class name', () => {
+      const content = `class Api::V1::ProductsController < ApplicationController
+  def index; end
+end`
+      const result = extractController(
+        mockProvider({
+          'app/controllers/api/v1/products_controller.rb': content,
+        }),
+        'app/controllers/api/v1/products_controller.rb',
+      )
+      expect(result.class).toBe('Api::V1::ProductsController')
+      expect(result.namespace).toBe('api/v1')
+    })
+  })
+
+  describe('ISSUE-H: multi-line filter options with bracket continuation', () => {
+    it('captures multi-line filter options with continuation', () => {
+      const content = `class TargetsController < ApplicationController
+  before_action :target_query_params, only: [
+    :index, :show, :edit, :update
+  ]
+  before_action :authenticate!
+end`
+      const result = extractController(
+        mockProvider({
+          'app/controllers/targets_controller.rb': content,
+        }),
+        'app/controllers/targets_controller.rb',
+      )
+      const tqp = result.filters.find((f) => f.method === 'target_query_params')
+      expect(tqp).toBeDefined()
+      expect(tqp.options).toContain('index')
+      expect(tqp.options).toContain('update')
+      expect(tqp.options).toContain(']')
+    })
+  })
 })

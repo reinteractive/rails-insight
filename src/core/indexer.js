@@ -592,7 +592,9 @@ export function computeStatistics(manifest, extractions, relationships) {
     models_file_count: (manifest.stats || {}).models || 0,
     models_in_manifest: (manifest.stats || {}).models || 0,
     controllers: Object.keys(extractions.controllers || {}).length,
-    components: Object.keys(extractions.components || {}).length,
+    components: entries.filter(
+      (e) => e.categoryName === 'components' && e.type === 'ruby',
+    ).length,
     relationships: relationships.length,
     gems: Array.isArray(extractions.gemfile?.gems)
       ? extractions.gemfile.gems.length
