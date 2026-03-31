@@ -4,6 +4,7 @@
  */
 
 import { COMPONENT_PATTERNS } from '../core/patterns.js'
+import { resolveFullyQualifiedName } from '../utils/ruby-class-resolver.js'
 
 /**
  * Determine component tier from class name / path.
@@ -84,11 +85,16 @@ export function extractComponent(provider, filePath) {
   const classMatch = content.match(COMPONENT_PATTERNS.classDeclaration)
   if (!classMatch) return null
 
-  const className = classMatch[1]
+  const { fqn: className, namespace } = resolveFullyQualifiedName(
+    content,
+    classMatch[1],
+    classMatch.index,
+  )
   const superclass = classMatch[2]
 
   const result = {
     class: className,
+    namespace,
     file: filePath,
     superclass,
     tier: detectTier(className),

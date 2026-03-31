@@ -144,4 +144,75 @@ sync:
       expect(result).toBeNull()
     })
   })
+
+  describe('ISSUE-F: Sidekiq native workers and cron jobs', () => {
+    it('extracts Sidekiq native workers from app/workers/ entries', () => {
+      const files = {
+        'app/workers/cleanup_worker.rb': `
+class CleanupWorker
+  include Sidekiq::Worker
+  sidekiq_options queue: :low, retry: 3
+
+  def perform
+  end
+end`,
+      }
+      const entries = [
+        {
+          path: 'app/workers/cleanup_worker.rb',
+          workerType: 'sidekiq_native',
+        },
+      ]
+      const provider = mockProvider(files)
+      const result = extractJobs(provider, entries, {})
+      const worker = result.jobs.find((j) => j.class === 'CleanupWorker')
+      expect(worker).toBeDefined()
+      expect(worker.type).toBe('sidekiq_worker')
+      expect(worker.queue).toBe('low')
+    })
+
+    it('includes Sidekiq worker queues in queues_detected', () => {
+      const files = {
+        'app/workers/email_worker.rb': `
+class EmailWorker
+  include Sidekiq::Job
+  sidekiq_options queue: :mailers
+
+  def perform(id); end
+end`,
+      }
+      const entries = [
+        { path: 'app/workers/email_worker.rb', workerType: 'sidekiq_native' },
+      ]
+      const result = extractJobs(mockProvider(files), entries, {})
+      expect(result.queues_detected).toContain('mailers')
+    })
+
+    it('extracts Sidekiq::Cron::Job.create definitions from initializers', () => {
+      const files = {
+        'config/initializers/sidekiq.rb': `
+Sidekiq::Cron::Job.create(
+  name: 'cleanup - every hour',
+  cron: '0 * * * *',
+  class: 'CleanupWorker'
+)`,
+      }
+      const provider = {
+        readFile: (path) => files[path] || null,
+        glob: (pattern) => {
+          if (pattern === 'config/initializers/*.rb')
+            return ['config/initializers/sidekiq.rb']
+          return []
+        },
+      }
+      const result = extractJobs(provider, [], {})
+      expect(result.recurring_jobs).toBeDefined()
+      expect(result.recurring_jobs.sidekiq_cron).toHaveLength(1)
+      expect(result.recurring_jobs.sidekiq_cron[0].name).toBe(
+        'cleanup - every hour',
+      )
+      expect(result.recurring_jobs.sidekiq_cron[0].cron).toBe('0 * * * *')
+      expect(result.recurring_jobs.sidekiq_cron[0].class).toBe('CleanupWorker')
+    })
+  })
 })

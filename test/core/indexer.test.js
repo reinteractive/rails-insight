@@ -347,3 +347,36 @@ describe('ISSUE-K: Model count file_count in statistics', () => {
     expect(stats.models_file_count).toBe(10)
   })
 })
+
+describe('ISSUE-A: FQN keys prevent model and component shadowing', () => {
+  it('does not deduplicate models with same short name but different namespaces', async () => {
+    const files = {
+      Gemfile: "gem 'rails'",
+      'Gemfile.lock': '  specs:\n    rails (7.1.0)',
+      'config/application.rb': '',
+      'app/models/contact.rb': `
+class Contact < ApplicationRecord
+  has_many :offers
+  has_many :addresses
+end`,
+      'app/models/setups/contact.rb': `
+module Setups
+  class Contact < Setup
+  end
+end`,
+    }
+
+    const provider = {
+      readFile: (path) => files[path] || null,
+      fileExists: (path) => path in files,
+      glob: (pattern) =>
+        Object.keys(files).filter((p) => matchGlob(pattern, p)),
+      listDir: () => [],
+    }
+
+    const index = await buildIndex(provider)
+    expect(index.extractions.models['Contact']).toBeDefined()
+    expect(index.extractions.models['Setups::Contact']).toBeDefined()
+    expect(index.extractions.models['Contact'].associations).toHaveLength(2)
+  })
+})

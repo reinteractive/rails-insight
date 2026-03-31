@@ -214,15 +214,19 @@ export async function buildIndex(provider, options = {}) {
   // Per-file extractors (categoryName is the string label, category is the number)
   for (const entry of entries) {
     if (entry.categoryName === 'models') {
-      const className = pathToClassName(entry.path)
       const model = safeExtract(
-        `model:${className}`,
-        () => extractModel(provider, entry.path, className),
+        `model:${entry.path}`,
+        () => extractModel(provider, entry.path),
         null,
         options.verbose,
         extractionErrors,
       )
-      if (model) extractions.models[className] = model
+      if (model) {
+        // Use FQN from the model itself; fall back to path-derived name only if
+        // the extractor couldn't detect a class (e.g. concern without class decl)
+        const key = model.class || pathToClassName(entry.path)
+        extractions.models[key] = model
+      }
     } else if (
       entry.categoryName === 'controllers' ||
       (entry.categoryName === 'authentication' &&
@@ -243,7 +247,7 @@ export async function buildIndex(provider, options = {}) {
     } else if (entry.categoryName === 'components') {
       const comp = extractComponent(provider, entry.path)
       if (comp) {
-        const name = pathToClassName(entry.path)
+        const name = comp.class || pathToClassName(entry.path)
         extractions.components[name] = comp
       }
     } else if (entry.categoryName === 'stimulus') {
@@ -502,6 +506,9 @@ function mapJobFiles(map, jobs) {
   if (!jobs?.jobs) return
   for (const job of jobs.jobs) {
     if (job.file && job.class) {
+      // Sidekiq native workers are already mapped as 'worker' via extractions.workers;
+      // skip here to avoid overwriting with 'job'
+      if (job.type === 'sidekiq_worker') continue
       map[job.file] = { entity: job.class, type: 'job' }
     }
   }

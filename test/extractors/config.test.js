@@ -171,5 +171,28 @@ end`,
       expect(result.database.multi_db).toBe(true)
       expect(result.database.databases).toEqual(['primary', 'secondary'])
     })
+
+    it('does not report multi_db for database.yml with default: &default anchor and merge keys', () => {
+      const provider = mockProvider({
+        'config/database.yml': `
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: 5
+  password: secret123
+
+development:
+  <<: *default
+  database: kollaras_development
+
+production:
+  <<: *default
+  database: kollaras_production
+`,
+      })
+      const result = extractConfig(provider)
+      expect(result.database.multi_db).toBeFalsy()
+      expect(result.database.adapter).toBe('postgresql')
+    })
   })
 })

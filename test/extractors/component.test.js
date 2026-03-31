@@ -237,4 +237,47 @@ end`,
       expect(result.tier).toBe('layout')
     })
   })
+
+  describe('ISSUE-A/D: component.rb naming convention with module wrapping', () => {
+    it('extracts FQN from module-wrapped component.rb file', () => {
+      const content = `module Search\n  class Component < ViewComponent::Base\n    def initialize(query:)\n      @query = query\n    end\n  end\nend`
+      const provider = mockProvider({
+        'app/components/search/component.rb': content,
+      })
+      const result = extractComponent(
+        provider,
+        'app/components/search/component.rb',
+      )
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('Search::Component')
+      expect(result.namespace).toBe('Search')
+    })
+
+    it('extracts FQN from deeply namespaced component.rb', () => {
+      const content = `module CounterWidget\n  class Component < ViewComponent::Base\n  end\nend`
+      const provider = mockProvider({
+        'app/components/counter_widget/component.rb': content,
+      })
+      const result = extractComponent(
+        provider,
+        'app/components/counter_widget/component.rb',
+      )
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('CounterWidget::Component')
+    })
+
+    it('still extracts classic *_component.rb files correctly', () => {
+      const content = `class OfferComponent < ViewComponent::Base\n  def initialize(offer:)\n    @offer = offer\n  end\nend`
+      const provider = mockProvider({
+        'app/components/offer_component.rb': content,
+      })
+      const result = extractComponent(
+        provider,
+        'app/components/offer_component.rb',
+      )
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('OfferComponent')
+      expect(result.namespace).toBeNull()
+    })
+  })
 })

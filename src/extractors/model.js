@@ -4,6 +4,7 @@
  */
 
 import { MODEL_PATTERNS } from '../core/patterns.js'
+import { resolveFullyQualifiedName } from '../utils/ruby-class-resolver.js'
 
 /**
  * Join lines where a declaration continues on the next line (ends with comma).
@@ -94,9 +95,16 @@ export function extractModel(provider, filePath, className) {
   // Class/module declaration
   let detectedClass = className || null
   let superclass = null
+  let detectedNamespace = null
   const classMatch = content.match(MODEL_PATTERNS.classDeclaration)
   if (classMatch) {
-    detectedClass = classMatch[1]
+    const { fqn, namespace } = resolveFullyQualifiedName(
+      content,
+      classMatch[1],
+      classMatch.index,
+    )
+    detectedClass = fqn
+    detectedNamespace = namespace
     superclass = classMatch[2]
   } else if (isConcern) {
     const moduleMatch = content.match(/module\s+(\w+(?:::\w+)*)/)
@@ -466,7 +474,11 @@ export function extractModel(provider, filePath, className) {
         }
       }
     }
-    const modules = (deviseStr.match(/:(\w+)/g) || []).map((s) => s.slice(1))
+    // Split at first keyword argument (e.g. `omniauth_providers:`) — everything
+    // before it is module symbols, everything after is configuration values
+    const keywordArgSplit = deviseStr.split(/\b\w+:\s*/)
+    const modulesPart = keywordArgSplit[0]
+    const modules = (modulesPart.match(/:(\w+)/g) || []).map((s) => s.slice(1))
     devise_modules.push(...modules)
   }
 
@@ -611,6 +623,7 @@ export function extractModel(provider, filePath, className) {
     file: filePath,
     type: isConcern ? 'concern' : 'model',
     superclass,
+    namespace: detectedNamespace,
     abstract,
     sti_base,
     concerns,

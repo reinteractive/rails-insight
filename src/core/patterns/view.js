@@ -4,7 +4,10 @@
 export const VIEW_PATTERNS = {
   turboFrame:
     /(?:<turbo-frame\s+id=['"]([^'"]+)['"]|turbo_frame_tag\s+['"]([^'"]+)['"])/g,
-  componentRender: /render\s+(\w+(?:::\w+)*Component)/g,
+  // Matches both `render OfferComponent.new(...)` (classic) and
+  // `render Search::Component.new(...)` (namespaced component.rb convention)
+  componentRender:
+    /render\s*\(?\s*((?:[A-Z]\w*::)*(?:[A-Z]\w*Component|Component))\.(?:new|with_collection|with_content)/g,
   partialRender: /render\s+(?:partial:\s*)?['"]([^'"]+)['"]/g,
   contentFor: /content_for\s*[:(]\s*:?(\w+)/g,
   formWith: /form_with\s/g,

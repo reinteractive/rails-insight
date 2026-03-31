@@ -1120,4 +1120,67 @@ end`
       )
     })
   })
+
+  describe('ISSUE-A: module wrapping detection for models', () => {
+    it('detects FQN for module-wrapped model', () => {
+      const content = `module Setups\n  class Contact < Setup\n    # no associations\n  end\nend`
+      const result = extractModel(
+        mockProvider({ 'app/models/setups/contact.rb': content }),
+        'app/models/setups/contact.rb',
+      )
+      expect(result.class).toBe('Setups::Contact')
+      expect(result.namespace).toBe('Setups')
+    })
+
+    it('returns short class name for unwrapped model', () => {
+      const content = `class Contact < ApplicationRecord\n  has_many :offers\nend`
+      const result = extractModel(
+        mockProvider({ 'app/models/contact.rb': content }),
+        'app/models/contact.rb',
+      )
+      expect(result.class).toBe('Contact')
+      expect(result.namespace).toBeNull()
+    })
+  })
+
+  describe('ISSUE-G: Devise omniauth provider not included as module', () => {
+    it('does not include omniauth provider symbol as devise module', () => {
+      const content = `class User < ApplicationRecord
+  devise :database_authenticatable, :registerable, :recoverable,
+         :rememberable, :validatable, :omniauthable,
+         omniauth_providers: [:saml]
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+      )
+      expect(result.devise_modules).toContain('omniauthable')
+      expect(result.devise_modules).not.toContain('saml')
+    })
+
+    it('does not include provider on a single-line devise call', () => {
+      const content = `class User < ApplicationRecord
+  devise :database_authenticatable, :omniauthable, omniauth_providers: [:saml]
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+      )
+      expect(result.devise_modules).toContain('omniauthable')
+      expect(result.devise_modules).not.toContain('saml')
+    })
+
+    it('does not include multiple omniauth providers', () => {
+      const content = `class User < ApplicationRecord
+  devise :database_authenticatable, :omniauthable,
+         omniauth_providers: [:google_oauth2, :saml]
+end`
+      const result = extractModel(
+        mockProvider({ 'app/models/user.rb': content }),
+        'app/models/user.rb',
+      )
+      expect(result.devise_modules).not.toContain('google_oauth2')
+      expect(result.devise_modules).not.toContain('saml')
+    })
+  })
 })

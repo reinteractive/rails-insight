@@ -71,7 +71,7 @@ export function extractJob(provider, filePath) {
 /**
  * Extract all jobs and detect adapter/recurring config.
  * @param {import('../providers/interface.js').FileProvider} provider
- * @param {Array<{path: string}>} entries
+ * @param {Array<{path: string, workerType?: string}>} entries
  * @param {{gems?: object}} gemInfo
  * @returns {object}
  */
@@ -92,10 +92,35 @@ export function extractJobs(provider, entries, gemInfo = {}) {
   else if (gems.good_job) result.adapter = 'good_job'
 
   for (const entry of entries) {
-    const job = extractJob(provider, entry.path)
-    if (job) {
-      result.jobs.push(job)
-      result.queues_detected.add(job.queue)
+    if (entry.workerType === 'sidekiq_native') {
+      // Sidekiq native workers (app/workers/, app/sidekiq/)
+      const workerContent = provider.readFile(entry.path)
+      if (workerContent) {
+        const classMatch = workerContent.match(/class\s+(\w+)/)
+        const optionsMatch = workerContent.match(
+          /sidekiq_options\s+(.+)/,
+        )
+        const queue = optionsMatch
+          ? (optionsMatch[1].match(/queue:\s*[:'"](\w+)/) || [])[1] || 'default'
+          : 'default'
+        const retryMatch = optionsMatch
+          ? optionsMatch[1].match(/retry:\s*(\w+)/)
+          : null
+        result.jobs.push({
+          class: classMatch ? classMatch[1] : null,
+          file: entry.path,
+          type: 'sidekiq_worker',
+          queue,
+          retry: retryMatch ? retryMatch[1] : null,
+        })
+        result.queues_detected.add(queue)
+      }
+    } else {
+      const job = extractJob(provider, entry.path)
+      if (job) {
+        result.jobs.push(job)
+        result.queues_detected.add(job.queue)
+      }
     }
   }
 
@@ -112,6 +137,34 @@ export function extractJobs(provider, entries, gemInfo = {}) {
       result.recurring_jobs = {
         source: 'config/recurring.yml',
         jobs: jobNames,
+      }
+    }
+  }
+
+  // Recurring jobs from Sidekiq::Cron::Job.create in initializers
+  const initializerFiles = provider.glob
+    ? provider.glob('config/initializers/*.rb') || []
+    : []
+  for (const initFile of initializerFiles) {
+    const initContent = provider.readFile(initFile)
+    if (!initContent || !initContent.includes('Sidekiq::Cron::Job')) continue
+    const cronRe =
+      /Sidekiq::Cron::Job\.create\s*\(?\s*\n?\s*name:\s*['"]([^'"]+)['"]\s*,\s*\n?\s*cron:\s*['"]([^'"]+)['"]\s*,\s*\n?\s*class:\s*['"]([^'"]+)['"]/g
+    let cronMatch
+    const cronJobs = []
+    while ((cronMatch = cronRe.exec(initContent))) {
+      cronJobs.push({
+        name: cronMatch[1],
+        cron: cronMatch[2],
+        class: cronMatch[3],
+      })
+    }
+    if (cronJobs.length > 0) {
+      const existing = result.recurring_jobs || { jobs: [] }
+      result.recurring_jobs = {
+        ...existing,
+        source: result.recurring_jobs ? existing.source : initFile,
+        sidekiq_cron: cronJobs,
       }
     }
   }

@@ -196,4 +196,63 @@ describe('Views Extractor', () => {
       expect(result.additional_view_directories).toBeUndefined()
     })
   })
+
+  describe('ISSUE-H: namespaced ViewComponent renders are counted', () => {
+    it('counts Search::Component.new(...) style renders', () => {
+      const files = {
+        'app/views/dashboard/index.html.erb': `
+<%= render Search::Component.new(query: @query) %>
+<%= render ModalForm::Component.new(offer: @offer) %>
+<%= render OfferComponent.new(offer: @offer) %>
+<%= render CounterWidget::Component.new(count: 5) %>
+<%= render partial: "shared/header" %>
+`,
+      }
+      const entries = [
+        { path: 'app/views/dashboard/index.html.erb', category: 'view' },
+      ]
+      const provider = {
+        readFile: (path) => files[path] || null,
+      }
+      const result = extractViews(provider, entries)
+      // Should count 4 component renders (not the partial)
+      expect(result.component_renders).toBe(4)
+    })
+
+    it('counts with_collection renders', () => {
+      const files = {
+        'app/views/users/index.html.erb': `
+<%= render OfferComponent.with_collection(@offers) %>
+<%= render Search::Component.with_collection(@results) %>
+`,
+      }
+      const entries = [
+        { path: 'app/views/users/index.html.erb', category: 'view' },
+      ]
+      const provider = { readFile: (path) => files[path] || null }
+      const result = extractViews(provider, entries)
+      expect(result.component_renders).toBe(2)
+    })
+  })
+
+  describe('ISSUE-E: turbo stream template counting', () => {
+    it('correctly counts .turbo_stream.erb files', () => {
+      const files = {
+        'app/views/offers/update.turbo_stream.erb':
+          '<%= turbo_stream.replace "offer" %>',
+        'app/views/targets/update_statuses.turbo_stream.erb':
+          '<%= turbo_stream.replace "targets" %>',
+        'app/views/contacts/show.turbo_stream.erb':
+          '<%= turbo_stream.prepend "contacts" %>',
+        'app/views/contacts/index.html.erb': '<p>not a turbo stream</p>',
+      }
+      const entries = Object.keys(files).map((path) => ({
+        path,
+        category: 'view',
+      }))
+      const provider = { readFile: (path) => files[path] || null }
+      const result = extractViews(provider, entries)
+      expect(result.turbo_stream_templates).toBe(3)
+    })
+  })
 })
