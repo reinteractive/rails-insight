@@ -163,17 +163,23 @@ export function register(server, state) {
         ...(index.extraction_errors?.length > 0
           ? { extraction_error_details: index.extraction_errors }
           : {}),
-        introspection: index.extractions?._introspection ? {
-          available: true,
-          source: 'bundle exec ruby',
-          models_introspected: index.extractions._introspection.models_introspected,
-          controllers_introspected: index.extractions._introspection.controllers_introspected,
-          routes_introspected: index.extractions._introspection.routes_introspected,
-          duration_ms: index.extractions._introspection.duration_ms,
-        } : {
-          available: false,
-          reason: 'Runtime introspection not available (no execCommand or --no-introspection)',
-        },
+        introspection: index.extractions?._introspection
+          ? {
+              available: true,
+              source: 'bundle exec ruby',
+              models_introspected:
+                index.extractions._introspection.models_introspected,
+              controllers_introspected:
+                index.extractions._introspection.controllers_introspected,
+              routes_introspected:
+                index.extractions._introspection.routes_introspected,
+              duration_ms: index.extractions._introspection.duration_ms,
+            }
+          : {
+              available: false,
+              reason:
+                'Runtime introspection not available (no execCommand or --no-introspection)',
+            },
       }
 
       return respond(overview)
