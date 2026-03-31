@@ -97,9 +97,7 @@ export function extractJobs(provider, entries, gemInfo = {}) {
       const workerContent = provider.readFile(entry.path)
       if (workerContent) {
         const classMatch = workerContent.match(/class\s+(\w+)/)
-        const optionsMatch = workerContent.match(
-          /sidekiq_options\s+(.+)/,
-        )
+        const optionsMatch = workerContent.match(/sidekiq_options\s+(.+)/)
         const queue = optionsMatch
           ? (optionsMatch[1].match(/queue:\s*[:'"](\w+)/) || [])[1] || 'default'
           : 'default'

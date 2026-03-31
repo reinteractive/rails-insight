@@ -80,7 +80,11 @@ module Backend
   end
 end`
     const classIndex = content.indexOf('class AiController')
-    const result = resolveFullyQualifiedName(content, 'AiController', classIndex)
+    const result = resolveFullyQualifiedName(
+      content,
+      'AiController',
+      classIndex,
+    )
     expect(result.fqn).toBe('Backend::AiController')
     expect(result.namespace).toBe('Backend')
   })

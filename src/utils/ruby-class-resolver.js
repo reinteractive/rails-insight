@@ -12,7 +12,11 @@
  * @param {number} classMatchIndex — the character index where the class declaration was found
  * @returns {{ fqn: string, namespace: string|null }}
  */
-export function resolveFullyQualifiedName(content, shortClassName, classMatchIndex) {
+export function resolveFullyQualifiedName(
+  content,
+  shortClassName,
+  classMatchIndex,
+) {
   // If class name already contains ::, it's inline-namespaced — use as-is
   if (shortClassName.includes('::')) {
     const parts = shortClassName.split('::')
