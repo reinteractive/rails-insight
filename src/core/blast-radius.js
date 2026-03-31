@@ -503,7 +503,10 @@ function formatControllerSummary(name, controller) {
   const actionCount = (controller.actions || []).length
   if (actionCount > 0) parts.push(`${actionCount} actions`)
   const filters = controller.before_actions || controller.filters || []
-  if (filters.length > 0) parts.push(filters.map((f) => f.method || f.name || JSON.stringify(f)).join(', '))
+  if (filters.length > 0)
+    parts.push(
+      filters.map((f) => f.method || f.name || JSON.stringify(f)).join(', '),
+    )
   return parts.join(' — ')
 }
 

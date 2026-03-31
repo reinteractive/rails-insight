@@ -485,7 +485,11 @@ describe('class_name override — no phantom nodes', () => {
       models: {
         Article: {
           associations: [
-            { type: 'belongs_to', name: 'author', options: "class_name: 'AdminUser'" },
+            {
+              type: 'belongs_to',
+              name: 'author',
+              options: "class_name: 'AdminUser'",
+            },
           ],
           concerns: [],
         },
@@ -499,7 +503,9 @@ describe('class_name override — no phantom nodes', () => {
 
     expect(graph.nodes.has('AdminUser')).toBe(true)
     expect(graph.nodes.has('Author')).toBe(false)
-    const edges = graph.edges.filter((e) => e.from === 'Article' && e.to === 'AdminUser')
+    const edges = graph.edges.filter(
+      (e) => e.from === 'Article' && e.to === 'AdminUser',
+    )
     expect(edges.length).toBeGreaterThan(0)
   })
 
@@ -508,7 +514,11 @@ describe('class_name override — no phantom nodes', () => {
       models: {
         Comment: {
           associations: [
-            { type: 'belongs_to', name: 'creator', options: ":class_name => 'User'" },
+            {
+              type: 'belongs_to',
+              name: 'creator',
+              options: ":class_name => 'User'",
+            },
           ],
           concerns: [],
         },

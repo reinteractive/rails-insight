@@ -30,8 +30,20 @@ describe('get_overview handler — Devise features deduplication', () => {
             primary_strategy: 'devise',
             devise: {
               models: {
-                AdminUser: { modules: ['database_authenticatable', 'recoverable', 'trackable'] },
-                Member: { modules: ['database_authenticatable', 'registerable', 'confirmable'] },
+                AdminUser: {
+                  modules: [
+                    'database_authenticatable',
+                    'recoverable',
+                    'trackable',
+                  ],
+                },
+                Member: {
+                  modules: [
+                    'database_authenticatable',
+                    'registerable',
+                    'confirmable',
+                  ],
+                },
               },
             },
           },
@@ -54,7 +66,9 @@ describe('get_overview handler — Devise features deduplication', () => {
 
     const features = data.authentication.features
     // database_authenticatable should appear exactly once
-    const count = features.filter((f) => f === 'database_authenticatable').length
+    const count = features.filter(
+      (f) => f === 'database_authenticatable',
+    ).length
     expect(count).toBe(1)
 
     // All unique modules should be present

@@ -29,7 +29,10 @@ describe('get_schema handler', () => {
             models: {
               User: { type: 'model', file: 'app/models/user.rb' },
               ApplicationRecord: { type: 'model', abstract: true },
-              AdminAbility: { type: 'model', file: 'app/models/admin_ability.rb' },
+              AdminAbility: {
+                type: 'model',
+                file: 'app/models/admin_ability.rb',
+              },
               Place: { type: 'model', sti_parent: 'Venue' },
               Venue: { type: 'model', file: 'app/models/venue.rb' },
             },

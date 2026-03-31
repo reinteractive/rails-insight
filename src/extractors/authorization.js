@@ -578,7 +578,10 @@ export function extractAuthorization(
     let abilityContent = provider.readFile('app/models/ability.rb')
     let abilityFile = 'app/models/ability.rb'
     // Fallback: scan model and authorization files for CanCan::Ability
-    if (!abilityContent || !AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent)) {
+    if (
+      !abilityContent ||
+      !AUTHORIZATION_PATTERNS.abilityClass.test(abilityContent)
+    ) {
       const abilityEntries = entries.filter(
         (e) =>
           (e.category === 'model' ||
@@ -696,8 +699,11 @@ export function extractAuthorization(
 
   // Role detection from models
   const modelEntries = entries.filter(
-    (e) => e.category === 'model' || e.categoryName === 'models' ||
-           e.category === 1 || e.categoryName === 'models',
+    (e) =>
+      e.category === 'model' ||
+      e.categoryName === 'models' ||
+      e.category === 1 ||
+      e.categoryName === 'models',
   )
 
   // First pass: check for rolify declaration (strongest signal)

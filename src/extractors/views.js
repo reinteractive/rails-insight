@@ -75,7 +75,12 @@ export function extractViews(provider, entries) {
       ]
       for (const path of files) {
         const ext = path.split('.').pop()
-        viewEntries.push({ path, category: 'view', categoryName: 'views', type: ext })
+        viewEntries.push({
+          path,
+          category: 'view',
+          categoryName: 'views',
+          type: ext,
+        })
       }
     }
     result.additional_view_directories = additionalViewDirs
