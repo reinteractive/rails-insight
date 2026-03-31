@@ -90,10 +90,13 @@ export function register(server, state) {
         // Check if this is a Rolify RBAC model (has polymorphic resource_type/resource_id columns)
         const isRolifyRole =
           columns &&
-          columns.some((c) => c.name === 'resource_type' || c.name === 'resource_id')
+          columns.some(
+            (c) => c.name === 'resource_type' || c.name === 'resource_id',
+          )
 
         if (isRolifyRole) {
-          auth_relevance = 'Rolify RBAC model — this IS the authorization role model'
+          auth_relevance =
+            'Rolify RBAC model — this IS the authorization role model'
         } else if (authzData.roles?.model && authzData.roles.model !== name) {
           // Only claim it's a domain model if we're confident it's not auth-related
           auth_relevance = `Potentially a domain model — authorization roles are defined on ${authzData.roles.model}`

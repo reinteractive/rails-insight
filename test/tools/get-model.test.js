@@ -40,7 +40,11 @@ describe('ISSUE-A: get_model auth_relevance for Role model', () => {
           superclass: 'ApplicationRecord',
           associations: [
             { type: 'has_and_belongs_to_many', name: 'users' },
-            { type: 'belongs_to', name: 'resource', options: 'polymorphic: true' },
+            {
+              type: 'belongs_to',
+              name: 'resource',
+              options: 'polymorphic: true',
+            },
           ],
           scopes: [],
           callbacks: [],
@@ -92,7 +96,10 @@ describe('ISSUE-A: get_model auth_relevance for Role model', () => {
         tables: [
           {
             name: 'roles',
-            columns: [{ name: 'name', type: 'string' }, { name: 'level', type: 'integer' }],
+            columns: [
+              { name: 'name', type: 'string' },
+              { name: 'level', type: 'integer' },
+            ],
             indexes: [],
           },
         ],

@@ -71,7 +71,8 @@ export function extractConfig(provider) {
       const section =
         parsed.production || parsed.development || parsed.default || {}
       result.database.adapter = section.adapter || null
-      if (result.database.adapter) result.database.source = 'database.yml.example'
+      if (result.database.adapter)
+        result.database.source = 'database.yml.example'
     }
   }
 

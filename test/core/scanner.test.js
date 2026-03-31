@@ -92,9 +92,8 @@ describe('Scanner', () => {
         ).categoryName,
       ).toBe('components')
       expect(
-        classifyFile(
-          'app/components/dashboard/stats_component.rb',
-        ).categoryName,
+        classifyFile('app/components/dashboard/stats_component.rb')
+          .categoryName,
       ).toBe('components')
     })
 

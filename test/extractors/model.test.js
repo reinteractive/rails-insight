@@ -1067,7 +1067,8 @@ end`
       expect(commitCallbacks.length).toBeGreaterThanOrEqual(4)
       expect(
         commitCallbacks.some(
-          (c) => c.type === 'after_save_commit' && c.method === 'unassign_role!',
+          (c) =>
+            c.type === 'after_save_commit' && c.method === 'unassign_role!',
         ),
       ).toBe(true)
       expect(
@@ -1077,7 +1078,8 @@ end`
       ).toBe(true)
       expect(
         commitCallbacks.some(
-          (c) => c.type === 'after_create_commit' && c.method === 'send_welcome',
+          (c) =>
+            c.type === 'after_create_commit' && c.method === 'send_welcome',
         ),
       ).toBe(true)
       expect(

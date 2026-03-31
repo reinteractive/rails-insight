@@ -137,7 +137,8 @@ function parseRouteContent(content, result, provider, namespaceStack) {
           actions = []
         } else {
           actions =
-            raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
+            raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) ||
+            []
         }
       }
       const exceptMatch = options.match(ROUTE_PATTERNS.except)
@@ -199,7 +200,8 @@ function parseRouteContent(content, result, provider, namespaceStack) {
           actions = []
         } else {
           actions =
-            raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) || []
+            raw.match(/\w+/g)?.filter((a) => !['true', 'false'].includes(a)) ||
+            []
         }
       }
       const exceptMatch = options.match(ROUTE_PATTERNS.except)
