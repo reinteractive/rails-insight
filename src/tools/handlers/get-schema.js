@@ -27,7 +27,9 @@ export function register(server, state) {
         const tableName = modelData.table_name || toTableName(modelName)
 
         // Only include if the table actually exists in the schema
-        const tableExists = (schema.tables || []).some((t) => t.name === tableName)
+        const tableExists = (schema.tables || []).some(
+          (t) => t.name === tableName,
+        )
         if (tableExists) {
           modelTableMap[modelName] = tableName
         }

@@ -620,15 +620,28 @@ end`,
   describe('rolify model detection', () => {
     it('reports rolify model as AdminUser, not User', () => {
       const entries = [
-        { path: 'app/models/user.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/admin_user.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        {
+          path: 'app/models/user.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/admin_user.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
       ]
       const provider = mockProvider({
-        'app/models/user.rb': 'class User < ApplicationRecord\n  has_many :posts\nend',
+        'app/models/user.rb':
+          'class User < ApplicationRecord\n  has_many :posts\nend',
         'app/models/admin_user.rb':
           "class AdminUser < ApplicationRecord\n  rolify :role_cname => 'AdminRole'\n  devise :database_authenticatable\nend",
       })
-      const result = extractAuthorization(provider, entries, { gems: { rolify: {} } })
+      const result = extractAuthorization(provider, entries, {
+        gems: { rolify: {} },
+      })
       expect(result.roles).toBeDefined()
       expect(result.roles.model).toBe('AdminUser')
       expect(result.roles.source).toBe('rolify')
@@ -636,11 +649,16 @@ end`,
 
     it('falls back to enum role when no rolify declaration found', () => {
       const entries = [
-        { path: 'app/models/user.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        {
+          path: 'app/models/user.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
       ]
       const provider = mockProvider({
         'app/models/user.rb':
-          "class User < ApplicationRecord\n  enum role: { admin: 0, editor: 1 }\nend",
+          'class User < ApplicationRecord\n  enum role: { admin: 0, editor: 1 }\nend',
       })
       const result = extractAuthorization(provider, entries, {})
       expect(result.roles).toBeDefined()

@@ -51,7 +51,9 @@ export function register(server, state) {
 
         // Per-model detail for richer context
         authSummary.features_by_model = {}
-        for (const [modelName, modelData] of Object.entries(auth.devise.models || {})) {
+        for (const [modelName, modelData] of Object.entries(
+          auth.devise.models || {},
+        )) {
           authSummary.features_by_model[modelName] = modelData.modules || []
         }
       }
@@ -114,20 +116,23 @@ export function register(server, state) {
           .length,
         form_objects: dp.forms || 0,
         presenters: dp.presenters || 0,
-        policies: (index.extractions?.authorization?.policies || []).length || 0,
+        policies:
+          (index.extractions?.authorization?.policies || []).length || 0,
       }
 
       const overview = {
         rails_version: v.rails || 'unknown',
         ruby_version: v.ruby || 'unknown',
         database: config.database || v.database || 'unknown',
-        asset_pipeline: v.framework?.assetPipeline || v.asset_pipeline || 'unknown',
+        asset_pipeline:
+          v.framework?.assetPipeline || v.asset_pipeline || 'unknown',
         frontend_stack: v.frontend || [],
         authentication: authSummary,
         authorization: authzSummary,
         job_adapter: config.queue_adapter || jobs.adapter || 'unknown',
         cache_store: caching.store || 'unknown',
-        test_framework: v.framework?.testFramework || v.test_framework || 'unknown',
+        test_framework:
+          v.framework?.testFramework || v.test_framework || 'unknown',
         key_models: keyModels,
         key_controllers: keyControllers,
         custom_patterns: customPatterns,

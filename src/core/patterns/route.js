@@ -19,7 +19,8 @@ export const ROUTE_PATTERNS = {
   collection: /^\s*collection\s+do/m,
   draw: /^\s*draw\s*\(?:?(\w+)\)?/m,
   only: /(?:only:|:only\s*=>)\s*(?:\[([^\]]+)\]|%i\[([^\]]+)\]|%w\[([^\]]+)\]|:([\w]+))/,
-  except: /(?:except:|:except\s*=>)\s*(?:\[([^\]]+)\]|%i\[([^\]]+)\]|%w\[([^\]]+)\]|:([\w]+))/,
+  except:
+    /(?:except:|:except\s*=>)\s*(?:\[([^\]]+)\]|%i\[([^\]]+)\]|%w\[([^\]]+)\]|:([\w]+))/,
   httpVerbSymbol: /^\s*(?:get|post|put|patch|delete)\s+:(\w+)/m,
   defaults: /defaults:\s*\{([^}]+)\}/,
   healthCheck: /^\s*get\s+['"]up['"]/m,

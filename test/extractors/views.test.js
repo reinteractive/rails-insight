@@ -134,7 +134,12 @@ describe('Views Extractor', () => {
   describe('non-standard view directories', () => {
     it('scans app/views_mobile and app/views_shared directories', () => {
       const entries = [
-        { path: 'app/views/articles/index.html.erb', category: 'view', categoryName: 'views', type: 'erb' },
+        {
+          path: 'app/views/articles/index.html.erb',
+          category: 'view',
+          categoryName: 'views',
+          type: 'erb',
+        },
       ]
       const provider = {
         readFile(path) {
@@ -143,7 +148,14 @@ describe('Views Extractor', () => {
           return null
         },
         listDir(path) {
-          if (path === 'app') return ['views', 'views_mobile', 'views_shared', 'models', 'controllers']
+          if (path === 'app')
+            return [
+              'views',
+              'views_mobile',
+              'views_shared',
+              'models',
+              'controllers',
+            ]
           return []
         },
         glob(pattern) {
@@ -161,7 +173,12 @@ describe('Views Extractor', () => {
 
     it('does not set additional_view_directories when only standard views exist', () => {
       const entries = [
-        { path: 'app/views/articles/index.html.erb', category: 'view', categoryName: 'views', type: 'erb' },
+        {
+          path: 'app/views/articles/index.html.erb',
+          category: 'view',
+          categoryName: 'views',
+          type: 'erb',
+        },
       ]
       const provider = {
         readFile(path) {
@@ -171,7 +188,9 @@ describe('Views Extractor', () => {
           if (path === 'app') return ['views', 'models', 'controllers']
           return []
         },
-        glob() { return [] },
+        glob() {
+          return []
+        },
       }
       const result = extractViews(provider, entries)
       expect(result.additional_view_directories).toBeUndefined()
