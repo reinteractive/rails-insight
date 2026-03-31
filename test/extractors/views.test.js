@@ -130,4 +130,51 @@ describe('Views Extractor', () => {
       expect(result.turbo_frames_count).toBe(0)
     })
   })
+
+  describe('non-standard view directories', () => {
+    it('scans app/views_mobile and app/views_shared directories', () => {
+      const entries = [
+        { path: 'app/views/articles/index.html.erb', category: 'view', categoryName: 'views', type: 'erb' },
+      ]
+      const provider = {
+        readFile(path) {
+          if (path.endsWith('.erb')) return '<h1>Content</h1>'
+          if (path.endsWith('.haml')) return '%h1 Content'
+          return null
+        },
+        listDir(path) {
+          if (path === 'app') return ['views', 'views_mobile', 'views_shared', 'models', 'controllers']
+          return []
+        },
+        glob(pattern) {
+          if (pattern.includes('views_mobile') && pattern.endsWith('.erb'))
+            return ['app/views_mobile/articles/index.html.erb']
+          if (pattern.includes('views_shared') && pattern.endsWith('.haml'))
+            return ['app/views_shared/footer.html.haml']
+          return []
+        },
+      }
+      const result = extractViews(provider, entries)
+      expect(result.additional_view_directories).toContain('app/views_mobile')
+      expect(result.additional_view_directories).toContain('app/views_shared')
+    })
+
+    it('does not set additional_view_directories when only standard views exist', () => {
+      const entries = [
+        { path: 'app/views/articles/index.html.erb', category: 'view', categoryName: 'views', type: 'erb' },
+      ]
+      const provider = {
+        readFile(path) {
+          return path.endsWith('.erb') ? '<h1>Content</h1>' : null
+        },
+        listDir(path) {
+          if (path === 'app') return ['views', 'models', 'controllers']
+          return []
+        },
+        glob() { return [] },
+      }
+      const result = extractViews(provider, entries)
+      expect(result.additional_view_directories).toBeUndefined()
+    })
+  })
 })

@@ -478,3 +478,49 @@ describe('ISSUE-G: Minitest test edges', () => {
     expect(testEdge).toBeDefined()
   })
 })
+
+describe('class_name override — no phantom nodes', () => {
+  it('uses class_name override for association edge target, no phantom node', () => {
+    const extractions = {
+      models: {
+        Article: {
+          associations: [
+            { type: 'belongs_to', name: 'author', options: "class_name: 'AdminUser'" },
+          ],
+          concerns: [],
+        },
+        AdminUser: { associations: [], concerns: [] },
+      },
+      controllers: {},
+      test_conventions: null,
+    }
+    const manifest = { entries: [] }
+    const { graph } = buildGraph(extractions, manifest)
+
+    expect(graph.nodes.has('AdminUser')).toBe(true)
+    expect(graph.nodes.has('Author')).toBe(false)
+    const edges = graph.edges.filter((e) => e.from === 'Article' && e.to === 'AdminUser')
+    expect(edges.length).toBeGreaterThan(0)
+  })
+
+  it('handles class_name with hash rocket syntax', () => {
+    const extractions = {
+      models: {
+        Comment: {
+          associations: [
+            { type: 'belongs_to', name: 'creator', options: ":class_name => 'User'" },
+          ],
+          concerns: [],
+        },
+        User: { associations: [], concerns: [] },
+      },
+      controllers: {},
+      test_conventions: null,
+    }
+    const manifest = { entries: [] }
+    const { graph } = buildGraph(extractions, manifest)
+
+    expect(graph.nodes.has('User')).toBe(true)
+    expect(graph.nodes.has('Creator')).toBe(false)
+  })
+})

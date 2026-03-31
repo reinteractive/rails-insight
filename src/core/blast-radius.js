@@ -279,10 +279,30 @@ function buildImpactedEntities(bfsResults, seeds, index) {
   })
 }
 
-function buildReverseEntityFileMap(fileEntityMap) {
+export function buildReverseEntityFileMap(fileEntityMap) {
   const reverse = {}
   for (const [path, mapping] of Object.entries(fileEntityMap)) {
-    reverse[mapping.entity] = path
+    const existing = reverse[mapping.entity]
+    if (!existing) {
+      reverse[mapping.entity] = path
+    } else {
+      // Prefer source files (controllers/models/jobs/etc.) over view/template files
+      const isSourceFile =
+        path.startsWith('app/controllers/') ||
+        path.startsWith('app/models/') ||
+        path.startsWith('app/jobs/') ||
+        path.startsWith('app/mailers/') ||
+        path.startsWith('app/services/')
+      const existingIsSource =
+        existing.startsWith('app/controllers/') ||
+        existing.startsWith('app/models/') ||
+        existing.startsWith('app/jobs/') ||
+        existing.startsWith('app/mailers/') ||
+        existing.startsWith('app/services/')
+      if (isSourceFile && !existingIsSource) {
+        reverse[mapping.entity] = path
+      }
+    }
   }
   return reverse
 }

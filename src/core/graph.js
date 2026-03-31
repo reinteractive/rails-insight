@@ -266,8 +266,16 @@ export class Graph {
  */
 function extractClassName(options) {
   if (!options) return null
-  const match = options.match(/class_name:\s*['"](\w+(?:::\w+)*)['"]/)
-  return match ? match[1] : null
+  // Modern syntax: class_name: 'AdminUser' or class_name: "AdminUser"
+  const modern = options.match(/class_name:\s*['"](\w+(?:::\w+)*)['"]/)
+  if (modern) return modern[1]
+  // Hash rocket: :class_name => 'AdminUser' or class_name => 'AdminUser'
+  const rocket = options.match(/:?class_name\s*=>\s*['"](\w+(?:::\w+)*)['"]/)
+  if (rocket) return rocket[1]
+  // Unquoted (rare but valid): class_name: AdminUser
+  const unquoted = options.match(/class_name:\s*([A-Z]\w+(?:::\w+)*)/)
+  if (unquoted) return unquoted[1]
+  return null
 }
 
 /**

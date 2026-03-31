@@ -42,9 +42,18 @@ export function register(server, state) {
           authSummary.features.push('password_reset')
       } else if (auth.devise) {
         authSummary.models = Object.keys(auth.devise.models || {})
-        authSummary.features = Object.values(auth.devise.models || {}).flatMap(
+
+        // Deduplicated flat list for backward compat
+        const allModules = Object.values(auth.devise.models || {}).flatMap(
           (m) => m.modules || [],
         )
+        authSummary.features = [...new Set(allModules)]
+
+        // Per-model detail for richer context
+        authSummary.features_by_model = {}
+        for (const [modelName, modelData] of Object.entries(auth.devise.models || {})) {
+          authSummary.features_by_model[modelName] = modelData.modules || []
+        }
       }
 
       // Authorization summary

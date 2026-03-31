@@ -696,21 +696,39 @@ export function extractAuthorization(
 
   // Role detection from models
   const modelEntries = entries.filter(
-    (e) => e.category === 'model' || e.categoryName === 'models',
+    (e) => e.category === 'model' || e.categoryName === 'models' ||
+           e.category === 1 || e.categoryName === 'models',
   )
+
+  // First pass: check for rolify declaration (strongest signal)
   for (const entry of modelEntries) {
     const content = provider.readFile(entry.path)
     if (!content) continue
-    if (AUTHORIZATION_PATTERNS.enumRole.test(content)) {
-      const className = entry.path
-        .split('/')
-        .pop()
-        .replace('.rb', '')
-        .split('_')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join('')
-      result.roles = { source: 'enum', model: className }
-      break
+    if (/^\s*rolify\b/m.test(content)) {
+      const classMatch = content.match(/class\s+(\w+(?:::\w+)*)/)
+      if (classMatch) {
+        result.roles = { source: 'rolify', model: classMatch[1] }
+        break
+      }
+    }
+  }
+
+  // Second pass: fall back to enum role if rolify not found
+  if (!result.roles) {
+    for (const entry of modelEntries) {
+      const content = provider.readFile(entry.path)
+      if (!content) continue
+      if (AUTHORIZATION_PATTERNS.enumRole.test(content)) {
+        const className = entry.path
+          .split('/')
+          .pop()
+          .replace('.rb', '')
+          .split('_')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join('')
+        result.roles = { source: 'enum', model: className }
+        break
+      }
     }
   }
 

@@ -208,4 +208,43 @@ end`
       ).toBeGreaterThanOrEqual(3)
     })
   })
+
+  describe('conditional cache_store detection', () => {
+    it('handles conditional cache_store assignments in development', () => {
+      const provider = {
+        readFile(path) {
+          if (path === 'config/environments/development.rb') {
+            return `Rails.application.configure do
+  if Rails.root.join('tmp/caching-dev.txt').exist?
+    config.cache_store = :memory_store
+  else
+    config.cache_store = :null_store
+  end
+end`
+          }
+          return null
+        },
+      }
+      const result = extractCaching(provider, [])
+      // Should not just pick :memory_store — should note it's conditional
+      expect(result.store.development).not.toBe('memory_store')
+      expect(result.store.development).toMatchObject({
+        values: expect.arrayContaining(['memory_store', 'null_store']),
+        note: expect.stringContaining('conditional'),
+      })
+    })
+
+    it('reports single unconditional cache_store as a string', () => {
+      const provider = {
+        readFile(path) {
+          if (path === 'config/environments/production.rb') {
+            return 'Rails.application.configure do\n  config.cache_store = :redis_cache_store\nend'
+          }
+          return null
+        },
+      }
+      const result = extractCaching(provider, [])
+      expect(result.store.production).toBe('redis_cache_store')
+    })
+  })
 })
