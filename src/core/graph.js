@@ -34,6 +34,7 @@ export const EDGE_WEIGHTS = {
   tests: 1.0,
   helps_view: 0.5,
   manages_upload: 1.0,
+  inherited_dependency: 1.5,
 }
 
 export class Graph {
@@ -265,7 +266,7 @@ export class Graph {
  * @returns {string|null} Class name or null
  */
 function extractClassName(options) {
-  if (!options) return null
+  if (!options || typeof options !== 'string') return null
   // Modern syntax: class_name: 'AdminUser' or class_name: "AdminUser"
   const modern = options.match(/class_name:\s*['"](\w+(?:::\w+)*)['"]/)
   if (modern) return modern[1]
@@ -307,13 +308,16 @@ export function buildGraph(extractions, manifest, skills = []) {
       // Associations
       if (model.associations) {
         for (const assoc of model.associations) {
-          const type = assoc.type.replace(':', '')
+          const type = (assoc.type || assoc.macro || '').replace(':', '')
+          if (!type) continue
 
           // Skip phantom edges for polymorphic belongs_to
           if (type === 'belongs_to' && assoc.polymorphic) continue
 
           const classNameOverride = extractClassName(assoc.options)
-          const target = classNameOverride || classify(assoc.name)
+          const runtimeClassName = assoc.class_name
+          const target =
+            runtimeClassName || classNameOverride || classify(assoc.name)
           graph.addNode(target, 'model', target)
           if (EDGE_WEIGHTS[type]) {
             graph.addEdge(name, target, type)
@@ -378,6 +382,30 @@ export function buildGraph(extractions, manifest, skills = []) {
           to: modelName,
           type: 'convention_pair',
         })
+      }
+    }
+  }
+
+  // Inherited callback dependencies
+  if (extractions.controllers) {
+    for (const [name, ctrl] of Object.entries(extractions.controllers)) {
+      const callbacks = ctrl.filters || ctrl.callbacks || []
+      for (const cb of callbacks) {
+        if (!cb.inherited) continue
+        const filter = cb.filter || cb.method || ''
+        // authenticate_user! → User model convention
+        const modelMatch = filter.match(/^(?:authenticate|require)_(\w+?)!?$/)
+        if (modelMatch) {
+          const modelName = classify(modelMatch[1])
+          if (extractions.models && extractions.models[modelName]) {
+            graph.addEdge(name, modelName, 'inherited_dependency')
+            relationships.push({
+              from: name,
+              to: modelName,
+              type: 'inherited_dependency',
+            })
+          }
+        }
       }
     }
   }

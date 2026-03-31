@@ -37,6 +37,7 @@ export function createServer(options) {
 export async function startLocal(projectRoot, options = {}) {
   const provider = new LocalFSProvider(projectRoot)
   const verbose = options.verbose || false
+  const noIntrospection = options.noIntrospection || false
 
   // Connect the transport immediately so VS Code's MCP handshake completes
   // without waiting for the index to be built. Tools return a "not ready"
@@ -75,6 +76,7 @@ export async function startLocal(projectRoot, options = {}) {
   const index = await buildIndex(provider, {
     claudeMdPath: options.claudeMdPath,
     verbose,
+    noIntrospection,
   })
 
   state.index = index

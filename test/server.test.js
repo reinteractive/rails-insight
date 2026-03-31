@@ -93,6 +93,7 @@ describe('server bootstrap', () => {
       {
         claudeMdPath: 'CLAUDE.md',
         verbose: true,
+        noIntrospection: false,
       },
     )
     // Transport connects before index is built (so VS Code handshake completes immediately)

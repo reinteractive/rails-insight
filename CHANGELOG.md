@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.18] - 2026-03-31
+
+### Added
+
+- **Hybrid runtime introspection**: `buildIndex` now optionally executes `src/introspection/introspect.rb` via `bundle exec ruby` to collect live Rails association, callback, route, and database metadata. Runtime data is merged on top of regex extraction results — runtime wins on facts (associations, columns, enums, callbacks), regex wins on structure (scopes, line ranges, strong params)
+- **Metaprogrammed association detection**: Associations defined via `define_method`, dynamic `has_many`, or other metaprogramming patterns are now visible in `get_model` output (previously invisible to regex extraction)
+- **Inherited controller callback detection**: Before/after action callbacks inherited from `ApplicationController` or other base controllers are now reported in `get_controller` output with `inherited: true`
+- **Engine route surfacing**: Routes from mounted engines (Devise, ActiveAdmin, etc.) now appear in the merged route data under `engine_routes`
+- **Runtime graph edges**: `buildGraph` uses runtime-resolved `class_name` values for accurate association edges, adds `inherited_dependency` edges from inherited callbacks (e.g. `authenticate_user!` → `User`), and includes runtime-only models as graph nodes
+- **`--no-introspection` CLI flag**: Pass `--no-introspection` to skip the Ruby introspection step and run in regex-only mode
+- **Introspection metadata in `get_overview`**: The overview now reports `introspection.available`, `models_introspected`, `controllers_introspected`, `routes_introspected`, and `duration_ms`
+
 ## [1.0.15] - 2026-03-31
 
 ### Fixed
