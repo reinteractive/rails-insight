@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] - 2026-03-31
+
+### Fixed
+
+- **Route `:only`/`:except` filtering (CRITICAL)**: `resources` and `resource` declarations now correctly filter actions when `:only` or `:except` use hash rocket syntax (`:only => [...]`) or `%i[]` percent-array syntax. Previously all 7 CRUD actions were reported regardless of constraints, causing 50 hallucinated actions in evaluation
+- **`model_table_map` phantom tables**: `get_schema` now excludes abstract base classes, STI subclasses (which share a parent table), `ApplicationRecord`, and `*Ability` classes (CanCan). Only models whose table name actually appears in `db/schema.rb` are included
+- **Phantom graph nodes from `class_name:` override**: `extractClassName` in the graph builder now handles hash rocket syntax (`:class_name => 'User'`) and unquoted class names (`class_name: AdminUser`), preventing phantom alias nodes from being created alongside the correct target node
+- **Devise features deduplication**: `get_overview` `authentication.features` array is now deduplicated via `Set` when multiple Devise models share modules (e.g. `database_authenticatable`). A new `features_by_model` field provides the full per-model breakdown
+- **Authorization `roles.model` from rolify**: The authorization extractor now detects the model with `rolify` by reading its class declaration directly, rather than inferring from the CanCan ability initializer parameter. This fixes cases where `AdminUser` was misreported as `User`
+- **Conditional `cache_store` detection**: When an environment config contains multiple `config.cache_store =` assignments (e.g. in an `if/else` caching toggle), the extractor now reports all values with a `conditional` note instead of silently picking the first match
+- **Non-standard view directories**: `extractViews` now detects additional view directories alongside `app/views/` (e.g. `app/views_mobile/`, `app/views_shared/`) by calling `provider.listDir('app')` and scanning any `views_*` siblings. Results are reported in `additional_view_directories`
+- **Blast radius file path for convention-pair entities**: `buildReverseEntityFileMap` now prefers source files (`app/controllers/`, `app/models/`, `app/jobs/`, `app/mailers/`, `app/services/`) over view templates when multiple files map to the same entity, fixing cases where a controller entity resolved to a view path
+
 ## [1.0.14] - 2026-03-30
 
 ### Fixed
