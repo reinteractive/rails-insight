@@ -82,6 +82,7 @@ describe('railsinsight CLI', () => {
       claudeMdPath: 'CLAUDE.md',
       verbose: true,
       tier: 'pro',
+      noIntrospection: false,
     })
   })
 

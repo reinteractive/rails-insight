@@ -27,6 +27,15 @@ export const EXEC_TIMEOUT_MS = 10000
 /** Precision multiplier for PageRank score rounding. */
 export const RANK_PRECISION = 10000
 
+/** Timeout (ms) for Ruby introspection script execution. */
+export const INTROSPECTION_TIMEOUT_MS = 30_000
+
+/** Maximum associations per model to prevent runaway introspection output. */
+export const INTROSPECTION_MAX_ASSOCIATIONS = 200
+
+/** Maximum routes to include from runtime introspection. */
+export const INTROSPECTION_MAX_ROUTES = 500
+
 /**
  * Round to one decimal percentage: (numerator / denominator) as XX.X%.
  * @param {number} numerator

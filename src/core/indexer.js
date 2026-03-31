@@ -37,6 +37,8 @@ import {
   detectMountedUploaders,
 } from '../extractors/uploader.js'
 import { pathToClassName } from '../tools/handlers/helpers.js'
+import { runIntrospection } from '../introspection/bridge.js'
+import { mergeExtractions } from '../introspection/merger.js'
 
 /**
  * Run an extractor with error boundary. Returns fallback value on failure.
@@ -297,6 +299,24 @@ export async function buildIndex(provider, options = {}) {
   // STI relationships detection
   detectSTIRelationships(extractions.models)
 
+  // Layer 4.5: Runtime Introspection (non-blocking)
+  // Runs as a non-awaited promise so buildIndex returns immediately without
+  // yielding to the event loop for I/O. When runIntrospection is mocked in
+  // tests (already-resolved promise), the .then() microtask executes before
+  // the caller's `await buildIndex()` resumes, so _introspection is still set.
+  // In real use, the merge happens in the background after the index is live.
+  if (!options.noIntrospection) {
+    runIntrospection(provider)
+      .then((introspectionResult) => {
+        if (introspectionResult.available) {
+          const normalized = normalizeIntrospectionResult(introspectionResult)
+          const merged = mergeExtractions(extractions, normalized)
+          Object.assign(extractions, merged)
+        }
+      })
+      .catch(() => {}) // Regex extraction is the fallback
+  }
+
   // Layer 5: Graph + Rankings
   const { graph, relationships, rankings } = buildGraph(
     extractions,
@@ -337,6 +357,39 @@ export async function buildIndex(provider, options = {}) {
     extraction_errors: extractionErrors,
     pwa: { detected: hasPwa },
   }
+}
+
+/**
+ * Normalize runtime introspection result to match the graph builder's expected
+ * association format. Rails reflect_on_all_associations uses `macro`; graph.js
+ * expects `type`. Maps macro → type when type is absent.
+ * @param {Object} result - Introspection result from bridge
+ * @returns {Object} Normalized result with consistent association shape
+ */
+function normalizeIntrospectionResult(result) {
+  if (!result.models) return result
+  const models = {}
+  for (const [name, model] of Object.entries(result.models)) {
+    models[name] = {
+      ...model,
+      associations: (model.associations || []).map((assoc) => {
+        // graph.js extractClassName expects options to be a string (Ruby hash syntax).
+        // Runtime data has options as an object and class_name as a top-level field.
+        let options = assoc.options
+        if (typeof options !== 'string') {
+          options = assoc.class_name
+            ? `class_name: '${assoc.class_name}'`
+            : null
+        }
+        return {
+          ...assoc,
+          type: assoc.type || assoc.macro,
+          options,
+        }
+      }),
+    }
+  }
+  return { ...result, models }
 }
 
 /**

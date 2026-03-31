@@ -11,6 +11,7 @@ const options = {
   mode: { type: 'string', short: 'm', default: 'local' },
   port: { type: 'string', default: '3000' },
   verbose: { type: 'boolean', short: 'v', default: false },
+  'no-introspection': { type: 'boolean', default: false },
   help: { type: 'boolean', short: 'h', default: false },
 }
 
@@ -26,6 +27,7 @@ Options:
   -m, --mode <mode>           Server mode: local or remote (default: local)
   --port <number>             Port for remote mode (default: 3000)
   -v, --verbose               Enable verbose logging to stderr
+  --no-introspection        Skip Ruby runtime introspection (regex-only mode)
   -h, --help                  Show this help message
 
 Examples:
@@ -77,7 +79,12 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     const verbose = values.verbose || false
 
     const { startLocal } = await importServer()
-    await startLocal(projectRoot, { claudeMdPath, verbose, tier: 'pro' })
+    await startLocal(projectRoot, {
+      claudeMdPath,
+      verbose,
+      tier: 'pro',
+      noIntrospection: values['no-introspection'] || false,
+    })
     return 0
   }
 
