@@ -52,6 +52,35 @@ export function extractViews(provider, entries) {
       e.category === 'jbuilder',
   )
 
+  // Check for non-standard view directories (e.g. app/views_mobile, app/views_shared)
+  const additionalViewDirs = []
+  try {
+    const appContents = provider.listDir('app') || []
+    for (const name of appContents) {
+      const dirName = name.replace(/\/$/, '')
+      if (dirName.startsWith('views_') && dirName !== 'views') {
+        additionalViewDirs.push(`app/${dirName}`)
+      }
+    }
+  } catch (_) {
+    // listDir not supported — skip
+  }
+
+  if (additionalViewDirs.length > 0) {
+    for (const dir of additionalViewDirs) {
+      const files = [
+        ...(provider.glob ? provider.glob(`${dir}/**/*.erb`) || [] : []),
+        ...(provider.glob ? provider.glob(`${dir}/**/*.haml`) || [] : []),
+        ...(provider.glob ? provider.glob(`${dir}/**/*.slim`) || [] : []),
+      ]
+      for (const path of files) {
+        const ext = path.split('.').pop()
+        viewEntries.push({ path, category: 'view', categoryName: 'views', type: ext })
+      }
+    }
+    result.additional_view_directories = additionalViewDirs
+  }
+
   if (viewEntries.length === 0) return result
 
   result.template_engine = detectEngine(viewEntries)

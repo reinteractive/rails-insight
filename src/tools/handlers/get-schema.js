@@ -19,8 +19,18 @@ export function register(server, state) {
       const modelTableMap = {}
       for (const [modelName, modelData] of Object.entries(models)) {
         if (modelData.type === 'concern') continue
+        if (modelData.abstract) continue
+        if (modelData.sti_parent) continue // STI subclass — shares parent table
+        if (/Ability$/.test(modelName)) continue // CanCan ability classes
+        if (modelName === 'ApplicationRecord') continue
+
         const tableName = modelData.table_name || toTableName(modelName)
-        modelTableMap[modelName] = tableName
+
+        // Only include if the table actually exists in the schema
+        const tableExists = (schema.tables || []).some((t) => t.name === tableName)
+        if (tableExists) {
+          modelTableMap[modelName] = tableName
+        }
       }
 
       // Add FK relationship arrows

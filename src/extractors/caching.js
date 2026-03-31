@@ -25,9 +25,17 @@ export function extractCaching(provider, entries) {
     const content = provider.readFile(`config/environments/${env}.rb`)
     if (content) {
       const activeContent = stripRubyComments(content)
-      const storeMatch = activeContent.match(CACHING_PATTERNS.cacheStore)
-      if (storeMatch) {
-        result.store[env] = storeMatch[1]
+      const allStoreMatches = [
+        ...activeContent.matchAll(/config\.cache_store\s*=\s*:(\w+)/g),
+      ]
+      if (allStoreMatches.length === 1) {
+        result.store[env] = allStoreMatches[0][1]
+      } else if (allStoreMatches.length > 1) {
+        // Multiple assignments — likely conditional; report all values with note
+        result.store[env] = {
+          values: allStoreMatches.map((m) => m[1]),
+          note: 'conditional — multiple cache_store assignments detected',
+        }
       }
     }
   }

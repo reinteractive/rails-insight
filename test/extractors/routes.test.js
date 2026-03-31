@@ -384,4 +384,68 @@ end`,
       expect(result.root.controller).toBe('dashboard')
     })
   })
+
+  describe('route only/except filtering', () => {
+    it('respects :only with modern syntax', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :articles, only: [:index, :show]\nend`,
+      }))
+      const articles = result.resources.find((r) => r.name === 'articles')
+      expect(articles.actions).toEqual(['index', 'show'])
+      expect(articles.actions).not.toContain('create')
+      expect(articles.actions).not.toContain('destroy')
+    })
+
+    it('respects :except with modern syntax', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :events, except: [:show, :destroy]\nend`,
+      }))
+      const events = result.resources.find((r) => r.name === 'events')
+      expect(events.actions).toContain('index')
+      expect(events.actions).toContain('create')
+      expect(events.actions).not.toContain('show')
+      expect(events.actions).not.toContain('destroy')
+    })
+
+    it('respects :only with hash rocket syntax', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :articles, :only => [:index, :show]\nend`,
+      }))
+      const articles = result.resources.find((r) => r.name === 'articles')
+      expect(articles.actions).toEqual(['index', 'show'])
+    })
+
+    it('respects :except with hash rocket syntax', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :events, :except => [:show]\nend`,
+      }))
+      const events = result.resources.find((r) => r.name === 'events')
+      expect(events.actions).not.toContain('show')
+      expect(events.actions).toHaveLength(6)
+    })
+
+    it('respects :only with %i[] syntax', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :posts, only: %i[index show]\nend`,
+      }))
+      const posts = result.resources.find((r) => r.name === 'posts')
+      expect(posts.actions).toEqual(['index', 'show'])
+    })
+
+    it('respects :only with single symbol', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :sessions, only: :create\nend`,
+      }))
+      const sessions = result.resources.find((r) => r.name === 'sessions')
+      expect(sessions.actions).toEqual(['create'])
+    })
+
+    it('reports all 7 actions when no only/except given', () => {
+      const result = extractRoutes(mockProvider({
+        'config/routes.rb': `Rails.application.routes.draw do\n  resources :users\nend`,
+      }))
+      const users = result.resources.find((r) => r.name === 'users')
+      expect(users.actions).toHaveLength(7)
+    })
+  })
 })
