@@ -36,7 +36,10 @@ import {
   extractUploader,
   detectMountedUploaders,
 } from '../extractors/uploader.js'
-import { pathToClassName } from '../tools/handlers/helpers.js'
+import {
+  pathToClassName,
+  pathToFullClassName,
+} from '../tools/handlers/helpers.js'
 import { runIntrospection } from '../introspection/bridge.js'
 import { mergeExtractions } from '../introspection/merger.js'
 
@@ -224,32 +227,39 @@ export async function buildIndex(provider, options = {}) {
         extractionErrors,
       )
       if (model) {
-        // Use FQN from the model itself; fall back to path-derived name only if
-        // the extractor couldn't detect a class (e.g. concern without class decl)
+        // Derive the fully-qualified class name:
+        // 1. Use the model's own detected class name
+        // 2. If it has no namespace but the file is in a subdirectory,
+        //    derive namespace from directory structure (Rails autoloading convention)
         let key = model.class || pathToClassName(entry.path)
 
-        // Handle name collisions: if key already exists from a different file,
-        // derive namespace from the new file's path to disambiguate
-        if (extractions.models[key] && extractions.models[key].file !== entry.path) {
-          // Derive namespace from directory structure:
-          // app/models/wordpress/page.rb → Wordpress::Page
-          const relativePath = entry.path
-            .replace(/^app\/models\//, '')
-            .replace(/\.rb$/, '')
-          const pathSegments = relativePath.split('/')
-          if (pathSegments.length > 1) {
-            // File is in a subdirectory — namespace it
-            const namespacedKey = pathSegments
-              .map(seg => seg.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''))
-              .join('::')
-            key = namespacedKey
-            if (model.class) model.class = namespacedKey
-            if (!model.namespace) {
-              model.namespace = pathSegments.slice(0, -1)
-                .map(seg => seg.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''))
-                .join('::')
-            }
-          }
+        // Check if we need directory-based namespace inference
+        const pathFQN = pathToFullClassName(entry.path)
+        if (key && !key.includes('::') && pathFQN.includes('::')) {
+          // Model class has no namespace but file is in a subdirectory
+          // Apply directory-derived namespace (Rails autoloading convention)
+          key = pathFQN
+          model.class = pathFQN
+          const nsParts = pathFQN.split('::')
+          nsParts.pop()
+          model.namespace = nsParts.join('::')
+        }
+
+        // Handle collision: if key already exists from a different file
+        if (
+          extractions.models[key] &&
+          extractions.models[key].file !== entry.path
+        ) {
+          // Fall back to full path-derived name to disambiguate
+          key = pathFQN
+          model.class = pathFQN
+        }
+
+        // Classify non-ActiveRecord classes in app/models/
+        // (e.g., CanCan Ability, POROs without AR inheritance)
+        if (model.type === 'model' && model.superclass === null) {
+          model.type = 'poro'
+          model.non_ar = true
         }
 
         extractions.models[key] = model
@@ -268,7 +278,15 @@ export async function buildIndex(provider, options = {}) {
       )
       if (ctrl) {
         // Use the controller's own fully-qualified class name to avoid namespace collisions
-        const name = ctrl.class || pathToClassName(entry.path)
+        let name = ctrl.class || pathToClassName(entry.path)
+        const pathFQN = pathToFullClassName(entry.path)
+        if (name && !name.includes('::') && pathFQN.includes('::')) {
+          name = pathFQN
+          ctrl.class = pathFQN
+          const nsParts = pathFQN.split('::')
+          nsParts.pop()
+          ctrl.namespace = nsParts.join('::')
+        }
         extractions.controllers[name] = ctrl
       }
     } else if (entry.categoryName === 'components') {
@@ -677,6 +695,7 @@ export function computeStatistics(manifest, extractions, relationships) {
     models_file_count: (manifest.stats || {}).models || 0,
     models_in_manifest: (manifest.stats || {}).models || 0,
     controllers: Object.keys(extractions.controllers || {}).length,
+    controllers_all: Object.keys(extractions.controllers || {}).length,
     components: entries.filter(
       (e) => e.categoryName === 'components' && e.type === 'ruby',
     ).length,

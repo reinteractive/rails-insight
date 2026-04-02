@@ -26,7 +26,21 @@ export function register(server, state) {
       const schema = state.index.extractions?.schema || {}
       const tables = schema.tables || []
       const tableName = model.table_name || toTableName(name)
-      const tableData = tables.find((t) => t.name === tableName)
+      let tableData = tables.find((t) => t.name === tableName)
+
+      // For STI subclasses, resolve columns from the parent's table
+      let resolvedTableName = tableName
+      if (!tableData && model.sti_parent) {
+        const parentModel = models[model.sti_parent]
+        const parentTableName =
+          parentModel?.table_name || toTableName(model.sti_parent)
+        const parentTableData = tables.find((t) => t.name === parentTableName)
+        if (parentTableData) {
+          tableData = parentTableData
+          resolvedTableName = parentTableName
+        }
+      }
+
       const columns = tableData
         ? tableData.columns.map((c) => ({
             name: c.name,
@@ -103,6 +117,15 @@ export function register(server, state) {
         }
       }
 
+      // STI table note
+      const sti_table =
+        model.sti_parent && resolvedTableName !== tableName
+          ? {
+              table: resolvedTableName,
+              note: `Shares table with STI parent ${model.sti_parent}`,
+            }
+          : null
+
       return respond({
         ...model,
         columns,
@@ -111,6 +134,7 @@ export function register(server, state) {
         inverse_associations:
           inverse_associations.length > 0 ? inverse_associations : null,
         ...(auth_relevance ? { auth_relevance } : {}),
+        ...(sti_table ? { sti_table } : {}),
       })
     },
   )
