@@ -80,7 +80,7 @@ function extractSecurity(provider, gems) {
 function extractTesting(provider, entries, gems) {
   const result = {
     framework: null,
-    factories: !!gems.factory_bot_rails,
+    factories: !!(gems.factory_bot_rails || gems.factory_bot || detectFactoriesDir(provider)),
     system_tests: !!gems.capybara,
     coverage: !!gems.simplecov,
     mocking: [],

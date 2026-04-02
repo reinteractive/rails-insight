@@ -51,13 +51,13 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
     // Database strategy
     database_strategy: detectDatabaseStrategy(provider, gems),
 
-    // Factory tool
+    // Factory tool — check gems first, then fall back to scanning factory files
     factory_tool:
       gems.factory_bot_rails || gems.factory_bot
         ? 'factory_bot'
         : gems.fabrication
           ? 'fabrication'
-          : null,
+          : detectFactoryToolFromFiles(provider, entries),
 
     // Spec file counts by category
     spec_counts: {},
@@ -343,4 +343,22 @@ function findPatternReferences(provider, specEntries) {
   }
 
   return Object.values(byCategory)
+}
+
+/**
+ * Detect factory tool by scanning factory files when gem detection fails.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @param {Array<{path: string}>} entries
+ * @returns {string|null}
+ */
+function detectFactoryToolFromFiles(provider, entries) {
+  const factoryEntries = entries.filter(
+    e => e.path.includes('factories/') && e.path.endsWith('.rb')
+  )
+  for (const entry of factoryEntries) {
+    const content = provider.readFile(entry.path)
+    if (content && /FactoryBot\.define/.test(content)) return 'factory_bot'
+    if (content && /Fabricator\(/.test(content)) return 'fabrication'
+  }
+  return null
 }
