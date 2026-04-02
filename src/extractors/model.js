@@ -315,7 +315,7 @@ export function extractModel(provider, filePath, className) {
 
   // Block callbacks: before_save { ... } or before_save do ... end
   const blockCbRe =
-    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit))\s+(?:do|\{)/gm
+    /^\s*((?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+(?:do|\{)/gm
   while ((m = blockCbRe.exec(cbLines))) {
     rawCallbacks.push({ type: m[1], method: null, options: null })
   }

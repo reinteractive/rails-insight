@@ -35,9 +35,9 @@ export const MODEL_PATTERNS = {
 
   // === CALLBACKS ===
   callback:
-    /^\s*(?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit)\s+:?(\w+!?)(?:,\s*(.+))?$/m,
+    /^\s*(?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch)\s+:?(\w+!?)(?:,\s*(.+))?$/m,
   callbackType:
-    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit))\s+:?(\w+!?)(?:,\s*(.+))?$/m,
+    /^\s*((?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+:?(\w+!?)(?:,\s*(.+))?$/m,
 
   // === DELEGATIONS ===
   delegate: /^\s*delegate\s+(.+),\s*to:\s*:(\w+)/m,

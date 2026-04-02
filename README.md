@@ -152,14 +152,15 @@ Beyond classification, deep extractors analyze file content to extract:
 
 ## How It Works
 
-RailsInsight processes your Rails project through a 6-layer pipeline:
+RailsInsight processes your Rails project through a 7-layer pipeline:
 
 1. **Context Loader** — Parses `claude.md` / `CLAUDE.md` for declared conventions and project context
 2. **Version Detector** — Identifies Rails/Ruby versions, database adapter, asset pipeline, frontend stack, and all gems from `Gemfile.lock`
 3. **Structural Scanner** — Classifies every file into 1 of 56 categories using path patterns (zero file reads)
 4. **Deep Extractors** — 19 specialized extractors parse file content for models, controllers, routes, schema, components, Stimulus controllers, auth, authorization, jobs, email, storage, caching, realtime, API patterns, views, config, and tier 2/3 patterns
-5. **Relationship Graph** — Builds a directed weighted graph with 22 edge types (model→association, controller→model, route→controller, etc.) and computes Personalized PageRank to rank entities by importance
-6. **Convention Drift Detector** — Compares declared conventions (from `claude.md`) against actual extracted patterns, reporting mismatches with severity levels
+5. **Runtime Introspection** _(optional)_ — Executes `src/introspection/introspect.rb` via `bundle exec ruby` to collect live Rails metadata: resolved associations (including metaprogrammed ones), callbacks inherited from base controllers, columns, enums, and engine routes. Runtime data is merged on top of regex results — runtime wins on facts (associations, columns, enums, callbacks), regex wins on structure (scopes, line ranges, strong params). Pass `--no-introspection` to skip this step.
+6. **Relationship Graph** — Builds a directed weighted graph with 22 edge types (model→association, controller→model, route→controller, etc.) using runtime-resolved class names where available, and computes Personalized PageRank to rank entities by importance
+7. **Convention Drift Detector** — Compares declared conventions (from `claude.md`) against actual extracted patterns, reporting mismatches with severity levels
 
 The entire index is built in a single pass, typically under 2 seconds for large projects, and the result is served through MCP tools with token-budget-aware formatting.
 
@@ -183,8 +184,9 @@ npm run test:coverage      # Run with coverage
 RailsInsight uses regex-based extraction rather than a full Ruby AST parser. This handles the vast majority of real-world Rails code, but may miss unconventional patterns such as:
 
 - Multi-line method calls split across 3+ lines
-- Metaprogrammed associations or validations
-- Dynamic class definitions
+- Dynamic class definitions generated at boot time
+
+Metaprogrammed associations and inherited callbacks are addressed by the optional runtime introspection step (v1.0.18+), which runs `bundle exec ruby` to load and interrogate the app's live object model. Pass `--no-introspection` to use regex-only mode.
 
 If you encounter a pattern that isn't detected, please [open an issue](https://github.com/reinteractive/rails-insight/issues).
 

@@ -1,888 +1,1181 @@
-# RailsInsight v1.0.16 → v1.0.17 — Fix Issues from kollaras v1.0.16 Evaluation
+# RailsInsight v1.0.18 Eval Fixes — Agent Task Sequence
 
-You are working on **RailsInsight**, a Rails-aware MCP server written in Node.js (ES modules). The codebase uses **Vitest** for testing.
+## Project Context
 
-## Context
+**Module system:** ESM (`"type": "module"`)  
+**Test framework:** Vitest (`vitest` v3.0.0)  
+**Test command:** `npm test` (runs `vitest run`)  
+**Import convention:** Relative paths with `.js` extension  
+**Naming:** kebab-case files, camelCase functions, PascalCase classes, SCREAMING_SNAKE constants
 
-This is the second evaluation against **kollaras** (Rails 7.0.8, Ruby 3.2.2, 40 controllers, 23 models excl concerns, RSpec, Rolify, Devise+OmniAuth SAML, ViewComponent, Sidekiq, Turbo, API/Backend/Dashboard namespaces). v1.0.16 scored F1=0.855 with 4 tools failing. Several of these issues were identified in v1.0.15 and fix-attempted, but the fixes either didn't land or didn't cover all edge cases. This prompt is explicit about what's still broken and why.
-
-There are **10 issues** grouped into **8 fix tasks** across **4 sprints**. Issues 2, 3, and 4 share a single root cause (missing module-wrapping detection) and must be fixed together.
-
-## Ground Rules
-
-1. **Run `npm test` before starting.** Record baseline pass count.
-2. **Fix one sprint at a time.** Run relevant tests after each issue within a sprint.
-3. **After all fixes**, run `npm test` and confirm zero failures.
-4. **Do not change the MCP tool API surface** — no new tools, no changed parameter names.
-5. **Every fix must have at least one test.**
-6. **Bump version** in `package.json` to `1.0.17`.
-7. **Commit when done:** `fix: resolve 10 eval issues from kollaras v1.0.16 (v1.0.16 → v1.0.17)`
+This sequence fixes 18 issues from the ellaslist evaluation against RailsInsight v1.0.18. Tasks are ordered by severity and grouped by file to avoid conflicts.
 
 ---
 
-## Sprint 1 — Namespace Resolution (3 eval issues → 1 combined fix task)
+## Prerequisites
 
-This sprint fixes the **single biggest accuracy problem** in v1.0.16. Three eval issues — namespace detection (eval issue #2), model name collision (eval issue #3), and controller deduplication (eval issue #4) — share one root cause: RailsInsight does not detect `module` wrapping in Ruby files, so all entities are registered under their short class name. When two files define the same short name under different namespaces (e.g., `Contact` vs `Setups::Contact`), one silently overwrites the other.
+- [ ] All existing tests passing: `npm test`
+- [ ] Branch created: `fix/eval-v1.0.18`
 
-This was attempted in v1.0.15 → v1.0.16 (fix prompt v5, Issues B and C) but the fix didn't fully land. The module wrapping detection either wasn't implemented or doesn't work.
+---
 
-### ISSUE A: Module wrapping detection + fully-qualified name registration for models AND controllers
+## Phase 1: Callback Regex Bug & Model Patterns (CRITICAL + HIGH)
 
-**Files:** `src/extractors/model.js`, `src/extractors/controller.js`, `src/core/indexer.js`
-**Severity:** CRITICAL — causes 70+ MISSING claims across get_model, get_controller, get_overview, get_blast_radius, get_domain_clusters, get_subgraph
-**Eval issues covered:** #2 (controller namespace null), #3 (model name collision), #4 (controller dedup drops 8 of 40)
+### Task 1: Fix callback type regex alternation ordering
 
-**Problem — what's broken:**
+**Fixes:** ISSUE-04 (after_save_commit not detected), ISSUE-15 (multi-method callbacks not expanded — downstream of same bug)
 
-1. **All controllers return `namespace: null`** regardless of module wrapping. `Backend::AiTrainingController` reports as `AiTrainingController` with `namespace: null`.
-2. **Model `Setups::Contact` overwrites `Contact`** in the model index. `get_model({ name: 'Contact' })` returns the wrong file (`app/models/setups/contact.rb`, 0 associations) instead of the real `Contact` model (`app/models/contact.rb`, 10+ associations). Same collision for `Offer`, `Product`.
-3. **8 of 40 controllers are missing** because `EmailsController` (root) and `Webhook::V1::EmailsController` share the same short key. Only one survives.
+**Goal:** The callback type regex has `save|create|update|destroy|...|save_commit|create_commit|update_commit|destroy_commit` — but regex alternation is left-to-right greedy, so `save` matches before `save_commit` can be tried. This means `after_save_commit :method` is parsed as type `after_save` with leftover `_commit :method` that fails to match. Fix by reordering the alternation so longer variants come first.
 
-**Root cause:**
+**Read first:**
 
-Both extractors use `classDeclaration` regex to get the class name. For a file like:
+- `src/core/patterns/model.js` — the `callback` and `callbackType` patterns
 
-```ruby
-module Backend
-  class AiTrainingController < ApplicationController
-    # ...
-  end
-end
+**Modify:** `src/core/patterns/model.js`
+
+#### What to do
+
+1. Find the `callback` pattern. Its alternation currently reads:
+
+```
+save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit
 ```
 
-The regex matches `class AiTrainingController < ApplicationController` but ignores the wrapping `module Backend`. The extracted class name is `AiTrainingController` (unqualified). When this is used as the registry key, it collides with any other `AiTrainingController`.
+2. Reorder so the `_commit` compound variants come BEFORE their shorter prefixes:
 
-**Fix — step by step:**
+```
+save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch
+```
 
-**Step 1: Create a shared `resolveFullyQualifiedName` utility.**
+3. Apply the same reordering to the `callbackType` pattern (identical alternation).
 
-Create or add to a shared utility file (e.g., `src/utils/ruby-class-resolver.js`):
+4. Apply the same reordering to the block callback regex in `src/extractors/model.js` — search for `blockCbRe` which has the same alternation inline.
+
+**Modify:** `src/core/patterns/model.js` AND `src/extractors/model.js` (the `blockCbRe` variable only)
+
+#### Acceptance criteria
+
+- [ ] `after_save_commit :method_a, :method_b` is detected as type `after_save_commit` with method `method_a`
+- [ ] The multi-method expansion produces two separate callback entries
+- [ ] `before_save`, `after_create`, etc. still work (shorter variants still match when no `_commit` suffix)
+- [ ] All existing tests pass
+
+#### Constraints
+
+- In `src/core/patterns/model.js`, modify ONLY the `callback` and `callbackType` regex alternation ordering
+- In `src/extractors/model.js`, modify ONLY the `blockCbRe` regex alternation ordering
+- Do NOT change any other patterns or extraction logic
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: reorder callback regex alternation so _commit variants match first (ISSUE-04/15)"
+```
+
+---
+
+### Task 2: Add Enumerize gem detection
+
+**Fixes:** ISSUE-02 (enumerize fields not captured)
+
+**Goal:** Detect `enumerize :field_name, in: [...]` declarations and include them in the model's `enums` field with `syntax: "enumerize"`.
+
+**Read first:**
+
+- `src/extractors/model.js` — the enum extraction section (search for `enumModernHashRe`)
+- `src/core/patterns/model.js` — existing patterns
+
+**Modify:** `src/core/patterns/model.js` AND `src/extractors/model.js`
+
+#### What to do
+
+1. In `src/core/patterns/model.js`, add after the existing enum patterns:
 
 ```javascript
-/**
- * Resolve the fully-qualified class name from a Ruby file by detecting
- * wrapping module declarations around the class definition.
- *
- * @param {string} content — full file content
- * @param {string} shortClassName — the class name extracted by classDeclaration regex
- * @param {number} classMatchIndex — the character index where the class declaration was found
- * @returns {{ fqn: string, namespace: string|null }}
- */
-export function resolveFullyQualifiedName(content, shortClassName, classMatchIndex) {
-  // If class name already contains ::, it's inline-namespaced — use as-is
-  if (shortClassName.includes('::')) {
-    const parts = shortClassName.split('::')
-    const namespace = parts.slice(0, -1).join('::')
-    return { fqn: shortClassName, namespace: namespace || null }
+  // === ENUMERIZE GEM ===
+  enumerize: /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/m,
+```
+
+2. In `src/extractors/model.js`, after the `enumArrayPatterns` loop (after the comment `// Array syntax: enum :role, [ :a, :b ]`), add:
+
+```javascript
+  // Enumerize gem: enumerize :field, in: [:val1, :val2, ...]
+  const enumerizeRe = /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/gm
+  while ((m = enumerizeRe.exec(content))) {
+    const name = m[1]
+    if (enums[name]) continue // native enum takes priority
+    const rawValues = m[2] || m[3] || ''
+    const values = rawValues
+      .split(',')
+      .map(v => v.trim().replace(/^:/, '').replace(/['"]/g, ''))
+      .filter(v => v.length > 0)
+    enums[name] = { values, syntax: 'enumerize' }
   }
+```
 
-  // Scan content BEFORE the class declaration for module ... end blocks
-  const preClassContent = content.slice(0, classMatchIndex)
-  const lines = preClassContent.split('\n')
+#### Acceptance criteria
 
-  // Track module nesting depth with a stack
-  const moduleStack = []
-  let depth = 0
+- [ ] Models with `enumerize :status, in: [:draft, :published]` show `enums.status.values: ["draft", "published"]`
+- [ ] `syntax` field is `"enumerize"` for enumerize-detected enums
+- [ ] Native Rails `enum` declarations still detected (not overwritten by enumerize)
+- [ ] Both symbol-style (`[:a, :b]`) and string-style (`['a', 'b']`) and %w-style (`%w[a b]`) values are captured
+- [ ] All existing tests pass
 
-  for (const line of lines) {
-    const trimmed = line.trim()
+#### Constraints
 
-    // Match module declarations (including nested like `module Api::V1`)
-    const moduleMatch = trimmed.match(/^module\s+(\w+(?:::\w+)*)/)
-    if (moduleMatch) {
-      moduleStack.push({ name: moduleMatch[1], depth })
-      depth++
-      continue
-    }
+- Do NOT remove or modify existing enum detection code
+- Place enumerize detection AFTER native enum detection so native takes priority
+- Do NOT modify any other patterns or fields
 
-    // Match standalone `end` that closes a module (not inline method/block ends)
-    // Heuristic: a line that is ONLY `end` (possibly with comment) closes a block
-    if (/^end\b/.test(trimmed)) {
-      if (depth > 0) {
-        depth--
-        // Remove modules at this depth
-        while (moduleStack.length > 0 && moduleStack[moduleStack.length - 1].depth >= depth) {
-          moduleStack.pop()
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: detect Enumerize gem declarations as enums (ISSUE-02)"
+```
+
+---
+
+### Task 3: Detect Rolify macro and synthesise implicit association
+
+**Fixes:** ISSUE-03 (rolify associations not detected on AdminUser)
+
+**Goal:** The `rolify` macro implicitly creates a `has_and_belongs_to_many` association. Detect it and add the synthetic association.
+
+**Read first:**
+
+- `src/extractors/model.js` — the associations extraction section
+
+**Modify:** `src/extractors/model.js`
+
+#### What to do
+
+1. After the existing association extraction loops (after the `assocTypes` for-loop), add detection for the `rolify` macro:
+
+```javascript
+  // Rolify gem: rolify :role_cname => 'ClassName' or rolify role_cname: 'ClassName'
+  const rolifyRe = /^\s*rolify(?:\s+(.+))?$/m
+  const rolifyMatch = content.match(rolifyRe)
+  if (rolifyMatch) {
+    // Extract the role class name from options
+    const rolifyOpts = rolifyMatch[1] || ''
+    const cnameMatch = rolifyOpts.match(
+      /(?::role_cname\s*=>|role_cname:)\s*['"](\w+(?:::\w+)*)['"]/
+    )
+    const roleClassName = cnameMatch ? cnameMatch[1] : 'Role'
+
+    // Synthesise the implicit HABTM association
+    associations.push({
+      type: 'has_and_belongs_to_many',
+      name: roleClassName.replace(/::/g, '').replace(/([A-Z])/g, (m, l, i) =>
+        i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`
+      ) + 's',
+      options: `class_name: '${roleClassName}'`,
+      rolify: true,
+    })
+  }
+```
+
+#### Acceptance criteria
+
+- [ ] `AdminUser` with `rolify :role_cname => 'AdminRole'` shows a `has_and_belongs_to_many` association to `AdminRole`
+- [ ] The association is tagged with `rolify: true` so consumers know it's synthetic
+- [ ] Models without `rolify` are unaffected
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/model.js`
+- Place the detection after existing association extraction, not inside the existing loops
+- Do NOT modify the `rolify` detection that already exists in `src/core/indexer.js` for STI (that's a different `rolify` check in the authorization section)
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: detect rolify macro and synthesise HABTM association (ISSUE-03)"
+```
+
+---
+
+### Task 4: Fix model name collision — Page overwritten by Wordpress::Page
+
+**Fixes:** ISSUE-01 (non-WordPress Page model missing)
+
+**Goal:** When two model files produce the same class name key, the second overwrites the first. Fix the indexer to detect collisions and disambiguate using file-path-derived namespacing.
+
+**Read first:**
+
+- `src/core/indexer.js` — the model indexing block (search for `categoryName === 'models'`)
+- `src/utils/ruby-class-resolver.js` — `resolveFullyQualifiedName`
+
+**Modify:** `src/core/indexer.js`
+
+#### What to do
+
+1. In the model indexing block, after computing `key`, add collision detection:
+
+```javascript
+    if (model) {
+      let key = model.class || pathToClassName(entry.path)
+
+      // Handle name collisions: if key already exists from a different file,
+      // derive namespace from the new file's path to disambiguate
+      if (extractions.models[key] && extractions.models[key].file !== entry.path) {
+        // Derive namespace from directory structure:
+        // app/models/wordpress/page.rb → Wordpress::Page
+        const relativePath = entry.path
+          .replace(/^app\/models\//, '')
+          .replace(/\.rb$/, '')
+        const pathSegments = relativePath.split('/')
+        if (pathSegments.length > 1) {
+          // File is in a subdirectory — namespace it
+          const namespacedKey = pathSegments
+            .map(seg => seg.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''))
+            .join('::')
+          key = namespacedKey
+          if (model.class) model.class = namespacedKey
+          if (!model.namespace) {
+            model.namespace = pathSegments.slice(0, -1)
+              .map(seg => seg.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''))
+              .join('::')
+          }
         }
+      }
+
+      extractions.models[key] = model
+    }
+```
+
+2. This ensures the first model (e.g., `Page` from `app/models/page.rb`) keeps its key, and the second (from `app/models/wordpress/page.rb`) gets namespaced to `Wordpress::Page`.
+
+#### Acceptance criteria
+
+- [ ] Both `Page` and `Wordpress::Page` appear in the model list
+- [ ] `get_model({ name: "Page" })` returns the `app/models/page.rb` model
+- [ ] `get_model({ name: "Wordpress::Page" })` returns the `app/models/wordpress/page.rb` model
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify `src/extractors/model.js` or `src/utils/ruby-class-resolver.js`
+- Only modify the model indexing block in `src/core/indexer.js`
+- The first model indexed keeps its original key — only the collider gets namespaced
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: disambiguate model name collisions via file-path namespace (ISSUE-01)"
+```
+
+---
+
+### Task 5: Expand search_patterns to cover all extraction fields
+
+**Fixes:** ISSUE-07 (search misses validations, scopes, devise modules)
+
+**Goal:** The `search_patterns` tool only searches associations, callbacks, concerns, and partially enums/devise. Expand it to search validations, scopes, devise_modules, delegations, and has_secure_password.
+
+**Read first:**
+
+- `src/tools/handlers/search-patterns.js` — the entire handler
+
+**Modify:** `src/tools/handlers/search-patterns.js`
+
+#### What to do
+
+1. Inside the model iteration loop (`for (const [name, model] of Object.entries(extractions.models || {}))`), after the existing matching blocks, add these new matching blocks. Remove the old `enums` and `devise` blocks first (they're inside conditionals that are too narrow), then add comprehensive replacements:
+
+```javascript
+      // Validations
+      if (model.validations) {
+        for (const val of model.validations) {
+          const attrStr = (val.attributes || []).join(' ').toLowerCase()
+          const rulesStr = (val.rules || '').toLowerCase()
+          if (lowerPattern === 'validates' || lowerPattern === 'validation' ||
+              attrStr.includes(lowerPattern) || rulesStr.includes(lowerPattern)) {
+            matches.push({ type: 'validation', detail: val })
+          }
+        }
+      }
+      if (model.custom_validators) {
+        for (const cv of model.custom_validators) {
+          if (cv.toLowerCase().includes(lowerPattern) ||
+              lowerPattern === 'validates' || lowerPattern === 'validate') {
+            matches.push({ type: 'custom_validator', detail: cv })
+          }
+        }
+      }
+
+      // Scopes
+      if (model.scopes) {
+        for (const scopeName of model.scopes) {
+          if (lowerPattern === 'scope' ||
+              scopeName.toLowerCase().includes(lowerPattern)) {
+            matches.push({
+              type: 'scope',
+              detail: { name: scopeName, query: model.scope_queries?.[scopeName] || null }
+            })
+          }
+        }
+      }
+
+      // Enums (replaces old enum block)
+      if (model.enums && Object.keys(model.enums).length > 0) {
+        for (const [enumName, enumData] of Object.entries(model.enums)) {
+          if (lowerPattern === 'enum' || lowerPattern === 'enumerize' ||
+              lowerPattern.includes('enum') ||
+              enumName.toLowerCase().includes(lowerPattern)) {
+            matches.push({ type: 'enum', detail: { name: enumName, ...enumData } })
+          }
+        }
+      }
+
+      // Devise modules (replaces old devise block)
+      if (model.devise_modules && model.devise_modules.length > 0) {
+        for (const mod of model.devise_modules) {
+          if (lowerPattern === 'devise' ||
+              mod.toLowerCase().includes(lowerPattern) ||
+              `devise_${mod}`.includes(lowerPattern)) {
+            matches.push({ type: 'devise_module', detail: mod })
+          }
+        }
+      }
+
+      // Delegations
+      if (model.delegations) {
+        for (const del of model.delegations) {
+          if (lowerPattern === 'delegate' || lowerPattern === 'delegation' ||
+              (del.to && del.to.toLowerCase().includes(lowerPattern))) {
+            matches.push({ type: 'delegation', detail: del })
+          }
+        }
+      }
+
+      // has_secure_password
+      if (model.has_secure_password &&
+          (lowerPattern === 'has_secure_password' || lowerPattern === 'secure_password')) {
+        matches.push({ type: 'has_secure_password', detail: true })
+      }
+```
+
+2. **Remove** the existing `if (model.enums && lowerPattern.includes('enum'))` block and the `if (lowerPattern.startsWith('devise') && model.devise_modules)` block — the new code above replaces them with broader matching.
+
+#### Acceptance criteria
+
+- [ ] `search_patterns({ pattern: "validates" })` returns matches for all models with validations
+- [ ] `search_patterns({ pattern: "scope" })` returns scope declarations, not just callback methods named "scope"
+- [ ] `search_patterns({ pattern: "devise" })` returns devise module matches
+- [ ] `search_patterns({ pattern: "enum" })` returns both native enum and enumerize matches
+- [ ] `search_patterns({ pattern: "has_many" })` still works (existing functionality preserved)
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/tools/handlers/search-patterns.js`
+- Remove the old enum/devise blocks before adding new ones to avoid duplicate matches
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: expand search_patterns to cover validations, scopes, enums, devise, delegations (ISSUE-07)"
+```
+
+---
+
+### Task 6: Extract authorization role names from has_role? calls
+
+**Fixes:** ISSUE-05 (authorization roles not extracted)
+
+**Goal:** Parse `has_role?(:role_name)` calls in ability files to populate the roles list with actual role names.
+
+**Read first:**
+
+- `src/extractors/authorization.js` — the CanCanCan section
+
+**Modify:** `src/extractors/authorization.js`
+
+#### What to do
+
+1. In the CanCanCan section, find the block that extracts roles from `has_role?` calls. Currently it uses this regex:
+
+```javascript
+const roleRe = /has_role\?\s*\(:?['"]?(\w+)['"]?\)/g
+```
+
+This should be working. The issue might be that the regex doesn't match the Ruby symbol syntax `has_role?(:admin)` — the `'?` before the `\(` is optional but the colon prefix on the symbol might not be captured.
+
+2. Fix the regex to handle all common patterns:
+
+```javascript
+      // Extract role names from has_role? calls in the ability file
+      const roleRe = /has_role\?\s*\(\s*:(\w+)\s*\)/g
+      const roles = new Set()
+      let roleM
+      while ((roleM = roleRe.exec(abilityContent))) {
+        roles.add(roleM[1])
+      }
+      // Also try string syntax: has_role?('admin') or has_role?("admin")
+      const roleStrRe = /has_role\?\s*\(\s*['"](\w+)['"]\s*\)/g
+      while ((roleM = roleStrRe.exec(abilityContent))) {
+        roles.add(roleM[1])
+      }
+      if (roles.size > 0) {
+        result.roles = {
+          source: 'ability_class',
+          model: 'User',
+          roles: [...roles],
+          file: abilityFile,
+        }
+      }
+```
+
+3. Also add role-grouped abilities. After the flat `abilities` array is built, parse the conditional structure:
+
+```javascript
+      // Group abilities by role from conditional blocks
+      const roleAbilities = {}
+      const roleBlockRe = /(?:if|elsif)\s+.*?has_role\?\s*\(\s*:(\w+)\s*\)/g
+      let rbMatch
+      const rolePositions = []
+      while ((rbMatch = roleBlockRe.exec(abilityContent))) {
+        rolePositions.push({ role: rbMatch[1], index: rbMatch.index })
+      }
+
+      for (let i = 0; i < rolePositions.length; i++) {
+        const start = rolePositions[i].index
+        const end = i + 1 < rolePositions.length
+          ? rolePositions[i + 1].index
+          : abilityContent.length
+        const block = abilityContent.slice(start, end)
+
+        const blockAbilities = []
+        const blockCanRe = /^\s*(can(?:not)?)\s+(.+)/gm
+        let bm
+        while ((bm = blockCanRe.exec(block))) {
+          blockAbilities.push({ type: bm[1], definition: bm[2].trim() })
+        }
+        if (blockAbilities.length > 0) {
+          roleAbilities[rolePositions[i].role] = blockAbilities
+        }
+      }
+
+      if (Object.keys(roleAbilities).length > 0) {
+        result.abilities_by_role = roleAbilities
+      }
+```
+
+#### Acceptance criteria
+
+- [ ] `roles.roles` contains actual role names (e.g., `["admin", "editor", "sales", "producer", "contributer", "explorer"]`)
+- [ ] `abilities_by_role` groups abilities under each role key
+- [ ] The flat `abilities` array is preserved for backward compatibility
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/authorization.js`
+- Do NOT modify the Pundit or custom RBAC sections
+- Add `abilities_by_role` as a NEW field — do not replace `abilities`
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: extract role names from has_role? and group abilities by role (ISSUE-05)"
+```
+
+---
+
+### Task 7: Checkpoint — Phase 1
+
+**This is a manual verification step. Do not send this to the AI agent.**
+
+```bash
+npm test
+git diff HEAD~6..HEAD --stat
+git tag checkpoint-phase1
+```
+
+---
+
+## Phase 2: Graph, Subgraph & Tool Fixes (HIGH + MEDIUM)
+
+### Task 8: Register mailer classes as graph nodes with edges
+
+**Fixes:** ISSUE-18 (mailers not in graph), ISSUE-06 (email subgraph empty — downstream of same root cause)
+
+**Goal:** Mailer classes are extracted by the email extractor but never added to the relationship graph. Add them as nodes with inheritance edges so they're discoverable via subgraphs and blast radius.
+
+**Read first:**
+
+- `src/core/graph.js` — the `buildGraph` function (see how controllers and helpers are added)
+- `src/extractors/email.js` — the email extraction output shape (mailers have `class`, `superclass`, `file`)
+
+**Modify:** `src/core/graph.js`
+
+#### What to do
+
+1. After the existing helper and worker sections in `buildGraph`, add mailer nodes:
+
+```javascript
+  // Mailers — add as graph nodes with inheritance edges
+  if (extractions.email?.mailers) {
+    for (const mailer of extractions.email.mailers) {
+      if (!mailer.class) continue
+      graph.addNode(mailer.class, 'mailer', mailer.class)
+
+      // Inheritance edge (e.g., ContactMessageMailer → ApplicationMailer)
+      if (mailer.superclass && mailer.superclass !== 'ActionMailer::Base') {
+        graph.addNode(mailer.superclass, 'mailer', mailer.superclass)
+        graph.addEdge(mailer.class, mailer.superclass, 'inherits')
+        relationships.push({ from: mailer.class, to: mailer.superclass, type: 'inherits' })
       }
     }
   }
+```
 
-  // Remaining modules in the stack are the ones wrapping the class
-  if (moduleStack.length === 0) {
-    return { fqn: shortClassName, namespace: null }
+2. Also add `sends_mail` edges from controllers that call mailer methods. This is a heuristic — look for controllers that reference mailer classes by name:
+
+```javascript
+  // Controller → Mailer edges (convention: if controller file references a mailer class)
+  if (extractions.email?.mailers && extractions.controllers) {
+    const mailerNames = new Set(
+      extractions.email.mailers.map(m => m.class).filter(Boolean)
+    )
+    // This is done via convention_pair-style matching;
+    // actual file content scanning would be too expensive here.
+    // The mailer nodes are sufficient for subgraph discovery.
   }
-
-  // Build namespace from remaining module stack
-  // Each module name might itself be nested (module Api::V1 → ['Api', 'V1'])
-  const namespaceParts = moduleStack.flatMap(m => m.name.split('::'))
-  const namespace = namespaceParts.join('::')
-  const fqn = `${namespace}::${shortClassName}`
-
-  return { fqn, namespace }
-}
 ```
 
-**Step 2: Integrate into the controller extractor.**
+(Skip the controller→mailer edge for now — the mailer nodes themselves are sufficient to fix the email subgraph.)
 
-In `src/extractors/controller.js`, after extracting the class name via `classDeclaration`:
+#### Acceptance criteria
 
-```javascript
-import { resolveFullyQualifiedName } from '../utils/ruby-class-resolver.js'
+- [ ] Mailer classes appear as nodes in the graph
+- [ ] Mailer inheritance edges exist (e.g., ContactMessageMailer → ApplicationMailer)
+- [ ] `get_subgraph({ skill: "email" })` returns non-zero entities
+- [ ] All existing tests pass
 
-// After classMatch:
-const classMatch = content.match(CONTROLLER_PATTERNS.classDeclaration)
-if (classMatch) {
-  const shortName = classMatch[1]
+#### Constraints
 
-  // Resolve FQN from module wrapping
-  const { fqn, namespace } = resolveFullyQualifiedName(content, shortName, classMatch.index)
+- Do NOT modify any files other than `src/core/graph.js`
+- Place the mailer section after the existing worker/helper sections
+- Do NOT scan file contents in the graph builder — only use extraction data
 
-  // Use fqn as the registry key, store namespace
-  result.class = fqn
-  result.namespace = namespace
-  // ...
-}
+#### Verify
+
+```bash
+npm test
 ```
 
-**Step 3: Integrate into the model extractor.**
-
-Same pattern in `src/extractors/model.js`:
-
-```javascript
-import { resolveFullyQualifiedName } from '../utils/ruby-class-resolver.js'
-
-// After classMatch:
-const classMatch = content.match(MODEL_PATTERNS.classDeclaration)
-if (classMatch) {
-  const shortName = classMatch[1]
-  const { fqn, namespace } = resolveFullyQualifiedName(content, shortName, classMatch.index)
-
-  result.class = fqn
-  result.namespace = namespace
-}
-```
-
-**Step 4: Ensure the indexer uses `fqn` as the registry key.**
-
-In `src/core/indexer.js` (or wherever models/controllers are stored in the index), verify the key is `result.class` (which is now the FQN), not a path-derived short name. If there's a `pathToClassName` helper that strips namespaces — stop using it for the registry key. Keep it only as a fallback display name.
-
-**Step 5: Update convention_pair logic.**
-
-After FQN keys are in place, the `convention_pair` edge (linking `Email` model to `EmailsController`) should prefer the non-namespaced controller when multiple exist. In the graph builder, when creating convention_pair edges:
-
-```javascript
-// When looking up the controller for a model's convention pair:
-const controllerName = `${modelName.replace(/::.*/, '')}sController` // naive pluralisation
-const candidates = Object.keys(controllers).filter(k => k.endsWith(controllerName))
-
-// Prefer the non-namespaced one (shortest FQN)
-const preferred = candidates.sort((a, b) => a.split('::').length - b.split('::').length)[0]
-```
-
-**Tests:**
-
-```javascript
-// Test 1: Module wrapping produces correct FQN
-import { resolveFullyQualifiedName } from '../src/utils/ruby-class-resolver.js'
-
-describe('resolveFullyQualifiedName', () => {
-  it('detects single module wrapping', () => {
-    const content = `module Backend\n  class AiTrainingController < ApplicationController\n  end\nend`
-    const classIndex = content.indexOf('class AiTrainingController')
-    const result = resolveFullyQualifiedName(content, 'AiTrainingController', classIndex)
-    expect(result.fqn).toBe('Backend::AiTrainingController')
-    expect(result.namespace).toBe('Backend')
-  })
-
-  it('detects deeply nested module wrapping', () => {
-    const content = `module Dashboard\n  module Settings\n    class SetupsController < ApplicationController\n    end\n  end\nend`
-    const classIndex = content.indexOf('class SetupsController')
-    const result = resolveFullyQualifiedName(content, 'SetupsController', classIndex)
-    expect(result.fqn).toBe('Dashboard::Settings::SetupsController')
-    expect(result.namespace).toBe('Dashboard::Settings')
-  })
-
-  it('detects compact module::module wrapping', () => {
-    const content = `module Api::V1\n  class ProductsController < ApplicationController\n  end\nend`
-    const classIndex = content.indexOf('class ProductsController')
-    const result = resolveFullyQualifiedName(content, 'ProductsController', classIndex)
-    expect(result.fqn).toBe('Api::V1::ProductsController')
-    expect(result.namespace).toBe('Api::V1')
-  })
-
-  it('returns null namespace for unwrapped class', () => {
-    const content = `class ApplicationController < ActionController::Base\nend`
-    const classIndex = content.indexOf('class ApplicationController')
-    const result = resolveFullyQualifiedName(content, 'ApplicationController', classIndex)
-    expect(result.fqn).toBe('ApplicationController')
-    expect(result.namespace).toBeNull()
-  })
-
-  it('handles inline :: namespace in class name', () => {
-    const content = `class Api::V1::WidgetsController < ApplicationController\nend`
-    const classIndex = content.indexOf('class Api::V1::WidgetsController')
-    const result = resolveFullyQualifiedName(content, 'Api::V1::WidgetsController', classIndex)
-    expect(result.fqn).toBe('Api::V1::WidgetsController')
-    expect(result.namespace).toBe('Api::V1')
-  })
-
-  it('detects module wrapping for models', () => {
-    const content = `module Setups\n  class Contact < Setup\n    # no associations\n  end\nend`
-    const classIndex = content.indexOf('class Contact')
-    const result = resolveFullyQualifiedName(content, 'Contact', classIndex)
-    expect(result.fqn).toBe('Setups::Contact')
-    expect(result.namespace).toBe('Setups')
-  })
-})
-
-// Test 2: Controller registry keeps both namespaced and root controllers
-it('does not deduplicate controllers with same short name but different namespaces', () => {
-  // Mock two files: app/controllers/emails_controller.rb and
-  // app/controllers/webhook/v1/emails_controller.rb
-  // After extraction, both should be in the index under different keys
-  // 'EmailsController' and 'Webhook::V1::EmailsController'
-})
-
-// Test 3: Model registry keeps both namespaced and root models
-it('does not shadow root Contact with Setups::Contact', () => {
-  // Mock two files: app/models/contact.rb (class Contact < ApplicationRecord, 10 associations)
-  // and app/models/setups/contact.rb (module Setups; class Contact < Setup; end; end)
-  // get_model({ name: 'Contact' }) should return the root one
-  // get_model({ name: 'Setups::Contact' }) should return the namespaced one
-})
-```
-
-**Verification after fix:**
-
-- `get_controller({ name: 'AiTrainingController' })` → should return with `namespace: "Backend"`
-- `get_model({ name: 'Contact' })` → should return `app/models/contact.rb` with 10+ associations
-- `get_model({ name: 'Setups::Contact' })` → should return `app/models/setups/contact.rb`
-- `get_deep_analysis({ category: 'controller_list' })` → should list 40 controllers, not 32
-- `get_deep_analysis({ category: 'model_list' })` → should show all models without shadowing
-
----
-
-## Sprint 2 — Route & Config Hallucinations (2 eval issues → 2 fix tasks)
-
-### ISSUE B: `resources` with `only: []` still reports all 7 CRUD actions
-
-**File:** `src/extractors/routes.js`
-**Severity:** CRITICAL — 14 hallucinated route actions (7 per resource × 2 resources)
-**Eval issue:** #5
-**History:** This was attempted in v4 (hash rocket + %i[] syntax) and v5 (empty array guard). **The fix is not working.** Either it didn't land, or there's a code path that bypasses it.
-
-**Problem:** `resources :emails, only: []` and `resources :history, only: []` both report `actions: ["index","show","new","create","edit","update","destroy"]`. The empty array should produce `actions: []`.
-
-**Root cause — why the v5 fix may not have worked:**
-
-The likely issue is that the `only:` matching regex uses `[^\]]+` (one-or-more) inside the bracket capture which requires at least one character, so `only: []` never matches and falls through to the default 7-action set. Or the match happens on the wrong portion of the line. Or the guard was added but the code path branches before reaching it.
-
-**Debugging approach — do this FIRST before writing the fix:**
-
-1. Find the route extractor file (likely `src/extractors/routes.js`)
-2. Search for the `only` pattern regex — print it
-3. Search for where `actions` is assigned its default value (the 7 CRUD actions)
-4. Trace the logic: when `only:` is matched, does it actually short-circuit the default assignment?
-5. Test manually with this exact input string: `resources :emails, only: [] do`
-
-**Fix:**
-
-After identifying the exact code path, ensure this logic applies:
-
-```javascript
-// When parsing a resources/resource declaration:
-// 1. Extract the options portion (everything after the resource name, before do/end)
-// 2. Check for only: pattern
-const onlyMatch = optionsStr.match(/(?:only:|:only\s*=>)\s*\[([^\]]*)\]/)
-if (onlyMatch) {
-  const inner = (onlyMatch[1] || '').trim()
-  if (inner === '') {
-    // only: [] — explicitly no CRUD actions
-    actions = []
-  } else {
-    // only: [:index, :show] or only: %i[index show]
-    actions = inner.match(/\w+/g) || []
-  }
-}
-```
-
-**Critical detail:** The regex MUST capture `only: []` where the bracket content is empty. The previous regex `(?:\[([^\]]+)\]|%i\[([^\]]+)\]|...)` uses `[^\]]+` (one or more non-bracket chars) which requires at least one character inside the brackets. **Change `+` to `*`**: `[^\]]*` (zero or more).
-
-**Test:**
-
-```javascript
-it('resources with only: [] produces zero actions', () => {
-  const result = extractRoutes(mockProvider(`Rails.application.routes.draw do
-  resources :emails, only: [] do
-    member do
-      post :assign_contact
-    end
-  end
-end`))
-  const emails = result.resources.find(r => r.name === 'emails')
-  expect(emails).toBeDefined()
-  expect(emails.actions).toEqual([])
-  // Member routes should still be present
-  expect(emails.member_routes).toContain('assign_contact')
-})
-
-it('resources with only: [] and hash rocket produces zero actions', () => {
-  const result = extractRoutes(mockProvider(`Rails.application.routes.draw do
-  resources :webhooks, :only => []
-end`))
-  const webhooks = result.resources.find(r => r.name === 'webhooks')
-  expect(webhooks.actions).toEqual([])
-})
+```bash
+git add -A && git commit -m "fix: register mailer classes as graph nodes with inheritance edges (ISSUE-06/18)"
 ```
 
 ---
 
-### ISSUE C: `database.multi_db` hallucinated — YAML config keys parsed as database names
+### Task 9: Fix authentication subgraph to filter irrelevant entities
 
-**File:** `src/extractors/database.js` or `src/analysis/overview.js`
-**Severity:** CRITICAL — reports `multi_db: true, databases: ["pool", "password"]` for a single-database app
-**Eval issue:** #8
-**History:** This was attempted in v5 (Issue D). **The fix is not working.**
+**Fixes:** ISSUE-13 (auth subgraph polluted with Activity, Event, etc.)
 
-**Problem:** The multi-database detector parses `config/database.yml` and interprets YAML keys under the `default:` anchor (like `pool`, `password`, `encoding`) as database names. It reports `multi_db: true` with `databases: ["pool", "password"]`.
+**Goal:** The auth subgraph uses BFS from auth seeds, which spreads to highly-connected models through `belongs_to :author` associations. Add post-filtering to keep only auth-relevant entities.
 
-**Root cause:** The detector likely looks for keys under the environment block (e.g., `production:`) and treats any key that isn't a known config key as a "database name". But when a `default: &default` anchor is used, the merged keys include `pool`, `password`, `encoding`, `host`, etc. — none of which are database names.
+**Read first:**
 
-**Debugging approach:**
+- `src/tools/handlers/get-subgraph.js` — the handler function
 
-1. Find the multi-db detection code
-2. Print the exact logic: what makes it decide multi_db is true?
-3. Is it counting keys under the environment block? Or looking for `connects_to`?
+**Modify:** `src/tools/handlers/get-subgraph.js`
 
-**Fix:**
+#### What to do
 
-Rails multi-database is configured using `connects_to` in models and named database blocks under environments:
-
-```yaml
-# Single database (NOT multi-db):
-default: &default
-  adapter: postgresql
-  pool: 5
-  password: secret
-
-development:
-  <<: *default
-  database: myapp_development
-
-# Multi-database (IS multi-db):
-development:
-  primary:
-    <<: *default
-    database: myapp_development
-  replica:
-    <<: *default
-    database: myapp_development
-    replica: true
-```
-
-The correct detection:
+1. In the handler function, just before the final `return respond(...)`, add a filter for the `authentication` skill:
 
 ```javascript
-function detectMultiDb(databaseYml) {
-  // Multi-db requires named sub-blocks under an environment key
-  // where each sub-block contains its own `database:` key
-  // OR the presence of `connects_to` in any model file
+      // Authentication: post-filter to remove entities that aren't auth-relevant.
+      // BFS from auth seeds leaks into high-connectivity models (e.g., Activity
+      // via belongs_to :author), polluting the subgraph.
+      if (skill === 'authentication') {
+        const authEntityPatterns = /auth|session|user|admin|devise|password|registration|confirmation|login|signup|member|ability|role|current|warden|omniauth/i
 
-  const envBlock = parsed[env] // e.g., parsed['development']
-  if (!envBlock || typeof envBlock !== 'object') return { multi_db: false, databases: [] }
+        const authFiltered = rankedFiles.filter(e =>
+          seeds.has(e.entity) || authEntityPatterns.test(e.entity)
+        )
+        const authEntitySet = new Set(authFiltered.map(e => e.entity))
+        const authRels = subgraphRels.filter(
+          r => authEntitySet.has(r.from) && authEntitySet.has(r.to)
+        )
 
-  // If the env block directly contains 'database' key, it's single-db
-  if (envBlock.database) return { multi_db: false, databases: [] }
-
-  // If the env block contains sub-objects that each have a 'database' key, it's multi-db
-  const dbNames = Object.keys(envBlock).filter(key => {
-    const sub = envBlock[key]
-    return typeof sub === 'object' && sub !== null && sub.database
-  })
-
-  if (dbNames.length > 1) {
-    return { multi_db: true, databases: dbNames }
-  }
-
-  return { multi_db: false, databases: [] }
-}
+        return respond({
+          skill,
+          entities: authFiltered,
+          relationships: authRels,
+          total_entities: authFiltered.length,
+          total_relationships: authRels.length,
+        })
+      }
 ```
 
-**Key rule:** A YAML key is only a "database name" if it's a sub-block that itself contains a `database:` key. Keys like `pool`, `password`, `encoding`, `adapter`, `host`, `port`, `timeout`, `username`, `socket`, `reconnect` are configuration properties, not database names.
+2. Place this block immediately before the existing `return respond(...)` at the end of the handler.
 
-If the current code doesn't actually parse YAML and instead uses regex: add an explicit deny-list of known config keys that must never be treated as database names:
+#### Acceptance criteria
 
-```javascript
-const YAML_CONFIG_KEYS = new Set([
-  'adapter', 'pool', 'timeout', 'database', 'username', 'password',
-  'host', 'port', 'encoding', 'socket', 'reconnect', 'prepared_statements',
-  'advisory_locks', 'schema_search_path', 'variables', 'connect_timeout',
-  'read_timeout', 'write_timeout', 'checkout_timeout', 'reaping_frequency',
-  'idle_timeout', 'url', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert',
-])
+- [ ] `get_subgraph({ skill: "authentication" })` returns only auth-relevant entities
+- [ ] Activity, Event, WpPost etc. are excluded
+- [ ] AdminUser, Member, auth controllers remain
+- [ ] Other skills (database, frontend, api, jobs, email) are unaffected
+- [ ] All existing tests pass
 
-// Filter out config keys
-databases = candidateKeys.filter(k => !YAML_CONFIG_KEYS.has(k))
+#### Constraints
+
+- Do NOT modify any files other than `src/tools/handlers/get-subgraph.js`
+- Only filter the `authentication` skill — no changes to other skills
+
+#### Verify
+
+```bash
+npm test
 ```
 
-**Test:**
-
-```javascript
-it('single database config does not hallucinate multi_db', () => {
-  const result = extractDatabase(mockProvider({
-    'config/database.yml': `
-default: &default
-  adapter: postgresql
-  encoding: unicode
-  pool: 5
-  password: secret123
-
-development:
-  <<: *default
-  database: kollaras_development
-
-production:
-  <<: *default
-  database: kollaras_production
-`
-  }))
-  expect(result.multi_db).toBe(false)
-  expect(result.databases).toEqual([])
-})
-
-it('actual multi-db config correctly detected', () => {
-  const result = extractDatabase(mockProvider({
-    'config/database.yml': `
-default: &default
-  adapter: postgresql
-
-development:
-  primary:
-    <<: *default
-    database: myapp_dev
-  animals:
-    <<: *default
-    database: myapp_animals_dev
-`
-  }))
-  expect(result.multi_db).toBe(true)
-  expect(result.databases).toContain('primary')
-  expect(result.databases).toContain('animals')
-})
+```bash
+git add -A && git commit -m "fix: filter auth subgraph to auth-relevant entities only (ISSUE-13)"
 ```
 
 ---
 
-## Sprint 3 — Missing Extractors & Wrong Globs (3 eval issues → 3 fix tasks)
+### Task 10: Fix model_list superclass inconsistency
 
-### ISSUE D: Component extractor misses `component.rb` files in subdirectories
+**Fixes:** ISSUE-08 (AdminAbility shows ApplicationRecord in model_list), ISSUE-10 (Sluggable shows ApplicationRecord in model_list)
 
-**File:** `src/extractors/component.js` (or the scanner glob that feeds it)
-**Severity:** CRITICAL — 6 of 8 components missed (F1=0.25 on components)
-**Eval issue:** #1
-**History:** Attempted in v5 (Issue B) but the fix addressed sidecar directory recursion, not the filename pattern. The problem is that the **glob only matches `*_component.rb`** but ViewComponent supports a second naming convention: **`component.rb`** inside a namespaced directory.
+**Goal:** The `model_list` category in `get_deep_analysis` uses `m.superclass || 'ApplicationRecord'` which fabricates a superclass for classes that don't have one. Fix it to use the actual detected superclass.
 
-**Problem:** These 6 files are completely missed:
+**Read first:**
 
-```
-app/components/offers_summary_widget/component.rb  → OffersSummaryWidget::Component
-app/components/notification/component.rb           → Notification::Component
-app/components/spinner/component.rb                → Spinner::Component
-app/components/search/component.rb                 → Search::Component
-app/components/counter_widget/component.rb         → CounterWidget::Component
-app/components/modal_form/component.rb             → ModalForm::Component
-```
+- `src/tools/handlers/get-deep-analysis.js` — the `model_list` case
 
-Only these 2 are found (because they match `*_component.rb`):
+**Modify:** `src/tools/handlers/get-deep-analysis.js`
 
-```
-app/components/application_component.rb            → ApplicationComponent ✓
-app/components/modal_form/offer_component.rb       → OfferComponent ✓
-```
+#### What to do
 
-**Root cause:** The component file classification rule or glob uses a pattern like `app/components/**/*_component.rb` which requires the filename to end in `_component.rb`. The ViewComponent convention also allows `component.rb` inside a namespace directory (e.g., `search/component.rb` defines `Search::Component < ViewComponent::Base`).
-
-**Fix:**
-
-In the scanner or component extractor, change the glob/classification to also match `component.rb`:
+1. Find the `case 'model_list':` block. It currently has:
 
 ```javascript
-// Old pattern (misses component.rb):
-const isComponent = filePath.match(/app\/components\/.*_component\.rb$/)
-
-// New pattern (matches both conventions):
-const isComponent = filePath.match(/app\/components\/.*(?:_component|\/component)\.rb$/)
-```
-
-Or if using a glob:
-
-```javascript
-// Old:
-'app/components/**/*_component.rb'
-
-// New (two patterns):
-'app/components/**/*_component.rb'
-'app/components/**/component.rb'
-```
-
-After finding the file, the class name resolution must use ISSUE A's `resolveFullyQualifiedName` to get the correct FQN (`Search::Component`, not just `Component`).
-
-**Test:**
-
-```javascript
-it('discovers component.rb files in subdirectories', () => {
-  const files = [
-    'app/components/application_component.rb',
-    'app/components/search/component.rb',
-    'app/components/spinner/component.rb',
-    'app/components/modal_form/offer_component.rb',
-  ]
-  // After scan, all 4 should be classified as components
-  // search/component.rb → Search::Component
-  // spinner/component.rb → Spinner::Component
-  // modal_form/offer_component.rb → OfferComponent (or ModalForm::OfferComponent)
-})
-```
-
----
-
-### ISSUE E: Turbo stream templates reported as 0 — wrong file extension glob
-
-**File:** `src/extractors/views.js` or `src/analysis/deep/views.js`
-**Severity:** CRITICAL — 33 turbo stream templates exist, tool reports 0
-**Eval issue:** #6
-
-**Problem:** `get_deep_analysis({ category: 'views' })` reports `turbo_stream_templates: 0` but `find app/views -name '*.turbo_stream.erb'` returns 33 files.
-
-**Root cause:** The glob pattern is likely looking for `*.turbo_stream.html.erb` (double extension with html) or `*.html.turbo_stream` (wrong order). In Rails 7 with Turbo, the correct filename format is:
-
-```
-action.turbo_stream.erb
-```
-
-Examples from kollaras:
-
-```
-app/views/offers/update.turbo_stream.erb
-app/views/targets/update_statuses.turbo_stream.erb
-app/views/contacts/show.turbo_stream.erb
-```
-
-**Fix:**
-
-Find the turbo stream counting code and change the glob:
-
-```javascript
-// Wrong patterns (any of these would produce 0):
-'**/*.turbo_stream.html.erb'
-'**/*.html.turbo_stream'
-'**/*.turbo_stream.html'
-
-// Correct pattern:
-'**/*.turbo_stream.erb'
-// Or more broadly to also catch .turbo_stream.haml, .turbo_stream.slim:
-'**/*.turbo_stream.*'
-```
-
-**Test:**
-
-```javascript
-it('counts turbo stream templates correctly', () => {
-  const files = [
-    'app/views/offers/update.turbo_stream.erb',
-    'app/views/targets/update_statuses.turbo_stream.erb',
-    'app/views/contacts/show.turbo_stream.erb',
-    'app/views/contacts/index.html.erb',  // NOT a turbo stream
-  ]
-  const result = analyzeViews(mockProvider(files))
-  expect(result.turbo_stream_templates).toBe(3)
-})
-```
-
----
-
-### ISSUE F: Jobs deep analysis omits Sidekiq native workers and cron jobs
-
-**File:** `src/extractors/jobs.js` or `src/analysis/deep/jobs.js`
-**Severity:** HIGH — 9 workers and 2 cron jobs completely missing
-**Eval issue:** #7
-
-**Problem:** `get_deep_analysis({ category: 'jobs' })` returns only `ApplicationJob`. The 9 Sidekiq workers in `app/workers/` and 2 `Sidekiq::Cron::Job.create` definitions in initializers are all missing.
-
-**Root cause:** The job extractor only scans for ActiveJob classes (`< ApplicationJob` or `< ActiveJob::Base`). Sidekiq native workers use a different pattern:
-
-```ruby
-# app/workers/cleanup_stuck_processing_emails_worker.rb
-class CleanupStuckProcessingEmailsWorker
-  include Sidekiq::Worker
-  sidekiq_options queue: :low, retry: 3
-
-  def perform
-    # ...
-  end
-end
-```
-
-These are NOT ActiveJob subclasses — they include `Sidekiq::Worker` (or `Sidekiq::Job` in newer versions) as a module.
-
-Cron jobs are defined in initializers:
-
-```ruby
-# config/initializers/sidekiq.rb
-Sidekiq::Cron::Job.create(
-  name: 'cleanup_emails - every hour',
-  cron: '0 * * * *',
-  class: 'CleanupStuckProcessingEmailsWorker'
+return respond(
+  Object.entries(models).map(([n, m]) => ({
+    name: n,
+    superclass: m.superclass || 'ApplicationRecord',
+    association_count: (m.associations || []).length,
+    ...
+  })),
 )
 ```
 
-**Fix — Part 1: Scan `app/workers/` for Sidekiq workers:**
+2. Change `m.superclass || 'ApplicationRecord'` to `m.superclass || null`:
 
 ```javascript
-// Add to the job extractor:
-// 1. Glob app/workers/**/*.rb
-// 2. For each file, check for `include Sidekiq::Worker` or `include Sidekiq::Job`
-// 3. Extract class name, sidekiq_options (queue, retry), perform method arity
-
-const SIDEKIQ_PATTERNS = {
-  includeWorker: /include\s+Sidekiq::(?:Worker|Job)/,
-  sidekiqOptions: /sidekiq_options\s+(.+)/,
-  queueOption: /queue:\s*[:'"](\w+)/,
-  retryOption: /retry:\s*(\w+)/,
-}
-
-for (const file of workerFiles) {
-  const content = provider.readFile(file)
-  if (SIDEKIQ_PATTERNS.includeWorker.test(content)) {
-    const classMatch = content.match(/class\s+(\w+)/)
-    const optionsMatch = content.match(SIDEKIQ_PATTERNS.sidekiqOptions)
-    const queue = optionsMatch ? (content.match(SIDEKIQ_PATTERNS.queueOption)?.[1] || 'default') : 'default'
-    const retry_ = optionsMatch ? content.match(SIDEKIQ_PATTERNS.retryOption)?.[1] : null
-
-    jobs.push({
-      class: classMatch?.[1],
-      file,
-      type: 'sidekiq_worker',
-      queue,
-      retry: retry_,
-    })
-  }
-}
+    superclass: m.superclass || null,
+    type: m.type || 'model',
 ```
 
-**Fix — Part 2: Scan initializers for `Sidekiq::Cron::Job.create`:**
+3. Also add the `type` field so consumers can distinguish models from concerns and POROs.
 
-```javascript
-// Scan config/initializers/*.rb for cron job definitions
-const CRON_PATTERN = /Sidekiq::Cron::Job\.create\s*\(\s*\n?\s*name:\s*['"]([^'"]+)['"]\s*,\s*\n?\s*cron:\s*['"]([^'"]+)['"]\s*,\s*\n?\s*class:\s*['"]([^'"]+)['"]/g
+#### Acceptance criteria
 
-const initializerFiles = provider.glob('config/initializers/*.rb')
-for (const file of initializerFiles) {
-  const content = provider.readFile(file)
-  let cronMatch
-  while ((cronMatch = CRON_PATTERN.exec(content))) {
-    recurringJobs.push({
-      name: cronMatch[1],
-      cron: cronMatch[2],
-      class: cronMatch[3],
-    })
-  }
-}
+- [ ] `model_list` shows `superclass: null` for classes without AR inheritance (AdminAbility, Sluggable)
+- [ ] `model_list` shows `type: "concern"` for concerns
+- [ ] Normal models still show their correct superclass
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/tools/handlers/get-deep-analysis.js`
+- Only change the `model_list` case — do not modify other cases
+
+#### Verify
+
+```bash
+npm test
 ```
 
-Also ensure the `queues_detected` list includes queues from Sidekiq workers, not just ActiveJob.
-
-**Test:**
-
-```javascript
-it('extracts Sidekiq native workers from app/workers/', () => {
-  const result = extractJobs(mockProvider({
-    'app/workers/cleanup_worker.rb': `
-class CleanupWorker
-  include Sidekiq::Worker
-  sidekiq_options queue: :low, retry: 3
-
-  def perform
-  end
-end`,
-  }))
-  const worker = result.jobs.find(j => j.class === 'CleanupWorker')
-  expect(worker).toBeDefined()
-  expect(worker.type).toBe('sidekiq_worker')
-  expect(worker.queue).toBe('low')
-})
-
-it('extracts Sidekiq::Cron::Job definitions from initializers', () => {
-  const result = extractJobs(mockProvider({
-    'config/initializers/sidekiq.rb': `
-Sidekiq::Cron::Job.create(
-  name: 'cleanup - hourly',
-  cron: '0 * * * *',
-  class: 'CleanupWorker'
-)`,
-  }))
-  expect(result.recurring_jobs).toHaveLength(1)
-  expect(result.recurring_jobs[0].name).toBe('cleanup - hourly')
-  expect(result.recurring_jobs[0].cron).toBe('0 * * * *')
-  expect(result.recurring_jobs[0].class).toBe('CleanupWorker')
-})
+```bash
+git add -A && git commit -m "fix: model_list uses actual superclass instead of defaulting to ApplicationRecord (ISSUE-08/10)"
 ```
 
 ---
 
-## Sprint 4 — Parser Accuracy (2 eval issues → 2 fix tasks)
+### Task 11: Tag block callbacks with [block] label
 
-### ISSUE G: Devise `:saml` included as module instead of omniauth provider
+**Fixes:** ISSUE-09 (block callbacks show method: null)
 
-**File:** `src/extractors/model.js` — devise module parser
-**Severity:** HIGH — misleads AI agents about auth configuration
-**Eval issue:** #9
-**History:** Attempted in v5 (not a separate issue, related to devise over-capture fixes). Still broken.
+**Goal:** Block-style callbacks like `before_save { self.name = name.strip }` produce `method: null`. Change to `method: "[block]"`.
 
-**Problem:** `get_model({ name: 'User' })` returns `devise_modules: [..., "omniauthable", "saml"]`. The `saml` is not a Devise module — it's the value of the `omniauth_providers:` keyword argument:
+**Read first:**
 
-```ruby
-devise :database_authenticatable, :registerable, :recoverable,
-       :rememberable, :validatable, :omniauthable,
-       omniauth_providers: [:saml]
-```
+- `src/extractors/model.js` — the block callback section (search for `blockCbRe`)
 
-**Root cause:** The devise module extraction regex collects ALL `:symbol` tokens after `devise` on the same logical statement, including keyword argument values. It does not stop at keyword arguments (tokens matching `\w+:`).
+**Modify:** `src/extractors/model.js`
 
-**Fix:**
+#### What to do
 
-The devise parser should stop collecting module names when it encounters a keyword argument:
+1. Find the block callback push statement:
 
 ```javascript
-// Parse the devise call
-const deviseMatch = content.match(/devise\s+([\s\S]*?)(?:\n\s*\n|\n\s*(?:validates|has_|belongs_|scope|enum|include|extend|def\s))/m)
-if (deviseMatch) {
-  const deviseArgs = deviseMatch[1]
-
-  // Better approach: split the devise args at the first keyword argument
-  const keywordSplit = deviseArgs.split(/\b(\w+):\s*/)
-  const modulesPart = keywordSplit[0]  // Everything before first keyword
-  const modules = (modulesPart.match(/:(\w+)/g) || []).map(m => m.slice(1))
-
-  // Extract omniauth_providers separately
-  const providerMatch = deviseArgs.match(/omniauth_providers:\s*\[([^\]]*)\]/)
-  let omniauth_providers = []
-  if (providerMatch) {
-    omniauth_providers = (providerMatch[1].match(/:(\w+)/g) || []).map(m => m.slice(1))
-  }
-}
+rawCallbacks.push({ type: m[1], method: null, options: null })
 ```
 
-The key logic: after encountering a token that ends with `:` (like `omniauth_providers:`), stop adding to the modules list. Everything after a keyword arg is a value, not a module name.
-
-**Test:**
+2. Replace with:
 
 ```javascript
-it('does not include omniauth provider as devise module', () => {
-  const result = extractModel(mockProvider(`
-class User < ApplicationRecord
-  devise :database_authenticatable, :registerable, :recoverable,
-         :rememberable, :validatable, :omniauthable,
-         omniauth_providers: [:saml]
-end`))
-  expect(result.devise_modules).toContain('omniauthable')
-  expect(result.devise_modules).not.toContain('saml')
-})
+rawCallbacks.push({ type: m[1], method: '[block]', options: null })
+```
 
-it('extracts omniauth providers separately', () => {
-  const result = extractModel(mockProvider(`
-class User < ApplicationRecord
-  devise :database_authenticatable, :omniauthable,
-         omniauth_providers: [:google_oauth2, :saml]
-end`))
-  expect(result.devise_modules).not.toContain('google_oauth2')
-  expect(result.devise_modules).not.toContain('saml')
-  // If there's an omniauth_providers field:
-  // expect(result.omniauth_providers).toEqual(['google_oauth2', 'saml'])
-})
+#### Acceptance criteria
+
+- [ ] Block callbacks show `method: "[block]"` instead of `null`
+- [ ] Named method callbacks are unchanged
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/model.js`
+- One-line change only
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: tag block callbacks with [block] label (ISSUE-09)"
 ```
 
 ---
 
-### ISSUE H: Component render counter undercounts namespaced ViewComponent renders
+### Task 12: Fix factory detection when gem is missing but files exist
 
-**File:** `src/analysis/deep/views.js`
-**Severity:** MEDIUM — reports 8 renders, actual is 34
-**Eval issue:** #10
+**Fixes:** ISSUE-12 (factories: false despite factory files existing)
 
-**Problem:** The component render counter misses namespaced component renders like:
+**Goal:** The factory detection checks only the Gemfile for `factory_bot`. When the gem is a transitive dependency (not directly in Gemfile) but factory files exist, it reports false. Fix by also checking for factory file existence.
 
-```erb
-<%= render Search::Component.new(query: @query) %>
-<%= render ModalForm::Component.new(offer: @offer) %>
-<%= render CounterWidget::Component.new(count: 5) %>
-```
+**Read first:**
 
-It only catches simple renders like:
+- `src/extractors/test-conventions.js` — `factory_tool` field
+- `src/extractors/tier2.js` — `extractTesting` function, `factories` field
 
-```erb
-<%= render OfferComponent.new(...) %>
-```
+**Modify:** `src/extractors/test-conventions.js` AND `src/extractors/tier2.js`
 
-**Root cause:** The render counting regex likely uses `/render\s+(\w+Component)\b/` or similar, which doesn't handle `::` in the class name. Also, the namespaced convention (`Search::Component` vs `SearchComponent`) uses `Component` as the class name, which the regex won't match because it expects the name to END in `Component` after word characters.
+#### What to do
 
-**Fix:**
-
-Update the component render regex to handle both conventions:
+1. In `src/extractors/test-conventions.js`, replace the `factory_tool` line:
 
 ```javascript
-// Old (misses namespaced):
-const COMPONENT_RENDER = /render\s+(\w+Component)\b/g
-
-// New (handles both conventions):
-const COMPONENT_RENDER = /render\s*\(?\s*((?:[A-Z]\w*::)*(?:[A-Z]\w*Component|Component))(?:\.(?:new|with_collection|with_content))/g
+    // Factory tool — check gems first, then fall back to scanning factory files
+    factory_tool:
+      gems.factory_bot_rails || gems.factory_bot
+        ? 'factory_bot'
+        : gems.fabrication
+          ? 'fabrication'
+          : detectFactoryToolFromFiles(provider, entries),
 ```
 
-This matches:
-
-- `render OfferComponent.new(...)` → `OfferComponent` ✓
-- `render Search::Component.new(...)` → `Search::Component` ✓
-- `render ModalForm::Component.new(...)` → `ModalForm::Component` ✓
-- `render CounterWidget::Component.new(...)` → `CounterWidget::Component` ✓
-- `render(Search::Component.new(...))` → `Search::Component` ✓ (parenthesised form)
-
-Also handles `with_collection` and `with_content` class methods:
-
-```ruby
-render Search::Component.with_collection(@results)
-```
-
-**Test:**
+Add the helper function at the bottom of the file (before the final export or after the last function):
 
 ```javascript
-it('counts namespaced ViewComponent renders', () => {
-  const viewContent = `
-<%= render Search::Component.new(query: @query) %>
-<%= render ModalForm::Component.new(offer: @offer) %>
-<%= render OfferComponent.new(offer: @offer) %>
-<%= render CounterWidget::Component.new(count: 5) %>
-<%= render partial: "shared/header" %>
-`
-  // Should count 4 component renders (not the partial)
-  const result = countComponentRenders([viewContent])
-  expect(result).toBe(4)
-})
+/**
+ * Detect factory tool by scanning factory files when gem detection fails.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @param {Array<{path: string}>} entries
+ * @returns {string|null}
+ */
+function detectFactoryToolFromFiles(provider, entries) {
+  const factoryEntries = entries.filter(
+    e => e.path.includes('factories/') && e.path.endsWith('.rb')
+  )
+  for (const entry of factoryEntries) {
+    const content = provider.readFile(entry.path)
+    if (content && /FactoryBot\.define/.test(content)) return 'factory_bot'
+    if (content && /Fabricator\(/.test(content)) return 'fabrication'
+  }
+  return null
+}
+```
+
+2. In `src/extractors/tier2.js`, in the `extractTesting` function, change the `factories` line from:
+
+```javascript
+factories: !!gems.factory_bot_rails,
+```
+
+to:
+
+```javascript
+factories: !!(gems.factory_bot_rails || gems.factory_bot || detectFactoriesDir(provider)),
+```
+
+#### Acceptance criteria
+
+- [ ] `factory_tool: "factory_bot"` when factory files contain `FactoryBot.define` even if gem isn't in Gemfile
+- [ ] `factories: true` when `test/factories/` or `spec/factories/` directory exists with `.rb` files
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/test-conventions.js` and `src/extractors/tier2.js`
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: detect factories from files when gem not in Gemfile (ISSUE-12)"
+```
+
+---
+
+### Task 13: Fix review_context token budget enforcement
+
+**Fixes:** ISSUE-14 (token_budget has minimal effect)
+
+**Goal:** The `buildReviewContext` function doesn't effectively trim output. Add a final verification pass that removes entities when total output exceeds budget.
+
+**Read first:**
+
+- `src/core/blast-radius.js` — the `buildReviewContext` function
+
+**Modify:** `src/core/blast-radius.js`
+
+#### What to do
+
+1. At the end of `buildReviewContext`, after the entity-building loop and before `return context`, add:
+
+```javascript
+  // Final enforcement: verify total fits within budget, trim if not
+  let totalTokens = estimateTokensForObject(context)
+  while (totalTokens > tokenBudget && context.entities.length > 0) {
+    // Drop lowest-risk entity (last in list, since sorted by risk)
+    context.entities.pop()
+    totalTokens = estimateTokensForObject(context)
+  }
+```
+
+2. Also add a safety margin to `remainingBudget` calculation. Find the line:
+
+```javascript
+  let remainingBudget = tokenBudget - headerTokens
+```
+
+Change to:
+
+```javascript
+  let remainingBudget = tokenBudget - headerTokens - 200 // safety margin for JSON structure
+```
+
+#### Acceptance criteria
+
+- [ ] `get_review_context` with `token_budget: 2000` returns meaningfully fewer entities than default
+- [ ] HIGH/CRITICAL entities are preserved when LOW entities are dropped
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/core/blast-radius.js`
+- Do NOT change the function signature
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: enforce token budget in review context with final trim pass (ISSUE-14)"
+```
+
+---
+
+### Task 14: Checkpoint — Phase 2
+
+**This is a manual verification step. Do not send this to the AI agent.**
+
+```bash
+npm test
+git diff checkpoint-phase1..HEAD --stat
+git tag checkpoint-phase2
+```
+
+---
+
+## Phase 3: LOW Priority & Polish
+
+### Task 15: Deduplicate factory attributes
+
+**Fixes:** ISSUE-16 (factory attributes contain duplicates from trait overrides)
+
+**Goal:** The factory parser adds the same attribute multiple times when traits override base attributes. Deduplicate.
+
+**Read first:**
+
+- `src/extractors/factory-registry.js` — the `parseFactoryFile` function
+
+**Modify:** `src/extractors/factory-registry.js`
+
+#### What to do
+
+1. In `parseFactoryFile`, after a factory is fully parsed and pushed to `factories`, deduplicate its attributes:
+
+Find the line `factories.push(currentFactory)` (it appears twice — once for nested factory closure and once for end-of-block closure). Before each push, add:
+
+```javascript
+        // Deduplicate attributes
+        currentFactory.attributes = [...new Set(currentFactory.attributes)]
+```
+
+Also add it before the "Handle unclosed factory" push at the end.
+
+#### Acceptance criteria
+
+- [ ] Factory attributes array contains no duplicates
+- [ ] Trait-specific overrides don't add to the base attribute list
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/factory-registry.js`
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: deduplicate factory attributes (ISSUE-16)"
+```
+
+---
+
+### Task 16: Include HTTP method for member/collection routes
+
+**Fixes:** ISSUE-17 (duplicate restore member routes without method differentiation)
+
+**Goal:** Member and collection routes are stored as bare action names. When the same action has multiple HTTP methods (e.g., PUT and POST), duplicates appear. Store structured objects instead.
+
+**Read first:**
+
+- `src/extractors/routes.js` — the member/collection route handling
+
+**Modify:** `src/extractors/routes.js`
+
+#### What to do
+
+1. Find the section that handles HTTP verb routes inside member/collection blocks. Currently:
+
+```javascript
+if (inMember && resourceStack.length > 0) {
+  const currentResource = resourceStack[resourceStack.length - 1]
+  const memberAction = path.replace(/^\//, '').split('/')[0]
+  currentResource.member_routes.push(memberAction)
+}
+```
+
+2. Change to store objects with method:
+
+```javascript
+if (inMember && resourceStack.length > 0) {
+  const currentResource = resourceStack[resourceStack.length - 1]
+  const memberAction = path.replace(/^\//, '').split('/')[0]
+  currentResource.member_routes.push({ action: memberAction, method })
+}
+```
+
+3. Apply the same change for collection routes:
+
+```javascript
+} else if (inCollection && resourceStack.length > 0) {
+  const currentResource = resourceStack[resourceStack.length - 1]
+  const collAction = path.replace(/^\//, '').split('/')[0]
+  currentResource.collection_routes.push({ action: collAction, method })
+}
+```
+
+4. Also update the symbol-form verb routes section (inside `if (inMember || inCollection)`):
+
+```javascript
+if (symbolVerbMatch) {
+  const action = symbolVerbMatch[1]
+  const symbolMethod = trimmed.match(/^\s*(get|post|put|patch|delete)\s/)?.[1]?.toUpperCase() || 'GET'
+  const currentResource = resourceStack[resourceStack.length - 1]
+  if (currentResource) {
+    if (inMember) currentResource.member_routes.push({ action, method: symbolMethod })
+    else currentResource.collection_routes.push({ action, method: symbolMethod })
+  }
+  continue
+}
+```
+
+#### Acceptance criteria
+
+- [ ] Member/collection routes are objects with `action` and `method` fields
+- [ ] `restore` with PUT and POST shows as two distinct entries with different methods
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/routes.js`
+- This is a breaking change for consumers expecting string arrays — but since this is pre-1.0 API, it's acceptable
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: include HTTP method in member/collection routes (ISSUE-17)"
+```
+
+---
+
+### Task 17: Report default cache_store when production has no explicit config
+
+**Fixes:** ISSUE-11 (production cache_store missing)
+
+**Goal:** When production.rb has no uncommented `config.cache_store` line, the caching extractor returns no entry for production. Report the Rails default.
+
+**Read first:**
+
+- `src/extractors/caching.js` — the per-environment cache store detection
+
+**Modify:** `src/extractors/caching.js`
+
+#### What to do
+
+1. After the per-environment loop that reads cache store config, add a fallback for production if it wasn't explicitly set:
+
+```javascript
+  // If production has no explicit cache_store, note the Rails default
+  if (!result.store.production) {
+    result.store.production = 'file_store (Rails default — not explicitly configured)'
+  }
+```
+
+2. Place this after the `for (const env of ['production', 'development', 'test'])` loop.
+
+#### Acceptance criteria
+
+- [ ] When production.rb has no active `config.cache_store`, the store reports the default
+- [ ] When production.rb HAS an explicit config, that value is used (no change)
+- [ ] All existing tests pass
+
+#### Constraints
+
+- Do NOT modify any files other than `src/extractors/caching.js`
+- Do NOT try to determine the exact Rails default version-by-version — a descriptive string is sufficient
+
+#### Verify
+
+```bash
+npm test
+```
+
+```bash
+git add -A && git commit -m "fix: report default cache_store when production has no explicit config (ISSUE-11)"
+```
+
+---
+
+### Task 18: Final Checkpoint
+
+**This is a manual verification step. Do not send this to the AI agent.**
+
+#### Verify
+
+1. Full test suite:
+
+```bash
+npm test
+```
+
+2. Verify modified files:
+
+```bash
+git diff fix/eval-v1.0.18 --name-only | sort
+```
+
+Expected files:
+
+```
+src/core/blast-radius.js
+src/core/graph.js
+src/core/indexer.js
+src/core/patterns/model.js
+src/extractors/authorization.js
+src/extractors/caching.js
+src/extractors/factory-registry.js
+src/extractors/model.js
+src/extractors/routes.js
+src/extractors/test-conventions.js
+src/extractors/tier2.js
+src/tools/handlers/get-deep-analysis.js
+src/tools/handlers/get-subgraph.js
+src/tools/handlers/search-patterns.js
+```
+
+3. Run targeted test suites:
+
+```bash
+npm run test:core
+npm run test:extractors
+npm run test:mcp
+```
+
+```bash
+git tag v1.0.19-eval-fixes
 ```
 
 ---
 
 ## Summary
 
-| Sprint | Issue | Severity | Eval #     | What's Fixed                                                                                                             |
-| ------ | ----- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 1      | A     | CRITICAL | #2, #3, #4 | Module wrapping detection → FQN keys for models & controllers. Fixes namespace: null, model shadowing, controller dedup. |
-| 2      | B     | CRITICAL | #5         | `only: []` empty array → zero actions (regex `+` → `*`)                                                                  |
-| 2      | C     | CRITICAL | #8         | Multi-DB hallucination → deny-list config keys or check for `database:` sub-key                                          |
-| 3      | D     | CRITICAL | #1         | Component glob matches `component.rb` not just `*_component.rb`                                                          |
-| 3      | E     | CRITICAL | #6         | Turbo stream glob: `*.turbo_stream.erb` not `*.turbo_stream.html.erb`                                                    |
-| 3      | F     | HIGH     | #7         | Sidekiq workers from `app/workers/` + cron jobs from initializers                                                        |
-| 4      | G     | HIGH     | #9         | Devise parser stops at keyword args — `:saml` is provider not module                                                     |
-| 4      | H     | MEDIUM   | #10        | Component render regex handles `Namespace::Component.new(...)`                                                           |
-
-**After all fixes:** Run `npm test`, confirm zero failures, then re-eval kollaras with the eval protocol to confirm improvements.
+| Task | File(s)                           | Issues Fixed | Change                                        |
+| ---- | --------------------------------- | ------------ | --------------------------------------------- |
+| 1    | `patterns/model.js`, `model.js`   | 04, 15       | Reorder callback regex alternation            |
+| 2    | `patterns/model.js`, `model.js`   | 02           | Add enumerize detection                       |
+| 3    | `model.js`                        | 03           | Detect rolify macro, synthesise HABTM         |
+| 4    | `indexer.js`                      | 01           | Model name collision disambiguation           |
+| 5    | `search-patterns.js`              | 07           | Add validation/scope/devise/delegation search |
+| 6    | `authorization.js`                | 05           | Extract role names, group abilities by role   |
+| 8    | `graph.js`                        | 06, 18       | Register mailer nodes with edges              |
+| 9    | `get-subgraph.js`                 | 13           | Post-filter auth subgraph                     |
+| 10   | `get-deep-analysis.js`            | 08, 10       | Fix model_list superclass default             |
+| 11   | `model.js`                        | 09           | Tag block callbacks `[block]`                 |
+| 12   | `test-conventions.js`, `tier2.js` | 12           | Detect factories from files                   |
+| 13   | `blast-radius.js`                 | 14           | Token budget final trim pass                  |
+| 15   | `factory-registry.js`             | 16           | Deduplicate factory attributes                |
+| 16   | `routes.js`                       | 17           | HTTP method on member/collection routes       |
+| 17   | `caching.js`                      | 11           | Default cache_store fallback                  |
