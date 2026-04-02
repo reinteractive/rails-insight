@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.19] - 2026-04-03
+
+### Fixed
+
+- **Callback type regex alternation ordering**: `after_save_commit`, `after_create_commit`, `after_update_commit`, and `after_destroy_commit` callbacks are now correctly detected — the `_commit` compound variants are matched before their shorter prefixes in the regex alternation (ISSUE-04, ISSUE-15)
+- **Multi-method callback expansion**: Callbacks like `after_save_commit :method_a, :method_b` now correctly expand into separate entries per method, as a downstream fix of the regex ordering (ISSUE-15)
+- **Enumerize gem detection**: `enumerize :field, in: [:val1, :val2]` declarations are now captured in the model's `enums` field with `syntax: "enumerize"`, supporting symbol, string, and `%w[]` array styles (ISSUE-02)
+- **Rolify macro association synthesis**: The `rolify` macro now generates a synthetic `has_and_belongs_to_many` association tagged with `rolify: true`, making rolify-managed relationships visible in model output (ISSUE-03)
+- **Model name collision disambiguation**: When two model files produce the same class name key (e.g. `Page` from `app/models/page.rb` and `app/models/wordpress/page.rb`), the second model is now namespaced from its directory path (`Wordpress::Page`) instead of silently overwriting the first (ISSUE-01)
+- **`search_patterns` expanded coverage**: The `search_patterns` tool now searches validations, scopes, enums (including enumerize), devise modules, delegations, custom validators, and `has_secure_password` — previously only associations, callbacks, and concerns were searched (ISSUE-07)
+- **Authorization role extraction from `has_role?`**: Role names are now extracted from `has_role?(:symbol)` and `has_role?('string')` calls in CanCanCan ability files. A new `abilities_by_role` field groups abilities under each role key (ISSUE-05)
+- **Mailer classes in relationship graph**: Mailer classes are now registered as graph nodes with inheritance edges (e.g. `ContactMailer → ApplicationMailer`), fixing empty `get_subgraph({ skill: "email" })` results (ISSUE-06, ISSUE-18)
+- **Authentication subgraph filtering**: `get_subgraph({ skill: "authentication" })` now post-filters BFS results to exclude non-auth entities (e.g. `Activity`, `Event`) that leaked in via high-connectivity association edges (ISSUE-13)
+- **`model_list` superclass accuracy**: `get_deep_analysis({ category: "model_list" })` now returns `superclass: null` for classes without ActiveRecord inheritance (e.g. `AdminAbility`, `Sluggable`) instead of fabricating `ApplicationRecord`. A new `type` field distinguishes models from concerns (ISSUE-08, ISSUE-10)
+- **Block callback labelling**: Block-style callbacks (`before_save { ... }`) now report `method: "[block]"` instead of `method: null` (ISSUE-09)
+- **Factory detection without Gemfile entry**: `factory_tool` and `factories` fields now detect FactoryBot/Fabrication by scanning factory files when the gem is a transitive dependency not listed directly in the Gemfile (ISSUE-12)
+- **Token budget enforcement in `review_context`**: `buildReviewContext` now includes a final trim pass that drops lowest-risk entities when the total output exceeds the token budget, with a 200-token safety margin for JSON structure overhead (ISSUE-14)
+- **Factory attribute deduplication**: Factory attributes are now deduplicated before storage, preventing duplicates caused by trait overrides (ISSUE-16)
+- **HTTP method on member/collection routes**: Member and collection routes are now stored as `{ action, method }` objects instead of bare strings, disambiguating routes like `PUT :restore` and `POST :restore` (ISSUE-17)
+- **Default production `cache_store` reporting**: When `production.rb` has no uncommented `config.cache_store` line, the caching extractor now reports `file_store (Rails default — not explicitly configured)` instead of omitting the entry (ISSUE-11)
+
 ## [1.0.18] - 2026-03-31
 
 ### Added
