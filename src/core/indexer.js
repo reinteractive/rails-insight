@@ -226,7 +226,32 @@ export async function buildIndex(provider, options = {}) {
       if (model) {
         // Use FQN from the model itself; fall back to path-derived name only if
         // the extractor couldn't detect a class (e.g. concern without class decl)
-        const key = model.class || pathToClassName(entry.path)
+        let key = model.class || pathToClassName(entry.path)
+
+        // Handle name collisions: if key already exists from a different file,
+        // derive namespace from the new file's path to disambiguate
+        if (extractions.models[key] && extractions.models[key].file !== entry.path) {
+          // Derive namespace from directory structure:
+          // app/models/wordpress/page.rb → Wordpress::Page
+          const relativePath = entry.path
+            .replace(/^app\/models\//, '')
+            .replace(/\.rb$/, '')
+          const pathSegments = relativePath.split('/')
+          if (pathSegments.length > 1) {
+            // File is in a subdirectory — namespace it
+            const namespacedKey = pathSegments
+              .map(seg => seg.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''))
+              .join('::')
+            key = namespacedKey
+            if (model.class) model.class = namespacedKey
+            if (!model.namespace) {
+              model.namespace = pathSegments.slice(0, -1)
+                .map(seg => seg.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''))
+                .join('::')
+            }
+          }
+        }
+
         extractions.models[key] = model
       }
     } else if (
