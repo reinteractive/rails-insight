@@ -1008,7 +1008,7 @@ end`
       expect(result.callbacks).toHaveLength(3)
 
       const blockCb = result.callbacks.find(
-        (c) => c.type === 'before_validation' && c.method === null,
+        (c) => c.type === 'before_validation' && c.method === '[block]',
       )
       expect(blockCb).toBeDefined()
 
@@ -1016,7 +1016,7 @@ end`
       expect(namedCb).toBeDefined()
 
       const doCb = result.callbacks.find(
-        (c) => c.type === 'before_create' && c.method === null,
+        (c) => c.type === 'before_create' && c.method === '[block]',
       )
       expect(doCb).toBeDefined()
     })

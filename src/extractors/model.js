@@ -352,7 +352,7 @@ export function extractModel(provider, filePath, className) {
   const blockCbRe =
     /^\s*((?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+(?:do|\{)/gm
   while ((m = blockCbRe.exec(cbLines))) {
-    rawCallbacks.push({ type: m[1], method: null, options: null })
+    rawCallbacks.push({ type: m[1], method: '[block]', options: null })
   }
 
   // Expand callbacks with multiple method symbols: after_save_commit :a, :b → 2 entries
