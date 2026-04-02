@@ -621,11 +621,17 @@ export function extractAuthorization(
       }
       result.abilities = abilities
 
-      // Extract roles from has_role? calls in the ability file
-      const roleRe = /has_role\?\s*\(:?['"]?(\w+)['"]?\)/g
+      // Extract role names from has_role? calls in the ability file
+      const roleRe = /has_role\?\s*\(\s*:(\w+)\s*\)/g
       const roles = new Set()
-      while ((m = roleRe.exec(abilityContent))) {
-        roles.add(m[1])
+      let roleM
+      while ((roleM = roleRe.exec(abilityContent))) {
+        roles.add(roleM[1])
+      }
+      // Also try string syntax: has_role?('admin') or has_role?("admin")
+      const roleStrRe = /has_role\?\s*\(\s*['"](\w+)['"]\s*\)/g
+      while ((roleM = roleStrRe.exec(abilityContent))) {
+        roles.add(roleM[1])
       }
       if (roles.size > 0) {
         result.roles = {
@@ -634,6 +640,37 @@ export function extractAuthorization(
           roles: [...roles],
           file: abilityFile,
         }
+      }
+
+      // Group abilities by role from conditional blocks
+      const roleAbilities = {}
+      const roleBlockRe = /(?:if|elsif)\s+.*?has_role\?\s*\(\s*:(\w+)\s*\)/g
+      let rbMatch
+      const rolePositions = []
+      while ((rbMatch = roleBlockRe.exec(abilityContent))) {
+        rolePositions.push({ role: rbMatch[1], index: rbMatch.index })
+      }
+
+      for (let i = 0; i < rolePositions.length; i++) {
+        const start = rolePositions[i].index
+        const end = i + 1 < rolePositions.length
+          ? rolePositions[i + 1].index
+          : abilityContent.length
+        const block = abilityContent.slice(start, end)
+
+        const blockAbilities = []
+        const blockCanRe = /^\s*(can(?:not)?)\s+(.+)/gm
+        let bm
+        while ((bm = blockCanRe.exec(block))) {
+          blockAbilities.push({ type: bm[1], definition: bm[2].trim() })
+        }
+        if (blockAbilities.length > 0) {
+          roleAbilities[rolePositions[i].role] = blockAbilities
+        }
+      }
+
+      if (Object.keys(roleAbilities).length > 0) {
+        result.abilities_by_role = roleAbilities
       }
     }
   }
