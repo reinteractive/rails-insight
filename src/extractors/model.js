@@ -300,6 +300,19 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
+  // Enumerize gem: enumerize :field, in: [:val1, :val2, ...]
+  const enumerizeRe = /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/gm
+  while ((m = enumerizeRe.exec(content))) {
+    const name = m[1]
+    if (enums[name]) continue // native enum takes priority
+    const rawValues = m[2] || m[3] || ''
+    const values = rawValues
+      .split(',')
+      .map(v => v.trim().replace(/^:/, '').replace(/['"]/g, ''))
+      .filter(v => v.length > 0)
+    enums[name] = { values, syntax: 'enumerize' }
+  }
+
   // Callbacks — strip inline comments before matching; skip block-only callbacks
   const cbLines = content
     .split('\n')
