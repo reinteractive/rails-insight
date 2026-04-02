@@ -159,7 +159,7 @@ export function buildReviewContext(
     summary: context.summary,
     warnings: context.warnings,
   })
-  let remainingBudget = tokenBudget - headerTokens
+  let remainingBudget = tokenBudget - headerTokens - 200 // safety margin for JSON structure
 
   const grouped = groupByRisk(blastResult.impacted)
 
@@ -181,6 +181,14 @@ export function buildReviewContext(
         }
       }
     }
+  }
+
+  // Final enforcement: verify total fits within budget, trim if not
+  let totalTokens = estimateTokensForObject(context)
+  while (totalTokens > tokenBudget && context.entities.length > 0) {
+    // Drop lowest-risk entity (last in list, since sorted by risk)
+    context.entities.pop()
+    totalTokens = estimateTokensForObject(context)
   }
 
   return context
