@@ -173,16 +173,19 @@ export function extractModel(provider, filePath, className) {
     // Extract the role class name from options
     const rolifyOpts = rolifyMatch[1] || ''
     const cnameMatch = rolifyOpts.match(
-      /(?::role_cname\s*=>|role_cname:)\s*['"](\w+(?:::\w+)*)['"]/
+      /(?::role_cname\s*=>|role_cname:)\s*['"](\w+(?:::\w+)*)['"]/,
     )
     const roleClassName = cnameMatch ? cnameMatch[1] : 'Role'
 
     // Synthesise the implicit HABTM association
     associations.push({
       type: 'has_and_belongs_to_many',
-      name: roleClassName.replace(/::/g, '').replace(/([A-Z])/g, (m, l, i) =>
-        i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`
-      ) + 's',
+      name:
+        roleClassName
+          .replace(/::/g, '')
+          .replace(/([A-Z])/g, (m, l, i) =>
+            i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`,
+          ) + 's',
       options: `class_name: '${roleClassName}'`,
       rolify: true,
     })
@@ -323,7 +326,8 @@ export function extractModel(provider, filePath, className) {
   }
 
   // Enumerize gem: enumerize :field, in: [:val1, :val2, ...]
-  const enumerizeRe = /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/gm
+  const enumerizeRe =
+    /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/gm
   while ((m = enumerizeRe.exec(content))) {
     const name = m[1]
     if (enums[name]) continue // native enum takes priority
