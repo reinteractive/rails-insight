@@ -40,6 +40,11 @@ export function extractCaching(provider, entries) {
     }
   }
 
+  // If production has no explicit cache_store, note the Rails default
+  if (!result.store.production) {
+    result.store.production = 'file_store (Rails default — not explicitly configured)'
+  }
+
   // Scan views for fragment caching
   const viewEntries = entries.filter(
     (e) =>
