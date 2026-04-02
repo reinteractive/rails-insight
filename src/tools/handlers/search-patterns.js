@@ -60,19 +60,78 @@ export function register(server, state) {
               matches.push({ type: 'concern', detail: concern })
           }
         }
-        if (lowerPattern.startsWith('devise') && model.devise_modules) {
-          const moduleName = lowerPattern.replace('devise_', '')
-          if (model.devise_modules.includes(moduleName))
-            matches.push({ type: 'devise_module', detail: moduleName })
-        }
-        if (model.enums && lowerPattern.includes('enum')) {
-          for (const [enumName, enumData] of Object.entries(model.enums)) {
-            matches.push({
-              type: 'enum',
-              detail: { name: enumName, ...enumData },
-            })
+
+        // Validations
+        if (model.validations) {
+          for (const val of model.validations) {
+            const attrStr = (val.attributes || []).join(' ').toLowerCase()
+            const rulesStr = (val.rules || '').toLowerCase()
+            if (lowerPattern === 'validates' || lowerPattern === 'validation' ||
+                attrStr.includes(lowerPattern) || rulesStr.includes(lowerPattern)) {
+              matches.push({ type: 'validation', detail: val })
+            }
           }
         }
+        if (model.custom_validators) {
+          for (const cv of model.custom_validators) {
+            if (cv.toLowerCase().includes(lowerPattern) ||
+                lowerPattern === 'validates' || lowerPattern === 'validate') {
+              matches.push({ type: 'custom_validator', detail: cv })
+            }
+          }
+        }
+
+        // Scopes
+        if (model.scopes) {
+          for (const scopeName of model.scopes) {
+            if (lowerPattern === 'scope' ||
+                scopeName.toLowerCase().includes(lowerPattern)) {
+              matches.push({
+                type: 'scope',
+                detail: { name: scopeName, query: model.scope_queries?.[scopeName] || null }
+              })
+            }
+          }
+        }
+
+        // Enums
+        if (model.enums && Object.keys(model.enums).length > 0) {
+          for (const [enumName, enumData] of Object.entries(model.enums)) {
+            if (lowerPattern === 'enum' || lowerPattern === 'enumerize' ||
+                lowerPattern.includes('enum') ||
+                enumName.toLowerCase().includes(lowerPattern)) {
+              matches.push({ type: 'enum', detail: { name: enumName, ...enumData } })
+            }
+          }
+        }
+
+        // Devise modules
+        if (model.devise_modules && model.devise_modules.length > 0) {
+          for (const mod of model.devise_modules) {
+            if (lowerPattern === 'devise' ||
+                mod.toLowerCase().includes(lowerPattern) ||
+                `devise_${mod}`.includes(lowerPattern)) {
+              matches.push({ type: 'devise_module', detail: mod })
+            }
+          }
+        }
+
+        // Delegations
+        if (model.delegations) {
+          for (const del of model.delegations) {
+            if (lowerPattern === 'delegate' || lowerPattern === 'delegation' ||
+                (del.to && del.to.toLowerCase().includes(lowerPattern))) {
+              matches.push({ type: 'delegation', detail: del })
+            }
+          }
+        }
+
+        // has_secure_password
+        if (model.has_secure_password &&
+            (lowerPattern === 'has_secure_password' || lowerPattern === 'secure_password')) {
+          matches.push({ type: 'has_secure_password', detail: true })
+        }
+
         if (lowerPattern.includes('broadcast') && model.broadcasts) {
           matches.push({ type: 'broadcast', detail: model.broadcasts })
         }
