@@ -78,6 +78,8 @@ function parseFactoryFile(content, filePath) {
     if (factoryMatch) {
       // If we're already in a factory, save it first (nested factory)
       if (currentFactory) {
+        // Deduplicate attributes
+        currentFactory.attributes = [...new Set(currentFactory.attributes)]
         factories.push(currentFactory)
       }
 
@@ -170,6 +172,8 @@ function parseFactoryFile(content, filePath) {
         if (inTransient) {
           inTransient = false
         } else {
+          // Deduplicate attributes
+          currentFactory.attributes = [...new Set(currentFactory.attributes)]
           factories.push(currentFactory)
           currentFactory = null
         }
@@ -209,6 +213,8 @@ function parseFactoryFile(content, filePath) {
 
   // Handle unclosed factory
   if (currentFactory) {
+    // Deduplicate attributes
+    currentFactory.attributes = [...new Set(currentFactory.attributes)]
     factories.push(currentFactory)
   }
 
