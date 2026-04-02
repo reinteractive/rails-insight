@@ -269,10 +269,11 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       const symbolVerbMatch = trimmed.match(ROUTE_PATTERNS.httpVerbSymbol)
       if (symbolVerbMatch) {
         const action = symbolVerbMatch[1]
+        const symbolMethod = trimmed.match(/^\s*(get|post|put|patch|delete)\s/)?.[1]?.toUpperCase() || 'GET'
         const currentResource = resourceStack[resourceStack.length - 1]
         if (currentResource) {
-          if (inMember) currentResource.member_routes.push(action)
-          else currentResource.collection_routes.push(action)
+          if (inMember) currentResource.member_routes.push({ action, method: symbolMethod })
+          else currentResource.collection_routes.push({ action, method: symbolMethod })
         }
         continue
       }
@@ -293,11 +294,11 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         // Extract action name from path
         const currentResource = resourceStack[resourceStack.length - 1]
         const memberAction = path.replace(/^\//, '').split('/')[0]
-        currentResource.member_routes.push(memberAction)
+        currentResource.member_routes.push({ action: memberAction, method })
       } else if (inCollection && resourceStack.length > 0) {
         const currentResource = resourceStack[resourceStack.length - 1]
         const collAction = path.replace(/^\//, '').split('/')[0]
-        currentResource.collection_routes.push(collAction)
+        currentResource.collection_routes.push({ action: collAction, method })
       } else {
         result.standalone_routes.push({ method, path, controller, action })
       }

@@ -72,14 +72,14 @@ resources :dashboard, only: [:index]
 
     it('extracts member routes', () => {
       const projects = result.resources.find((r) => r.name === 'projects')
-      expect(projects.member_routes).toContain('archive')
-      expect(projects.member_routes).toContain('duplicate')
+      expect(projects.member_routes).toContainEqual(expect.objectContaining({ action: 'archive' }))
+      expect(projects.member_routes).toContainEqual(expect.objectContaining({ action: 'duplicate' }))
     })
 
     it('extracts collection routes', () => {
       const projects = result.resources.find((r) => r.name === 'projects')
-      expect(projects.collection_routes).toContain('search')
-      expect(projects.collection_routes).toContain('export')
+      expect(projects.collection_routes).toContainEqual(expect.objectContaining({ action: 'search' }))
+      expect(projects.collection_routes).toContainEqual(expect.objectContaining({ action: 'export' }))
     })
 
     it('extracts nested resources', () => {
@@ -228,15 +228,15 @@ end`
 
     it('captures collection routes from collection do block', () => {
       const r = result.resources.find((r) => r.name === 'asset_reviews')
-      expect(r.collection_routes).toContain('add_row')
-      expect(r.collection_routes).toContain('submit')
+      expect(r.collection_routes).toContainEqual(expect.objectContaining({ action: 'add_row' }))
+      expect(r.collection_routes).toContainEqual(expect.objectContaining({ action: 'submit' }))
     })
 
     it('captures member routes from member do block', () => {
       const r = result.resources.find((r) => r.name === 'asset_reviews')
-      expect(r.member_routes).toContain('edit_row')
-      expect(r.member_routes).toContain('approve')
-      expect(r.member_routes).toContain('reject')
+      expect(r.member_routes).toContainEqual(expect.objectContaining({ action: 'edit_row' }))
+      expect(r.member_routes).toContainEqual(expect.objectContaining({ action: 'approve' }))
+      expect(r.member_routes).toContainEqual(expect.objectContaining({ action: 'reject' }))
     })
 
     it('does not bleed member/collection routes into child resources', () => {
@@ -252,7 +252,7 @@ end`
       const r2 = extractRoutes(mockProvider({ 'config/routes.rb': fixture }))
       const orders = r2.resources.find((r) => r.name === 'orders')
       const lineItems = r2.resources.find((r) => r.name === 'line_items')
-      expect(orders.member_routes).toContain('cancel')
+      expect(orders.member_routes).toContainEqual(expect.objectContaining({ action: 'cancel' }))
       expect(lineItems.member_routes).toHaveLength(0)
     })
     it('does not crash when a singular resource has a member do block', () => {
@@ -272,8 +272,8 @@ end`
       )
       const exportR = result.resources.find((r) => r.name === 'export')
       expect(exportR).toBeDefined()
-      expect(exportR.member_routes).toContain('ready')
-      expect(exportR.member_routes).toContain('download')
+      expect(exportR.member_routes).toContainEqual(expect.objectContaining({ action: 'ready' }))
+      expect(exportR.member_routes).toContainEqual(expect.objectContaining({ action: 'download' }))
     })
   })
 
@@ -481,7 +481,7 @@ end`,
       const emails = result.resources.find((r) => r.name === 'emails')
       expect(emails).toBeDefined()
       expect(emails.actions).toEqual([])
-      expect(emails.member_routes).toContain('deliver')
+      expect(emails.member_routes).toContainEqual(expect.objectContaining({ action: 'deliver' }))
     })
 
     it('resources with only: [] and hash rocket produces zero actions', () => {
