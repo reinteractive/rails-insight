@@ -166,6 +166,28 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
+  // Rolify gem: rolify :role_cname => 'ClassName' or rolify role_cname: 'ClassName'
+  const rolifyRe = /^\s*rolify(?:\s+(.+))?$/m
+  const rolifyMatch = content.match(rolifyRe)
+  if (rolifyMatch) {
+    // Extract the role class name from options
+    const rolifyOpts = rolifyMatch[1] || ''
+    const cnameMatch = rolifyOpts.match(
+      /(?::role_cname\s*=>|role_cname:)\s*['"](\w+(?:::\w+)*)['"]/
+    )
+    const roleClassName = cnameMatch ? cnameMatch[1] : 'Role'
+
+    // Synthesise the implicit HABTM association
+    associations.push({
+      type: 'has_and_belongs_to_many',
+      name: roleClassName.replace(/::/g, '').replace(/([A-Z])/g, (m, l, i) =>
+        i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`
+      ) + 's',
+      options: `class_name: '${roleClassName}'`,
+      rolify: true,
+    })
+  }
+
   // Validations
   const validations = []
   const custom_validators = []
