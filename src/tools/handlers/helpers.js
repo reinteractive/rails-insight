@@ -26,6 +26,38 @@ export function pathToClassName(path) {
     .join('')
 }
 
+/**
+ * Convert a model file path to a fully-qualified Ruby class name,
+ * including namespace derived from the directory structure.
+ * app/models/wordpress/page.rb → Wordpress::Page
+ * app/models/page.rb → Page
+ * app/models/ckeditor/asset.rb → Ckeditor::Asset
+ * app/models/concerns/sluggable.rb → Sluggable (concerns dir is stripped)
+ * @param {string} path
+ * @returns {string}
+ */
+export function pathToFullClassName(path) {
+  // Strip the app/models/ or app/controllers/ prefix and .rb suffix
+  let relative = path
+    .replace(/^app\/models\//, '')
+    .replace(/^app\/controllers\//, '')
+    .replace(/\.rb$/, '')
+
+  // Strip concerns/ prefix — concerns don't get a Concerns:: namespace
+  relative = relative.replace(/^concerns\//, '')
+
+  // Split into segments and PascalCase each
+  const segments = relative.split('/')
+  return segments
+    .map((segment) =>
+      segment
+        .split('_')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(''),
+    )
+    .join('::')
+}
+
 /** MCP response when no index has been built yet. */
 export function noIndex() {
   return respondError('Index not built. Call index_project first.')

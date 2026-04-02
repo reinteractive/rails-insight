@@ -79,6 +79,10 @@ export function register(server, state) {
             : Object.keys(roleEnum.values || {})
         }
       }
+      // Also check ability_class roles
+      if (authzSummary.roles.length === 0 && authorization.roles?.roles) {
+        authzSummary.roles = authorization.roles.roles
+      }
       if (authorization.concern?.guard_methods) {
         const guardCount = Object.keys(
           authorization.concern.guard_methods,

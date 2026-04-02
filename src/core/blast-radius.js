@@ -87,11 +87,16 @@ export function computeBlastRadius(index, changedFiles, options = {}) {
   const sorted = sortByRisk(deduplicated)
   const impactedTests = collectImpactedTests(sorted, seeds, graph, index)
 
+  const summary = buildSummary(sorted)
+  // Seeds are direct changes — always CRITICAL
+  summary.CRITICAL = (summary.CRITICAL || 0) + seeds.length
+  summary.total = (summary.total || 0) + seeds.length
+
   return {
     seeds,
     impacted: sorted,
     impactedTests,
-    summary: buildSummary(sorted),
+    summary,
     warnings,
   }
 }
