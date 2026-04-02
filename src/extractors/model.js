@@ -329,9 +329,9 @@ export function extractModel(provider, filePath, className) {
     if (enums[name]) continue // native enum takes priority
     const rawValues = m[2] || m[3] || ''
     const values = rawValues
-      .split(',')
-      .map(v => v.trim().replace(/^:/, '').replace(/['"]/g, ''))
-      .filter(v => v.length > 0)
+      .split(/[,\s]+/)
+      .map((v) => v.trim().replace(/^:/, '').replace(/['"]/g, ''))
+      .filter((v) => v.length > 0)
     enums[name] = { values, syntax: 'enumerize' }
   }
 
