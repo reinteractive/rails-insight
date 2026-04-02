@@ -102,7 +102,7 @@ end`,
     it('returns empty result', () => {
       const provider = mockProvider({})
       const result = extractCaching(provider, [])
-      expect(result.store).toEqual({})
+      expect(result.store).toEqual({ production: 'file_store (Rails default \u2014 not explicitly configured)' })
       expect(result.fragment_caching.usage_count).toBe(0)
       expect(result.low_level_caching.rails_cache_fetch_count).toBe(0)
     })
@@ -118,7 +118,7 @@ Rails.application.configure do
 end`,
       })
       const result = extractCaching(provider, [])
-      expect(result.store.production).toBeUndefined()
+      expect(result.store.production).toBe('file_store (Rails default \u2014 not explicitly configured)')
     })
 
     it('detects uncommented cache_store in production.rb', () => {

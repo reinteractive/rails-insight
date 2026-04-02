@@ -219,7 +219,8 @@ export function register(server, state) {
           return respond(
             Object.entries(models).map(([n, m]) => ({
               name: n,
-              superclass: m.superclass || 'ApplicationRecord',
+              superclass: m.superclass || null,
+              type: m.type || 'model',
               association_count: (m.associations || []).length,
               scope_count: (m.scopes || []).length,
               has_secure_password: m.has_secure_password || false,

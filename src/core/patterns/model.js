@@ -33,11 +33,14 @@ export const MODEL_PATTERNS = {
   enumLegacy: /^\s*enum\s+(\w+):\s*\{([^}]+)\}/m,
   enumLegacyArray: /^\s*enum\s+(\w+):\s*\[([^\]]+)\]/m,
 
+  // === ENUMERIZE GEM ===
+  enumerize: /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/m,
+
   // === CALLBACKS ===
   callback:
-    /^\s*(?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit)\s+:?(\w+!?)(?:,\s*(.+))?$/m,
+    /^\s*(?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch)\s+:?(\w+!?)(?:,\s*(.+))?$/m,
   callbackType:
-    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit))\s+:?(\w+!?)(?:,\s*(.+))?$/m,
+    /^\s*((?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+:?(\w+!?)(?:,\s*(.+))?$/m,
 
   // === DELEGATIONS ===
   delegate: /^\s*delegate\s+(.+),\s*to:\s*:(\w+)/m,

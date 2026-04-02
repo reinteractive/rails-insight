@@ -166,6 +166,28 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
+  // Rolify gem: rolify :role_cname => 'ClassName' or rolify role_cname: 'ClassName'
+  const rolifyRe = /^\s*rolify(?:\s+(.+))?$/m
+  const rolifyMatch = content.match(rolifyRe)
+  if (rolifyMatch) {
+    // Extract the role class name from options
+    const rolifyOpts = rolifyMatch[1] || ''
+    const cnameMatch = rolifyOpts.match(
+      /(?::role_cname\s*=>|role_cname:)\s*['"](\w+(?:::\w+)*)['"]/
+    )
+    const roleClassName = cnameMatch ? cnameMatch[1] : 'Role'
+
+    // Synthesise the implicit HABTM association
+    associations.push({
+      type: 'has_and_belongs_to_many',
+      name: roleClassName.replace(/::/g, '').replace(/([A-Z])/g, (m, l, i) =>
+        i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`
+      ) + 's',
+      options: `class_name: '${roleClassName}'`,
+      rolify: true,
+    })
+  }
+
   // Validations
   const validations = []
   const custom_validators = []
@@ -300,6 +322,19 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
+  // Enumerize gem: enumerize :field, in: [:val1, :val2, ...]
+  const enumerizeRe = /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/gm
+  while ((m = enumerizeRe.exec(content))) {
+    const name = m[1]
+    if (enums[name]) continue // native enum takes priority
+    const rawValues = m[2] || m[3] || ''
+    const values = rawValues
+      .split(',')
+      .map(v => v.trim().replace(/^:/, '').replace(/['"]/g, ''))
+      .filter(v => v.length > 0)
+    enums[name] = { values, syntax: 'enumerize' }
+  }
+
   // Callbacks — strip inline comments before matching; skip block-only callbacks
   const cbLines = content
     .split('\n')
@@ -315,9 +350,9 @@ export function extractModel(provider, filePath, className) {
 
   // Block callbacks: before_save { ... } or before_save do ... end
   const blockCbRe =
-    /^\s*((?:before|after|around)_(?:save|create|update|destroy|validation|commit|rollback|initialize|find|touch|save_commit|create_commit|update_commit|destroy_commit))\s+(?:do|\{)/gm
+    /^\s*((?:before|after|around)_(?:save_commit|create_commit|update_commit|destroy_commit|save|create|update|destroy|validation|commit|rollback|initialize|find|touch))\s+(?:do|\{)/gm
   while ((m = blockCbRe.exec(cbLines))) {
-    rawCallbacks.push({ type: m[1], method: null, options: null })
+    rawCallbacks.push({ type: m[1], method: '[block]', options: null })
   }
 
   // Expand callbacks with multiple method symbols: after_save_commit :a, :b → 2 entries

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.19] - 2026-04-03
+
+### Fixed
+
+- **Callback type regex alternation ordering**: `after_save_commit`, `after_create_commit`, `after_update_commit`, and `after_destroy_commit` callbacks are now correctly detected — the `_commit` compound variants are matched before their shorter prefixes in the regex alternation (ISSUE-04, ISSUE-15)
+- **Multi-method callback expansion**: Callbacks like `after_save_commit :method_a, :method_b` now correctly expand into separate entries per method, as a downstream fix of the regex ordering (ISSUE-15)
+- **Enumerize gem detection**: `enumerize :field, in: [:val1, :val2]` declarations are now captured in the model's `enums` field with `syntax: "enumerize"`, supporting symbol, string, and `%w[]` array styles (ISSUE-02)
+- **Rolify macro association synthesis**: The `rolify` macro now generates a synthetic `has_and_belongs_to_many` association tagged with `rolify: true`, making rolify-managed relationships visible in model output (ISSUE-03)
+- **Model name collision disambiguation**: When two model files produce the same class name key (e.g. `Page` from `app/models/page.rb` and `app/models/wordpress/page.rb`), the second model is now namespaced from its directory path (`Wordpress::Page`) instead of silently overwriting the first (ISSUE-01)
+- **`search_patterns` expanded coverage**: The `search_patterns` tool now searches validations, scopes, enums (including enumerize), devise modules, delegations, custom validators, and `has_secure_password` — previously only associations, callbacks, and concerns were searched (ISSUE-07)
+- **Authorization role extraction from `has_role?`**: Role names are now extracted from `has_role?(:symbol)` and `has_role?('string')` calls in CanCanCan ability files. A new `abilities_by_role` field groups abilities under each role key (ISSUE-05)
+- **Mailer classes in relationship graph**: Mailer classes are now registered as graph nodes with inheritance edges (e.g. `ContactMailer → ApplicationMailer`), fixing empty `get_subgraph({ skill: "email" })` results (ISSUE-06, ISSUE-18)
+- **Authentication subgraph filtering**: `get_subgraph({ skill: "authentication" })` now post-filters BFS results to exclude non-auth entities (e.g. `Activity`, `Event`) that leaked in via high-connectivity association edges (ISSUE-13)
+- **`model_list` superclass accuracy**: `get_deep_analysis({ category: "model_list" })` now returns `superclass: null` for classes without ActiveRecord inheritance (e.g. `AdminAbility`, `Sluggable`) instead of fabricating `ApplicationRecord`. A new `type` field distinguishes models from concerns (ISSUE-08, ISSUE-10)
+- **Block callback labelling**: Block-style callbacks (`before_save { ... }`) now report `method: "[block]"` instead of `method: null` (ISSUE-09)
+- **Factory detection without Gemfile entry**: `factory_tool` and `factories` fields now detect FactoryBot/Fabrication by scanning factory files when the gem is a transitive dependency not listed directly in the Gemfile (ISSUE-12)
+- **Token budget enforcement in `review_context`**: `buildReviewContext` now includes a final trim pass that drops lowest-risk entities when the total output exceeds the token budget, with a 200-token safety margin for JSON structure overhead (ISSUE-14)
+- **Factory attribute deduplication**: Factory attributes are now deduplicated before storage, preventing duplicates caused by trait overrides (ISSUE-16)
+- **HTTP method on member/collection routes**: Member and collection routes are now stored as `{ action, method }` objects instead of bare strings, disambiguating routes like `PUT :restore` and `POST :restore` (ISSUE-17)
+- **Default production `cache_store` reporting**: When `production.rb` has no uncommented `config.cache_store` line, the caching extractor now reports `file_store (Rails default — not explicitly configured)` instead of omitting the entry (ISSUE-11)
+
 ## [1.0.18] - 2026-03-31
 
 ### Added
@@ -16,6 +37,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Runtime graph edges**: `buildGraph` uses runtime-resolved `class_name` values for accurate association edges, adds `inherited_dependency` edges from inherited callbacks (e.g. `authenticate_user!` → `User`), and includes runtime-only models as graph nodes
 - **`--no-introspection` CLI flag**: Pass `--no-introspection` to skip the Ruby introspection step and run in regex-only mode
 - **Introspection metadata in `get_overview`**: The overview now reports `introspection.available`, `models_introspected`, `controllers_introspected`, `routes_introspected`, and `duration_ms`
+
+## [1.0.17] - 2026-03-31
+
+### Fixed
+
+- **Module-wrapped class FQN resolution**: New `ruby-class-resolver` utility resolves fully-qualified class names from outer `module` wrapping (e.g. `module Admin; class UserPresenter`→`Admin::UserPresenter`) for models and components; FQN is now used as the indexer hash key, preventing duplicate/mis-keyed entries for namespaced classes
+- **Sidekiq native worker extraction**: Workers under `app/workers/` and `app/sidekiq/` using `sidekiq_options` are now extracted with class, queue, and retry values as `type: 'sidekiq_worker'`, distinct from ActiveJob workers, and are excluded from the ActiveJob scan to prevent double-counting
+- **Sidekiq Cron job detection**: Scheduled jobs declared via `Sidekiq::Cron::Job.create` in config initializers are extracted and included in the `jobs` list
+- **OmniAuth provider symbols excluded from Devise modules**: Provider symbols after `:omniauthable` (e.g. `:omniauthable, omniauth_providers: [:google]`) were incorrectly included as Devise module names; only the strategy symbol is now captured
+- **Multi-DB false positive on YAML anchors**: `database.yml` files using the `&default` anchor and `<<:` merge key pattern no longer trigger multi-database detection unless a real `adapter:` key is present in a non-default section
+- **Component sidecar FQN from module wrapping**: ViewComponent classes wrapped in outer modules now resolve to their correct FQN; `extractComponent` uses `resolveFullyQualifiedName` instead of path-derived names
+- **View component render counting**: `Search::Component.new(...)` call syntax, `with_collection` renders, and `.turbo_stream.erb` files are now counted in view render tallies
+- **Config extractor accuracy**: Miscellaneous improvements to YAML anchor/merge key handling in multi-database detection
+
+## [1.0.16] - 2026-03-31
+
+### Fixed
+
+- **Rolify via schema detection**: Authorization extractor no longer uses a hardcoded `Role = domain-model` heuristic; the `roles` model is now detected by scanning schema for the `rolify` macro declaration on the model itself
+- **Component count includes nested sidecar directories**: `get_overview` component count now includes components living in subdirectories of `app/components/` (e.g. `app/components/admin/`)
+- **Controller namespace from module wrapping**: Controllers declared inside outer `module` wrappers (e.g. `module Backend; class UsersController`) now extract the correct namespaced class name (`Backend::UsersController`)
+- **Multi-DB detection requires `adapter:` key**: A nested database YAML block without an explicit `adapter:` key no longer triggers multi-database detection, reducing false positives from YAML-anchor patterns
+- **`resources only: []` yields zero actions**: A `resources` call with an empty `:only` or `:except` array now correctly produces zero route entries rather than all 7 CRUD actions (regression introduced in v1.0.12)
+- **Email subgraph seeding from name heuristics**: `get_subgraph` email skill now seeds the BFS traversal from any model or controller whose class name contains `email`, `mail`, or `notification`, improving coverage in apps without a clear mailer hierarchy
+- **`after_save_commit` / `after_create_commit` / `after_destroy_commit` callbacks**: Rails transactional callback aliases are now extracted alongside `after_commit`
+- **Multi-line filter options with bracket continuation**: `before_action :foo, only: %i[
+  index show
+]` spanning multiple lines is now parsed correctly
+- **Convention pair controller preference**: When matching a resource route to a convention pair, the un-namespaced controller name is now preferred over its namespaced alias, reducing duplicate entries
+- **Multi-method callback expansion**: Callbacks like `after_save_commit :method_a, :method_b` are now expanded into separate entries per method
 
 ## [1.0.15] - 2026-03-31
 
@@ -46,6 +97,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mailer superclass full namespace**: `ActionMailer::Base` and `Devise::Mailer` are now captured in full instead of being truncated to the first component
 - **Model count visibility**: `statistics.models_file_count` added to expose the manifest file count alongside the extracted model count, making any extraction gap visible to AI agents
 - **Text-format template glob coverage**: Scanner now includes `.text.erb`, `.text.haml`, `.text.slim`, `.js.erb`, and `.xml.erb` templates, fixing undercounted view totals
+
+## [1.0.13] - 2026-03-30
+
+### Fixed
+
+- **Version detector comment stripping**: Comments in `config/application.rb` and `config/environment.rb` were matched against Rails version patterns; comments are now stripped before detection, eliminating version misidentification from commented-out config
+- **Devise sub-controller discovery**: Auth extractor now includes Devise sub-controllers from auth-classified scanner entries (e.g. `app/controllers/users/sessions_controller.rb`), not just from path pattern matching
+- **`validates_presence_of` old-style validator**: Multi-attribute declarations (`validates_presence_of :name, :email`) are now correctly extracted (previously only the first attribute was captured)
+- **FriendlyId excluded from `extends` array**: FriendlyId was incorrectly reported as a model extension; it is now excluded from the `extends` list
+- **Gemfile and `database.yml.example` fallback**: Adapter detection falls back to `Gemfile` gem inference (`pg`, `mysql2`, `sqlite3`) and `database.yml.example` when `database.yml` is absent or incomplete
+- **CanCan `Ability` class scan covers all model files**: `can`/`cannot` rule extraction now scans every model file for a `CanCan::Ability` class declaration, not just the first match
+- **Hash-rocket root route syntax**: `root :to => 'pages#home'` is now parsed alongside the modern `root to:` syntax
+- **Minitest files in well-tested examples**: `get_well_tested_examples` now includes `_test.rb` Minitest files alongside `_spec.rb` RSpec files
+- **Multi-method `before_action` expansion**: `before_action :authenticate_user!, :set_locale` expands into separate filter entries per method
+- **`models_in_manifest` count**: `get_overview` now reports `statistics.models_in_manifest` (file count) alongside the extracted model count, making any extraction gap visible to AI agents
+
+## [1.0.12] - 2026-03-30
+
+### Fixed
+
+- **Stale index cache invalidation**: Force-re-index now correctly clears the cached index before rebuilding
+- **Secret exposure prevention**: Credentials and secret values are redacted from `get_full_index` and `get_overview` output
+- **Gemfile comment exclusion**: Commented-out gem lines are no longer matched by the Gemfile extractor
+- **Config comment exclusion**: Commented-out config lines are excluded from all config extractors
+- **Devise module detection**: All Devise strategy modules are extracted per model rather than aggregated globally
+- **`[object Object]` serialization bug**: Several tool responses were serializing nested objects as `[object Object]`; proper JSON traversal is now used throughout
+- **Controller namespace extraction**: Namespace-prefixed controller names (`Admin::UsersController`) are detected from file path and class declaration
+- **`test_framework` field in `get_overview`**: Test framework is now always reported in the overview response
+- **`search_patterns` handler fixes**: `cb.name` corrected to `cb.method` for callback matching; stale `ctrl.before_actions` reference replaced with `ctrl.filters || []`
+- **Policy method extraction**: Pundit policy methods are fully extracted including query methods (`show?`, `update?`, etc.)
+- **Subgraph seeding improvements**: BFS traversal now seeds correctly from authentication and database subgraph roots
+- **`devise_for`, `draw`, and nested route parsing**: `devise_for :users`, `draw :admin`, and deeply nested `resources` blocks are now parsed correctly
+- **Cache scan completeness**: Fragment cache detection covers all ERB and HAML patterns
+- **ActiveStorage attachment detection**: `has_one_attached` and `has_many_attached` declarations are extracted from all model files
+- **Blast radius accuracy**: Impact analysis correctly traverses reverse adjacency for indirect file changes
+- **`get_overview` custom patterns**: User-declared conventions from `claude.md` are reflected in the overview
+- **Model count accuracy**: Model counts match the number of extracted models, not scanner file count
+- **CanCan detection from `Ability` class**: `CanCan::Ability` subclass is detected from any model file
+- **Turbo Stream broadcast extraction**: `broadcast_to`, `broadcast_append_to`, `broadcast_prepend_to` in models are captured
+- **`cable.yml` adapter detection**: ActionCable adapter is extracted from `cable.yml` (Redis, Async, PostgreSQL)
+- **Model callback completeness**: All `before_*`, `after_*`, `around_*` callback forms including blocks and multi-method variants are extracted
+- **Form helper counting**: `form_with`, `form_for`, `form_tag` calls are tallied in the views extractor
+- **HAML template support**: HAML views are scanned for partials, cache blocks, and form helpers
+- **Asset pipeline variant detection**: Sprockets, Propshaft, Webpacker, import maps, and Vite are all identified
+- **Test identifier extraction**: Spec and test file identifiers include `describe`/`context` block labels
+- **`validates_with` extraction**: Custom validator classes referenced via `validates_with` are captured
+- **`stream_from` channel detection**: `stream_from` and `stream_for` in ActionCable channels are extracted
+- **Paperclip attachment detection**: Paperclip `has_attached_file` is extracted as an attachment alongside ActiveStorage
+- **`use_transactional_fixtures` detection**: Test suite transaction strategy is exported in test conventions
+- **Layout detection**: Controller `layout` declarations (including conditional procs) are extracted
+- **Spec style accuracy**: RSpec vs Minitest detection consolidated into shared `detectSpecStyle` utility
+- **Ruby version detection**: `.ruby-version` file is read as the primary Ruby version source
+- **JWT detection**: JWT usage is identified in auth extractor via Gemfile and controller patterns
+- **Rescue handler extraction**: `rescue_from` declarations in controllers are extracted with handler method names
+- **CarrierWave storage backend**: CarrierWave uploaders report storage backend (`file`, `fog`, `cloudinary`, etc.)
 
 ## [1.0.11] - 2026-03-27
 

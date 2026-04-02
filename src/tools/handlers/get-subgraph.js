@@ -160,6 +160,29 @@ export function register(server, state) {
         .map((e) => ({ entity: e, rank: rankings[e] || 0 }))
         .sort((a, b) => b.rank - a.rank)
 
+      // Authentication: post-filter to remove entities that aren't auth-relevant.
+      // BFS from auth seeds leaks into high-connectivity models (e.g., Activity
+      // via belongs_to :author), polluting the subgraph.
+      if (skill === 'authentication') {
+        const authEntityPatterns = /auth|session|user|admin|devise|password|registration|confirmation|login|signup|member|ability|role|current|warden|omniauth/i
+
+        const authFiltered = rankedFiles.filter(e =>
+          seeds.has(e.entity) || authEntityPatterns.test(e.entity)
+        )
+        const authEntitySet = new Set(authFiltered.map(e => e.entity))
+        const authRels = subgraphRels.filter(
+          r => authEntitySet.has(r.from) && authEntitySet.has(r.to)
+        )
+
+        return respond({
+          skill,
+          entities: authFiltered,
+          relationships: authRels,
+          total_entities: authFiltered.length,
+          total_relationships: authRels.length,
+        })
+      }
+
       return respond({
         skill,
         entities: rankedFiles,

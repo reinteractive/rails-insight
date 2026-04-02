@@ -559,6 +559,21 @@ export function buildGraph(extractions, manifest, skills = []) {
     }
   }
 
+  // Mailers — add as graph nodes with inheritance edges
+  if (extractions.email?.mailers) {
+    for (const mailer of extractions.email.mailers) {
+      if (!mailer.class) continue
+      graph.addNode(mailer.class, 'mailer', mailer.class)
+
+      // Inheritance edge (e.g., ContactMessageMailer → ApplicationMailer)
+      if (mailer.superclass && mailer.superclass !== 'ActionMailer::Base') {
+        graph.addNode(mailer.superclass, 'mailer', mailer.superclass)
+        graph.addEdge(mailer.class, mailer.superclass, 'inherits')
+        relationships.push({ from: mailer.class, to: mailer.superclass, type: 'inherits' })
+      }
+    }
+  }
+
   // Uploaders → Models (via mount_uploader cross-reference)
   if (extractions.uploaders?.mounted) {
     for (const mount of extractions.uploaders.mounted) {
