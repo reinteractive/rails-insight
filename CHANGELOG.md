@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.29] - 2026-04-03
+
+### Fixed
+
+- **`index_project` relationships over-count**: `statistics.relationships` now counts only model association declarations (`belongs_to`, `has_many`, `has_one`, `has_and_belongs_to_many`) instead of all graph edges (which included inheritance, concerns, schema FKs, convention pairs, routes, tests, helpers, and uploaders). Eliminates ~718 false positives across 8 evaluated apps
+- **`index_project` jobs double-counting**: Excludes `ApplicationJob` (abstract base class) and `sidekiq_worker` entries from the jobs statistic. Sidekiq workers are already counted separately under `workers`
+- **`index_project` mailers over-count**: Excludes `ApplicationMailer` (abstract base class) from the mailers statistic, consistent with how `ApplicationRecord` is handled for models
+- **`index_project` controllers over-count**: Excludes concern files (`app/controllers/concerns/`) from the controllers statistic, consistent with how model concerns are excluded
+- **`index_project` models over-count**: Detects module-only files (files with `module` but no `class` and no `ActiveSupport::Concern`) and marks them as `type: 'module'`, excluding them from the model count
+- **`index_project` total_files under-count**: Expanded scanner globs to include `.css`, `.scss`, `.sass`, `.coffee`, `.json`, `.jsx`, `.tsx`, `.yaml`, `.rake` files and added `Rakefile`, `Capfile`, `config.ru` to specific files. Added classification rules for `app/assets/`, `app/javascript/`, config catch-all, and lib rake files
+
 ## [1.0.28] - 2026-04-03
 
 ### Fixed
