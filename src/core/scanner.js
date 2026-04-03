@@ -234,6 +234,20 @@ const RULES = [
     category: 7,
   },
 
+  // --- Catch-all: lib non-Ruby engine assets (views, stylesheets, scripts, config) ---
+  {
+    test: (p) =>
+      /^lib\/.*\.(erb|haml|slim|scss|css|sass|js|jsx|ts|tsx|coffee|yml|yaml|json)$/.test(
+        p,
+      ),
+    category: 17,
+  },
+  // --- spec/test non-Ruby fixture and config files ---
+  {
+    test: (p) => /^(spec|test)\/.*\.(json|yml|yaml)$/.test(p),
+    category: 19,
+  },
+
   // --- Catch-all: lib and migrations ---
   { test: (p) => /^lib\/.*\.rb$/.test(p), category: 17 },
   { test: (p) => /^lib\/.*\.rake$/.test(p), category: 17 },
@@ -388,8 +402,24 @@ export function scanStructure(provider) {
     ...provider.glob('db/**/*.sql'),
     ...provider.glob('lib/**/*.rb'),
     ...provider.glob('lib/**/*.rake'),
+    ...provider.glob('lib/**/*.erb'),
+    ...provider.glob('lib/**/*.haml'),
+    ...provider.glob('lib/**/*.slim'),
+    ...provider.glob('lib/**/*.scss'),
+    ...provider.glob('lib/**/*.sass'),
+    ...provider.glob('lib/**/*.css'),
+    ...provider.glob('lib/**/*.js'),
+    ...provider.glob('lib/**/*.json'),
+    ...provider.glob('lib/**/*.yml'),
+    ...provider.glob('lib/**/*.yaml'),
     ...provider.glob('spec/**/*.rb'),
+    ...provider.glob('spec/**/*.json'),
+    ...provider.glob('spec/**/*.yml'),
+    ...provider.glob('spec/**/*.yaml'),
     ...provider.glob('test/**/*.rb'),
+    ...provider.glob('test/**/*.json'),
+    ...provider.glob('test/**/*.yml'),
+    ...provider.glob('test/**/*.yaml'),
     ...provider.glob('engines/**/*'),
   ]
 

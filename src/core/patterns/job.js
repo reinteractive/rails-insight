@@ -2,7 +2,7 @@
  * Regex patterns for Rails job extraction.
  */
 export const JOB_PATTERNS = {
-  classDeclaration: /class\s+(\w+(?:::\w+)*)\s*<\s*(\w+)/,
+  classDeclaration: /class\s+(\w+(?:::\w+)*)\s*<\s*(\w+(?:::\w+)*)/,
   queueAs: /^\s*queue_as\s+:?['"]?(\w+)['"]?/m,
   retryOn: /^\s*retry_on\s+(\w+(?:::\w+)*)(?:,\s*(.+))?/m,
   discardOn: /^\s*discard_on\s+(\w+(?:::\w+)*)(?:,\s*(.+))?/m,
