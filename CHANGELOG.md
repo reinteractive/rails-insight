@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.22] - 2026-04-03
+
+### Fixed
+
+- **Enumerize inline comment stripping**: Enumerize declarations containing inline Ruby comments (e.g. `enumerize :field, in: [:a, :b#, :c #:d]`) now correctly strip commented-out values before parsing. Previously, values after `#` comment markers were captured as dirty entries (e.g. `"monthly_by_date#"`, `"#:none"`), producing incorrect enum value lists for models like Activity's `recurrance_type` and `recurrance_onstring`
+
 ## [1.0.19] - 2026-04-03
 
 ### Fixed

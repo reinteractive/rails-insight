@@ -326,9 +326,14 @@ export function extractModel(provider, filePath, className) {
   }
 
   // Enumerize gem: enumerize :field, in: [:val1, :val2, ...]
+  // Strip inline Ruby comments before matching to avoid capturing commented-out values
+  const contentNoComments = content
+    .split('\n')
+    .map((l) => l.replace(/#[^{].*$/, '').trimEnd())
+    .join('\n')
   const enumerizeRe =
     /^\s*enumerize\s+:(\w+),\s*in:\s*(?:\[([^\]]+)\]|%w\[([^\]]+)\])/gm
-  while ((m = enumerizeRe.exec(content))) {
+  while ((m = enumerizeRe.exec(contentNoComments))) {
     const name = m[1]
     if (enums[name]) continue // native enum takes priority
     const rawValues = m[2] || m[3] || ''

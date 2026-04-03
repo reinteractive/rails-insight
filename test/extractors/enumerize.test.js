@@ -167,4 +167,40 @@ end
     const result = extractModel(mockProvider(content), 'app/models/post.rb')
     expect(result.enums.old_status).toBeUndefined()
   })
+
+  it('strips inline Ruby comments from multiline enumerize arrays', () => {
+    const content = `
+class Activity < ApplicationRecord
+  enumerize :recurrance_type, in: [
+    :daily, :weekly, :monthly_by_week_day, :monthly_by_date#, :yearly #:none, :custom
+  ]
+end
+`
+    const result = extractModel(mockProvider(content), 'app/models/activity.rb')
+    expect(result.enums.recurrance_type).toBeDefined()
+    expect(result.enums.recurrance_type.values).toEqual([
+      'daily',
+      'weekly',
+      'monthly_by_week_day',
+      'monthly_by_date',
+    ])
+    // Values after # comment should NOT be included (yearly, none, custom are all commented out)
+    expect(result.enums.recurrance_type.values).not.toContain('yearly')
+    expect(result.enums.recurrance_type.values).not.toContain('none')
+    expect(result.enums.recurrance_type.values).not.toContain('custom')
+    expect(result.enums.recurrance_type.values).not.toContain('#:none')
+    expect(result.enums.recurrance_type.values).not.toContain('monthly_by_date#')
+  })
+
+  it('strips inline comments from single-line enumerize arrays', () => {
+    const content = `
+class Review < ApplicationRecord
+  enumerize :status, in: [:waiting, :approved] # pending removed
+end
+`
+    const result = extractModel(mockProvider(content), 'app/models/review.rb')
+    expect(result.enums.status).toBeDefined()
+    expect(result.enums.status.values).toEqual(['waiting', 'approved'])
+    expect(result.enums.status.values).not.toContain('pending')
+  })
 })
