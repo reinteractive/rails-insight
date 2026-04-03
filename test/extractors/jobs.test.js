@@ -216,6 +216,127 @@ Sidekiq::Cron::Job.create(
     })
   })
 
+  describe('mixin-only job detection (no inheritance)', () => {
+    it('detects Delayed::RecurringJob mixin without superclass', () => {
+      const provider = mockProvider({
+        'app/jobs/cache_configs_job.rb': `
+class CacheConfigsJob
+  include Delayed::RecurringJob
+  run_every 1.hour
+  queue 'cache_configs'
+
+  def perform
+    Config.cache_all
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/cache_configs_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('CacheConfigsJob')
+      expect(result.superclass).toBeNull()
+    })
+
+    it('detects Sidekiq::Job mixin without superclass', () => {
+      const provider = mockProvider({
+        'app/jobs/hello_world_job.rb': `
+class HelloWorldJob
+  include Sidekiq::Job
+
+  def perform
+    puts "hello"
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/hello_world_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('HelloWorldJob')
+      expect(result.superclass).toBeNull()
+    })
+
+    it('detects Resque::Job mixin without superclass', () => {
+      const provider = mockProvider({
+        'app/jobs/resque_task_job.rb': `
+class ResqueTaskJob
+  include Resque::Job
+  @queue = :default
+
+  def self.perform
+    Task.process_all
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/resque_task_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('ResqueTaskJob')
+      expect(result.superclass).toBeNull()
+    })
+
+    it('detects Delayed::Job mixin without superclass', () => {
+      const provider = mockProvider({
+        'app/jobs/delayed_task_job.rb': `
+class DelayedTaskJob
+  include Delayed::Job
+
+  def perform
+    Task.run
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/delayed_task_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('DelayedTaskJob')
+      expect(result.superclass).toBeNull()
+    })
+
+    it('returns null for plain class without inheritance or job mixin', () => {
+      const provider = mockProvider({
+        'app/jobs/not_a_real_job.rb': `
+class NotARealJob
+  def perform
+    puts "I look like a job but I'm not"
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/not_a_real_job.rb')
+      expect(result).toBeNull()
+    })
+
+    it('detects namespaced mixin-only job', () => {
+      const provider = mockProvider({
+        'app/jobs/sync_energy_coach_daily_entry_job.rb': `
+class SyncEnergyCoachDailyEntryJob
+  include Delayed::RecurringJob
+  run_every 1.day
+  queue 'sync_energy_coach'
+
+  def perform
+    EnergyCoach::DailyEntry.sync_all
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/sync_energy_coach_daily_entry_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('SyncEnergyCoachDailyEntryJob')
+    })
+
+    it('extracts sidekiq_options from mixin-only job', () => {
+      const provider = mockProvider({
+        'app/jobs/background_task_job.rb': `
+class BackgroundTaskJob
+  include Sidekiq::Job
+  sidekiq_options queue: :critical, retry: 5
+
+  def perform
+    Task.run
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/background_task_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.sidekiq_options).toContain('queue: :critical')
+    })
+  })
+
   describe('ISSUE-SHARP: namespaced superclass job detection', () => {
     it('detects job inheriting from a namespaced ScheduledJobBase (e.g. StoreConnect::ScheduledJobBase)', () => {
       const provider = mockProvider({

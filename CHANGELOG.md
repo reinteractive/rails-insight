@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.32] - 2026-04-03
+
+### Fixed
+
+- **`index_project` jobs under-count for mixin-only jobs without inheritance**: `extractJob()` now detects job classes that use `include Delayed::RecurringJob`, `include Delayed::Job`, `include Resque::Job`, or `include Sidekiq::Job` without inheriting from a superclass. Previously, classes without `<` inheritance syntax were silently dropped before mixin detection was reached. Fixes lf-api jobs 3→14 (+11) and quarter-turn jobs 2→3 (+1)
+
 ## [1.0.31] - 2026-04-03
 
 ### Fixed
