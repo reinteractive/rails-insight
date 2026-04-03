@@ -97,6 +97,7 @@ export function extractModel(provider, filePath, className) {
   let superclass = null
   let detectedNamespace = null
   const classMatch = content.match(MODEL_PATTERNS.classDeclaration)
+  const isModuleOnly = !classMatch && !isConcern && /module\s+\w+/.test(content)
   if (classMatch) {
     const { fqn, namespace } = resolveFullyQualifiedName(
       content,
@@ -107,6 +108,9 @@ export function extractModel(provider, filePath, className) {
     detectedNamespace = namespace
     superclass = classMatch[2]
   } else if (isConcern) {
+    const moduleMatch = content.match(/module\s+(\w+(?:::\w+)*)/)
+    if (moduleMatch) detectedClass = moduleMatch[1]
+  } else if (isModuleOnly) {
     const moduleMatch = content.match(/module\s+(\w+(?:::\w+)*)/)
     if (moduleMatch) detectedClass = moduleMatch[1]
   }
@@ -665,7 +669,7 @@ export function extractModel(provider, filePath, className) {
   return {
     class: detectedClass,
     file: filePath,
-    type: isConcern ? 'concern' : 'model',
+    type: isConcern ? 'concern' : isModuleOnly ? 'module' : 'model',
     superclass,
     namespace: detectedNamespace,
     abstract,

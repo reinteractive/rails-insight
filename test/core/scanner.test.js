@@ -235,12 +235,13 @@ describe('Scanner', () => {
       expect(manifest.byCategory.routes.length).toBe(1)
     })
 
-    it('tracks unclassified files', () => {
+    it('classifies CSS asset files', () => {
       const provider = createMockProvider(['app/assets/stylesheets/main.css'])
-      // This file won't match any glob pattern in the scanner, so it won't be discovered
       const manifest = scanStructure(provider)
-      // The scanner only finds files via glob patterns, so CSS files won't be in entries
-      expect(manifest.entries.length).toBe(0)
+      // CSS files in app/assets/ are now classified as views (category 7)
+      expect(manifest.entries.length).toBe(1)
+      expect(manifest.entries[0].categoryName).toBe('views')
+      expect(manifest.entries[0].type).toBe('css')
     })
 
     it('provides stats per category', () => {
