@@ -24,6 +24,17 @@ export function register(server, state) {
       const extractions = state.index.extractions || {}
       const lowerPattern = pattern.toLowerCase()
 
+      // Patterns that map to a dedicated extraction category.
+      // These skip generic substring matching in unrelated sections
+      // (callbacks, concerns, validation rules) to avoid false positives.
+      const CATEGORY_ONLY = new Set([
+        'scope', 'validates', 'validation', 'validate',
+        'devise', 'enum', 'enumerize',
+        'delegate', 'delegation',
+        'has_secure_password', 'secure_password',
+      ])
+      const isCategoryOnly = CATEGORY_ONLY.has(lowerPattern)
+
       for (const [name, model] of Object.entries(extractions.models || {})) {
         const matches = []
         if (model.associations) {
@@ -44,7 +55,7 @@ export function register(server, state) {
             }
           }
         }
-        if (model.callbacks) {
+        if (!isCategoryOnly && model.callbacks) {
           for (const cb of model.callbacks) {
             if (
               cb.type?.toLowerCase().includes(lowerPattern) ||
@@ -54,7 +65,7 @@ export function register(server, state) {
             }
           }
         }
-        if (model.concerns) {
+        if (!isCategoryOnly && model.concerns) {
           for (const concern of model.concerns) {
             if (concern.toLowerCase().includes(lowerPattern))
               matches.push({ type: 'concern', detail: concern })
@@ -67,7 +78,7 @@ export function register(server, state) {
             const attrStr = (val.attributes || []).join(' ').toLowerCase()
             const rulesStr = (val.rules || '').toLowerCase()
             if (lowerPattern === 'validates' || lowerPattern === 'validation' ||
-                attrStr.includes(lowerPattern) || rulesStr.includes(lowerPattern)) {
+                (!isCategoryOnly && (attrStr.includes(lowerPattern) || rulesStr.includes(lowerPattern)))) {
               matches.push({ type: 'validation', detail: val })
             }
           }

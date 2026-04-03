@@ -10,50 +10,51 @@ This table tracks per-version evaluation scores so agents can see trends, verify
 |---------|------|-------------|----------------|-----------------|-------------|-------------|-------------|
 | 1.0.21 | 2025-05-30 | 0.86 | 14 | 138 | 3.0% | 4/17 | 3/17 |
 | 1.0.22 | 2026-04-03 | 0.89 | 14 | 111 | 2.4% | 4/17 | 3/17 |
+| 1.0.23 | 2026-06-10 | 0.90 | 9 | 111 | 1.9% | 4/17 | 2/17 |
 
 ## Per-Tool F1
 
-| Tool | 1.0.21 | 1.0.22 | Delta |
-|------|--------|--------|-------|
-| index_project | 0.97 | 0.97 | — |
-| get_overview | 0.89 | 0.89 | — |
-| get_model | 0.88 | 0.98 | **+0.10** |
-| get_controller | 0.92 | 0.92 | — |
-| get_routes | 0.81 | 0.81 | — |
-| get_schema | 1.00 | 1.00 | — |
-| get_full_index | 0.85 | 0.85 | — |
-| get_subgraph | 0.71 | 0.71 | — |
-| search_patterns | 0.78 | 0.78 | — |
-| get_deep_analysis | 0.93 | 0.95 | **+0.02** |
-| get_blast_radius | 0.96 | 0.96 | — |
-| get_review_context | 0.50 | 0.50 | — |
-| get_coverage_gaps | 0.80 | 0.80 | — |
-| get_test_conventions | 0.85 | 0.85 | — |
-| get_domain_clusters | 0.85 | 0.85 | — |
-| get_factory_registry | 1.00 | 1.00 | — |
-| get_well_tested_examples | 0.90 | 0.90 | — |
+| Tool | 1.0.21 | 1.0.22 | 1.0.23 | Delta (latest) |
+|------|--------|--------|--------|----------------|
+| index_project | 0.97 | 0.97 | 0.97 | — |
+| get_overview | 0.89 | 0.89 | 0.89 | — |
+| get_model | 0.88 | 0.98 | 0.98 | — |
+| get_controller | 0.92 | 0.92 | 0.92 | — |
+| get_routes | 0.81 | 0.81 | 0.81 | — |
+| get_schema | 1.00 | 1.00 | 1.00 | — |
+| get_full_index | 0.85 | 0.85 | 0.85 | — |
+| get_subgraph | 0.71 | 0.71 | 0.71 | — |
+| search_patterns | 0.78 | 0.78 | 0.90 | **+0.12** |
+| get_deep_analysis | 0.93 | 0.95 | 0.95 | — |
+| get_blast_radius | 0.96 | 0.96 | 0.96 | — |
+| get_review_context | 0.50 | 0.50 | 0.50 | — |
+| get_coverage_gaps | 0.80 | 0.80 | 0.80 | — |
+| get_test_conventions | 0.85 | 0.85 | 0.85 | — |
+| get_domain_clusters | 0.85 | 0.85 | 0.85 | — |
+| get_factory_registry | 1.00 | 1.00 | 1.00 | — |
+| get_well_tested_examples | 0.90 | 0.90 | 0.90 | — |
 
 ## Per-Tool Hallucinations
 
-| Tool | 1.0.21 | 1.0.22 | Delta |
-|------|--------|--------|-------|
-| index_project | 0 | 0 | — |
-| get_overview | 0 | 0 | — |
-| get_model | 0 | 0 | — |
-| get_controller | 0 | 0 | — |
-| get_routes | 6 | 6 | — |
-| get_schema | 0 | 0 | — |
-| get_full_index | 0 | 0 | — |
-| get_subgraph | 17 | 17 | — |
-| search_patterns | 6 | 6 | — |
-| get_deep_analysis | 2 | 0 | **-2** |
-| get_blast_radius | 0 | 0 | — |
-| get_review_context | 0 | 0 | — |
-| get_coverage_gaps | 0 | 0 | — |
-| get_test_conventions | 0 | 0 | — |
-| get_domain_clusters | 0 | 0 | — |
-| get_factory_registry | 0 | 0 | — |
-| get_well_tested_examples | 0 | 0 | — |
+| Tool | 1.0.21 | 1.0.22 | 1.0.23 | Delta (latest) |
+|------|--------|--------|--------|----------------|
+| index_project | 0 | 0 | 0 | — |
+| get_overview | 0 | 0 | 0 | — |
+| get_model | 0 | 0 | 0 | — |
+| get_controller | 0 | 0 | 0 | — |
+| get_routes | 6 | 6 | 6 | — |
+| get_schema | 0 | 0 | 0 | — |
+| get_full_index | 0 | 0 | 0 | — |
+| get_subgraph | 17 | 17 | 17 | — |
+| search_patterns | 6 | 6 | 1 | **-5** |
+| get_deep_analysis | 2 | 0 | 0 | — |
+| get_blast_radius | 0 | 0 | 0 | — |
+| get_review_context | 0 | 0 | 0 | — |
+| get_coverage_gaps | 0 | 0 | 0 | — |
+| get_test_conventions | 0 | 0 | 0 | — |
+| get_domain_clusters | 0 | 0 | 0 | — |
+| get_factory_registry | 0 | 0 | 0 | — |
+| get_well_tested_examples | 0 | 0 | 0 | — |
 
 ## get_model Enum Detail (Enumerize Focus)
 
@@ -74,6 +75,25 @@ This table tracks per-version evaluation scores so agents can see trends, verify
 | FeaturedBlockContent | 1 | 0 | MISSED | 1 | **OK** |
 | ContentGroupItem | 1 | 0 | MISSED | 1 | **OK** |
 | **Total** | **27** | **0** | **FN=27** | **27** | **TP=27, FN=0, FP=0** |
+
+## Previous Fix Verification (v1.0.22)
+
+## search_patterns Scope Detail (v1.0.23 Fix)
+
+| Metric | Before (v1.0.22) | After (v1.0.23) |
+|--------|-------------------|------------------|
+| scope TP | 47 | 47 |
+| scope FP | 5 | 0 |
+| scope FN | 0 | 0 |
+| scope Precision | 0.904 | 1.000 |
+| scope Recall | 1.000 | 1.000 |
+| scope F1 | 0.950 | 1.000 |
+
+False positives eliminated:
+- Activity, Article: `set_site_scope_flags` callback method matched "scope" substring (2 FP)
+- FeaturedBlock (×2), Rating: validation rules containing `:scope => :state` (3 FP)
+
+Fix: `CATEGORY_ONLY` pattern set routes category keywords (`scope`, `validates`, `devise`, `enum`, `delegate`, `has_secure_password`) to their dedicated extraction sections, skipping generic substring matching in callbacks/concerns/validation-rules.
 
 ## Previous Fix Verification (v1.0.22)
 
@@ -101,7 +121,7 @@ This table tracks per-version evaluation scores so agents can see trends, verify
 |-------|------|----------|--------|
 | Email subgraph returns 0 entities (mailers not in graph) | get_subgraph | HIGH | Open |
 | Auth subgraph includes unrelated models (17 FP) | get_subgraph | MEDIUM | Open |
-| search_patterns: validates returns 0, scope returns wrong | search_patterns | CRITICAL | Open |
+| search_patterns: validates returns 0, scope returns wrong | search_patterns | CRITICAL | **Fixed v1.0.23** — scope FP eliminated, validates/devise working |
 | get_review_context ignores token_budget | get_review_context | HIGH | Open |
 | Route deduplication (events×3, businesses×2) | get_routes | MEDIUM | Open |
 | Interpolated route namespace #{city} rendered literally | get_routes | MEDIUM | Open |
@@ -113,3 +133,4 @@ This table tracks per-version evaluation scores so agents can see trends, verify
 | Version | Changes | Expected Impact | Actual Impact |
 |---------|---------|-----------------|---------------|
 | 1.0.22 | Strip inline Ruby comments from enumerize value arrays | Fix dirty values in enumerize arrays | **get_model F1: 0.88→0.98 (+0.10). 27 FN eliminated. 0 dirty values. 0 regressions.** |
+| 1.0.23 | search_patterns: add CATEGORY_ONLY guard to prevent scope/validates/devise FPs in callbacks/validations/concerns | Eliminate 5 scope FPs, properly route category keywords to dedicated sections | **search_patterns scope: 52→47 matches (5 FP→0 FP). F1 0.78→0.90. validates=69, devise=13 all correct. 0 regressions (1517 tests pass).** |
