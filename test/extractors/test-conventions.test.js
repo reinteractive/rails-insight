@@ -402,4 +402,189 @@ end`
       expect(result.spec_counts.controller_tests).toBe(1)
     })
   })
+
+  describe('Minitest database strategy detection', () => {
+    it('detects fixtures :all in test/test_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'test/test_helper.rb': `
+require 'simplecov'
+SimpleCov.start 'rails'
+
+ENV['RAILS_ENV'] ||= 'test'
+require File.expand_path('../../config/environment', __FILE__)
+require 'rails/test_help'
+
+class ActiveSupport::TestCase
+  fixtures :all
+end`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.database_strategy.strategy).toBe('transactional_fixtures')
+      expect(result.database_strategy.config_file).toBe('test/test_helper.rb')
+    })
+
+    it('detects use_transactional_fixtures in test/test_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'test/test_helper.rb': `
+class ActiveSupport::TestCase
+  self.use_transactional_fixtures = true
+end`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.database_strategy.strategy).toBe('transactional_fixtures')
+      expect(result.database_strategy.config_file).toBe('test/test_helper.rb')
+    })
+
+    it('prefers spec/rails_helper.rb over test/test_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'spec/rails_helper.rb': `
+RSpec.configure do |config|
+  config.use_transactional_fixtures = true
+end`,
+        'test/test_helper.rb': `
+class ActiveSupport::TestCase
+  fixtures :all
+end`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.database_strategy.strategy).toBe('transactional_fixtures')
+      expect(result.database_strategy.config_file).toBe('spec/rails_helper.rb')
+    })
+  })
+
+  describe('Minitest auth helper detection', () => {
+    it('detects Devise helpers in test/test_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'test/test_helper.rb': `
+class ActionDispatch::IntegrationTest
+  include Devise::Test::IntegrationHelpers
+end`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.auth_helper.strategy).toBe('devise')
+      expect(result.auth_helper.helper_method).toBe('sign_in')
+      expect(result.auth_helper.helper_file).toBe('test/test_helper.rb')
+    })
+
+    it('detects custom auth helper in test/support/', () => {
+      const provider = createMemoryProvider({
+        'test/support/auth_helper.rb': `
+module AuthHelper
+  def sign_in(user)
+    post login_path, params: { email: user.email, password: 'password' }
+  end
+end`,
+      })
+      const entries = [
+        {
+          path: 'test/support/auth_helper.rb',
+          category: 19,
+          categoryName: 'testing',
+          specCategory: 'support',
+        },
+      ]
+      const result = extractTestConventions(provider, entries)
+      expect(result.auth_helper.strategy).toBe('custom')
+      expect(result.auth_helper.helper_method).toBe('sign_in')
+      expect(result.auth_helper.helper_file).toBe(
+        'test/support/auth_helper.rb',
+      )
+    })
+  })
+
+  describe('fixtures_usage detection', () => {
+    it('detects fixtures :all from test/test_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'test/test_helper.rb': `
+class ActiveSupport::TestCase
+  fixtures :all
+end`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.fixtures_usage).toBe(true)
+    })
+
+    it('detects fixtures from spec/rails_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'spec/rails_helper.rb': `
+RSpec.configure do |config|
+  config.use_transactional_fixtures = true
+  config.fixture_path = Rails.root.join('spec/fixtures')
+end`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.fixtures_usage).toBe(true)
+    })
+
+    it('returns false when no fixtures configured', () => {
+      const provider = createMemoryProvider({})
+      const result = extractTestConventions(provider, [])
+      expect(result.fixtures_usage).toBe(false)
+    })
+  })
+
+  describe('coverage_tool detection', () => {
+    it('detects simplecov from test/test_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'test/test_helper.rb': `
+require 'simplecov'
+SimpleCov.start 'rails' do
+  enable_coverage :branch
+end
+
+ENV['RAILS_ENV'] ||= 'test'`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.coverage_tool).toBe('simplecov')
+    })
+
+    it('detects simplecov from spec/spec_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'spec/spec_helper.rb': `
+require 'simplecov'
+SimpleCov.start`,
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.coverage_tool).toBe('simplecov')
+    })
+
+    it('returns null when no coverage tool', () => {
+      const provider = createMemoryProvider({})
+      const result = extractTestConventions(provider, [])
+      expect(result.coverage_tool).toBeNull()
+    })
+  })
+
+  describe('test_helper_file detection', () => {
+    it('detects test/test_helper.rb for Minitest', () => {
+      const provider = createMemoryProvider({
+        'test/test_helper.rb': 'require "rails/test_help"',
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.test_helper_file).toBe('test/test_helper.rb')
+    })
+
+    it('detects spec/rails_helper.rb for RSpec', () => {
+      const provider = createMemoryProvider({
+        'spec/rails_helper.rb': 'require "spec_helper"',
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.test_helper_file).toBe('spec/rails_helper.rb')
+    })
+
+    it('prefers spec/rails_helper.rb over spec/spec_helper.rb', () => {
+      const provider = createMemoryProvider({
+        'spec/rails_helper.rb': 'require "spec_helper"',
+        'spec/spec_helper.rb': 'RSpec.configure',
+      })
+      const result = extractTestConventions(provider, [])
+      expect(result.test_helper_file).toBe('spec/rails_helper.rb')
+    })
+
+    it('returns null when no helper exists', () => {
+      const provider = createMemoryProvider({})
+      const result = extractTestConventions(provider, [])
+      expect(result.test_helper_file).toBeNull()
+    })
+  })
 })

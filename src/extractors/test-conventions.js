@@ -59,6 +59,15 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
           ? 'fabrication'
           : detectFactoryToolFromFiles(provider, entries),
 
+    // Fixture usage detection
+    fixtures_usage: detectFixturesUsage(provider),
+
+    // Coverage tool detection
+    coverage_tool: detectCoverageTool(provider),
+
+    // Test helper file
+    test_helper_file: detectTestHelperFile(provider),
+
     // Spec file counts by category
     spec_counts: {},
 
@@ -189,36 +198,39 @@ function detectAuthHelper(provider, entries, gems) {
     setup_location: null,
   }
 
-  // Check rails_helper.rb for Devise test helpers
-  const railsHelper = provider.readFile('spec/rails_helper.rb')
-  if (railsHelper) {
-    if (/Devise::Test::IntegrationHelpers/.test(railsHelper)) {
+  // Check helper files for Devise test helpers (RSpec then Minitest)
+  const helperPaths = ['spec/rails_helper.rb', 'test/test_helper.rb']
+  for (const helperPath of helperPaths) {
+    const helperContent = provider.readFile(helperPath)
+    if (!helperContent) continue
+
+    if (/Devise::Test::IntegrationHelpers/.test(helperContent)) {
       result.strategy = 'devise'
       result.helper_method = 'sign_in'
-      result.helper_file = 'spec/rails_helper.rb'
-      result.setup_location = 'spec/rails_helper.rb'
+      result.helper_file = helperPath
+      result.setup_location = helperPath
       return result
     }
-    if (/Devise::Test::ControllerHelpers/.test(railsHelper)) {
+    if (/Devise::Test::ControllerHelpers/.test(helperContent)) {
       result.strategy = 'devise_controller'
       result.helper_method = 'sign_in'
-      result.helper_file = 'spec/rails_helper.rb'
-      result.setup_location = 'spec/rails_helper.rb'
+      result.helper_file = helperPath
+      result.setup_location = helperPath
       return result
     }
-    if (/Warden::Test::Helpers/.test(railsHelper)) {
+    if (/Warden::Test::Helpers/.test(helperContent)) {
       result.strategy = 'warden'
       result.helper_method = 'login_as'
-      result.helper_file = 'spec/rails_helper.rb'
-      result.setup_location = 'spec/rails_helper.rb'
+      result.helper_file = helperPath
+      result.setup_location = helperPath
       return result
     }
   }
 
-  // Check spec/support/ for custom auth helpers
+  // Check support directories for custom auth helpers (spec/support/ and test/support/)
   const supportEntries = entries.filter(
     (e) =>
-      e.path.startsWith('spec/support/') &&
+      (e.path.startsWith('spec/support/') || e.path.startsWith('test/support/')) &&
       e.path.endsWith('.rb') &&
       /auth/i.test(e.path),
   )
@@ -269,12 +281,19 @@ function detectDatabaseStrategy(provider, gems) {
     config_file: null,
   }
 
-  // Check rails_helper for use_transactional_fixtures
-  const railsHelper = provider.readFile('spec/rails_helper.rb') || ''
-  if (/use_transactional_fixtures\s*=\s*true/.test(railsHelper)) {
-    result.strategy = 'transactional_fixtures'
-    result.config_file = 'spec/rails_helper.rb'
-    return result
+  // Check helper files for transactional fixtures (RSpec then Minitest)
+  const helperPaths = ['spec/rails_helper.rb', 'test/test_helper.rb']
+  for (const helperPath of helperPaths) {
+    const helperContent = provider.readFile(helperPath) || ''
+    if (!helperContent) continue
+    if (
+      /use_transactional_fixtures\s*=\s*true/.test(helperContent) ||
+      /fixtures\s+:all/.test(helperContent)
+    ) {
+      result.strategy = 'transactional_fixtures'
+      result.config_file = helperPath
+      return result
+    }
   }
 
   // Check for database_cleaner
@@ -343,6 +362,57 @@ function findPatternReferences(provider, specEntries) {
   }
 
   return Object.values(byCategory)
+}
+
+/**
+ * Detect whether the project uses test fixtures.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @returns {boolean}
+ */
+function detectFixturesUsage(provider) {
+  const helperPaths = ['test/test_helper.rb', 'spec/rails_helper.rb']
+  for (const path of helperPaths) {
+    const content = provider.readFile(path) || ''
+    if (/fixtures\s+:all/.test(content) || /fixture_path/.test(content)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Detect coverage tool from test helper files.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @returns {string|null}
+ */
+function detectCoverageTool(provider) {
+  const helperPaths = [
+    'test/test_helper.rb',
+    'spec/spec_helper.rb',
+    'spec/rails_helper.rb',
+  ]
+  for (const path of helperPaths) {
+    const content = provider.readFile(path) || ''
+    if (/require\s+['"]simplecov['"]/.test(content)) return 'simplecov'
+  }
+  return null
+}
+
+/**
+ * Detect the primary test helper file.
+ * @param {import('../providers/interface.js').FileProvider} provider
+ * @returns {string|null}
+ */
+function detectTestHelperFile(provider) {
+  const candidates = [
+    'spec/rails_helper.rb',
+    'spec/spec_helper.rb',
+    'test/test_helper.rb',
+  ]
+  for (const path of candidates) {
+    if (provider.readFile(path) !== null) return path
+  }
+  return null
 }
 
 /**

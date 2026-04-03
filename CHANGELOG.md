@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.28] - 2026-04-03
+
+### Fixed
+
+- **`get_test_conventions` Minitest database strategy detection**: `detectDatabaseStrategy()` now checks `test/test_helper.rb` in addition to `spec/rails_helper.rb`, detecting `fixtures :all` and `use_transactional_fixtures = true` in Minitest projects
+- **`get_test_conventions` Minitest auth helper detection**: `detectAuthHelper()` now checks `test/test_helper.rb` and `test/support/` in addition to RSpec paths, detecting Devise includes and custom auth helpers in Minitest projects
+
+### Added
+
+- **`fixtures_usage` field**: `get_test_conventions` now reports whether the project uses test fixtures (detects `fixtures :all` and `fixture_path` configuration)
+- **`coverage_tool` field**: `get_test_conventions` now reports the coverage tool (detects `require 'simplecov'` in test helper files)
+- **`test_helper_file` field**: `get_test_conventions` now reports the path to the primary test helper file (`spec/rails_helper.rb`, `spec/spec_helper.rb`, or `test/test_helper.rb`)
+
 ## [1.0.27] - 2026-04-03
 
 ### Fixed
