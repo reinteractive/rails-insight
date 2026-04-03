@@ -13,29 +13,30 @@ This table tracks per-version evaluation scores so agents can see trends, verify
 | 1.0.23     | 2026-04-03     | 0.92        | 26             | 40              | 2.1%        | 10/17       | 1/17        |
 | 1.0.24     | 2026-04-03     | 0.98        | 22             | 17              | 1.7%        | 14/17       | 0/17        |
 | 1.0.25     | 2026-04-03     | 0.98        | 22             | 16              | 1.7%        | 15/17       | 0/17        |
-| **1.0.27** | **2026-04-03** | **0.99**    | **22**         | **10**          | **1.7%**    | **16/17**   | **0/17**    |
+| 1.0.27     | 2026-04-03     | 0.99        | 22             | 10              | 1.7%        | 16/17       | 0/17        |
+| **1.0.28** | **2026-04-03** | **0.99**    | **22**         | **4**           | **1.7%**    | **17/17**   | **0/17**    |
 
 ## Per-Tool F1
 
-| Tool                     | 1.0.21 | 1.0.22 | 1.0.23 | 1.0.24   | 1.0.25   | 1.0.27   | Delta (latest) |
-| ------------------------ | ------ | ------ | ------ | -------- | -------- | -------- | -------------- |
-| index_project            | 0.97   | 0.97   | 0.86   | 0.86     | **1.00** | 1.00     | —              |
-| get_overview             | 0.89   | 0.89   | 0.80   | **1.00** | 1.00     | 1.00     | —              |
-| get_model                | 0.88   | 0.98   | 0.99   | 0.99     | 0.99     | 0.99     | —              |
-| get_controller           | 0.92   | 0.92   | 0.98   | 0.98     | 0.98     | 0.98     | —              |
-| get_routes               | 0.81   | 0.81   | 0.84   | **0.99** | 0.99     | 0.99     | —              |
-| get_schema               | 1.00   | 1.00   | 1.00   | 1.00     | 1.00     | 1.00     | —              |
-| get_full_index           | 0.85   | 0.85   | 1.00   | 1.00     | 1.00     | 1.00     | —              |
-| get_subgraph             | 0.71   | 0.71   | 0.99   | 0.99     | 0.99     | 0.99     | —              |
-| search_patterns          | 0.78   | 0.78   | 0.99   | 0.99     | 0.99     | 0.99     | —              |
-| get_deep_analysis        | 0.93   | 0.95   | 0.97   | **0.99** | 0.99     | 0.99     | —              |
-| get_blast_radius         | 0.96   | 0.96   | 1.00   | 1.00     | 1.00     | 1.00     | —              |
-| get_review_context       | 0.50   | 0.50   | 0.50   | **0.95** | 0.95     | 0.95     | —              |
-| get_coverage_gaps        | 0.80   | 0.80   | 0.89   | 0.89     | 0.89     | **1.00** | **+0.11**      |
-| get_test_conventions     | 0.85   | 0.85   | 0.86   | 0.86     | 0.86     | 0.86     | —              |
-| get_domain_clusters      | 0.85   | 0.85   | 0.95   | 0.95     | 0.95     | 0.95     | —              |
-| get_factory_registry     | 1.00   | 1.00   | 1.00   | 1.00     | 1.00     | 1.00     | —              |
-| get_well_tested_examples | 0.90   | 0.90   | 1.00   | 1.00     | 1.00     | 1.00     | —              |
+| Tool                     | 1.0.21 | 1.0.22 | 1.0.23 | 1.0.24   | 1.0.25   | 1.0.27   | 1.0.28   | Delta (latest) |
+| ------------------------ | ------ | ------ | ------ | -------- | -------- | -------- | -------- | -------------- |
+| index_project            | 0.97   | 0.97   | 0.86   | 0.86     | **1.00** | 1.00     | 1.00     | —              |
+| get_overview             | 0.89   | 0.89   | 0.80   | **1.00** | 1.00     | 1.00     | 1.00     | —              |
+| get_model                | 0.88   | 0.98   | 0.99   | 0.99     | 0.99     | 0.99     | 0.99     | —              |
+| get_controller           | 0.92   | 0.92   | 0.98   | 0.98     | 0.98     | 0.98     | 0.98     | —              |
+| get_routes               | 0.81   | 0.81   | 0.84   | **0.99** | 0.99     | 0.99     | 0.99     | —              |
+| get_schema               | 1.00   | 1.00   | 1.00   | 1.00     | 1.00     | 1.00     | 1.00     | —              |
+| get_full_index           | 0.85   | 0.85   | 1.00   | 1.00     | 1.00     | 1.00     | 1.00     | —              |
+| get_subgraph             | 0.71   | 0.71   | 0.99   | 0.99     | 0.99     | 0.99     | 0.99     | —              |
+| search_patterns          | 0.78   | 0.78   | 0.99   | 0.99     | 0.99     | 0.99     | 0.99     | —              |
+| get_deep_analysis        | 0.93   | 0.95   | 0.97   | **0.99** | 0.99     | 0.99     | 0.99     | —              |
+| get_blast_radius         | 0.96   | 0.96   | 1.00   | 1.00     | 1.00     | 1.00     | 1.00     | —              |
+| get_review_context       | 0.50   | 0.50   | 0.50   | **0.95** | 0.95     | 0.95     | 0.95     | —              |
+| get_coverage_gaps        | 0.80   | 0.80   | 0.89   | 0.89     | 0.89     | **1.00** | 1.00     | —              |
+| get_test_conventions     | 0.85   | 0.85   | 0.86   | 0.86     | 0.86     | 0.86     | **1.00** | **+0.14**      |
+| get_domain_clusters      | 0.85   | 0.85   | 0.95   | 0.95     | 0.95     | 0.95     | 0.95     | —              |
+| get_factory_registry     | 1.00   | 1.00   | 1.00   | 1.00     | 1.00     | 1.00     | 1.00     | —              |
+| get_well_tested_examples | 0.90   | 0.90   | 1.00   | 1.00     | 1.00     | 1.00     | 1.00     | —              |
 
 \*Note: v1.0.21/v1.0.22 scores were estimated from previous incomplete evals.
 v1.0.23 scores are from the first full comprehensive eval run against ellaslist.
@@ -43,25 +44,25 @@ Apparent "regressions" in index_project and get_overview reflect more rigorous s
 
 ## Per-Tool Hallucinations
 
-| Tool                     | 1.0.21 | 1.0.22 | 1.0.23 | 1.0.24 | 1.0.25 | 1.0.27 | Delta (latest) |
-| ------------------------ | ------ | ------ | ------ | ------ | ------ | ------ | -------------- |
-| index_project            | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_overview             | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_model                | 0      | 0      | 3      | 3      | 3      | 3      | —              |
-| get_controller           | 0      | 0      | 7      | 7      | 7      | 7      | —              |
-| get_routes               | 6      | 6      | 6      | **2**  | 2      | 2      | —              |
-| get_schema               | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_full_index           | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_subgraph             | 17     | 17     | 2      | 2      | 2      | 2      | —              |
-| search_patterns          | 6      | 6      | 6      | 6      | 6      | 6      | —              |
-| get_deep_analysis        | 2      | 0      | 2      | 2      | 2      | 2      | —              |
-| get_blast_radius         | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_review_context       | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_coverage_gaps        | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_test_conventions     | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_domain_clusters      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_factory_registry     | 0      | 0      | 0      | 0      | 0      | 0      | —              |
-| get_well_tested_examples | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| Tool                     | 1.0.21 | 1.0.22 | 1.0.23 | 1.0.24 | 1.0.25 | 1.0.27 | 1.0.28 | Delta (latest) |
+| ------------------------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | -------------- |
+| index_project            | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_overview             | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_model                | 0      | 0      | 3      | 3      | 3      | 3      | 3      | —              |
+| get_controller           | 0      | 0      | 7      | 7      | 7      | 7      | 7      | —              |
+| get_routes               | 6      | 6      | 6      | **2**  | 2      | 2      | 2      | —              |
+| get_schema               | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_full_index           | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_subgraph             | 17     | 17     | 2      | 2      | 2      | 2      | 2      | —              |
+| search_patterns          | 6      | 6      | 6      | 6      | 6      | 6      | 6      | —              |
+| get_deep_analysis        | 2      | 0      | 2      | 2      | 2      | 2      | 2      | —              |
+| get_blast_radius         | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_review_context       | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_coverage_gaps        | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_test_conventions     | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_domain_clusters      | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_factory_registry     | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
+| get_well_tested_examples | 0      | 0      | 0      | 0      | 0      | 0      | 0      | —              |
 
 \*Note: v1.0.21/v1.0.22 hallucination counts were estimated.
 v1.0.23 counts are measured precisely. New counts in get_model (3) and get_controller (7)
