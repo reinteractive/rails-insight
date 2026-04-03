@@ -391,11 +391,11 @@ describe('computeStatistics: abstract models and enriched counts', () => {
     expect(stats.models).toBe(3)
   })
 
-  it('includes jobs count from extractions.jobs', () => {
+  it('includes jobs count from extractions.jobs.jobs', () => {
     const manifest = { entries: [], stats: {} }
     const extractions = {
       ...baseExtractions,
-      jobs: { ProcessPaymentJob: {}, SendEmailJob: {}, CleanupJob: {} },
+      jobs: { adapter: 'sidekiq', jobs: [{ name: 'ProcessPaymentJob' }, { name: 'SendEmailJob' }, { name: 'CleanupJob' }] },
     }
     const stats = computeStatistics(manifest, extractions, [])
     expect(stats.jobs).toBe(3)

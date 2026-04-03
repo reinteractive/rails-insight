@@ -704,7 +704,7 @@ export function computeStatistics(manifest, extractions, relationships) {
     helpers: Object.keys(extractions.helpers || {}).length,
     workers: Object.keys(extractions.workers || {}).length,
     uploaders: Object.keys(extractions.uploaders?.uploaders || {}).length,
-    jobs: Object.keys(extractions.jobs || {}).length,
+    jobs: (extractions.jobs?.jobs || []).length,
     mailers: (extractions.email?.mailers || []).length,
     channels: (extractions.realtime?.channels || []).length,
     route_resources: (extractions.routes?.resources || []).length,
