@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.26] - 2026-04-03
+
+### Fixed
+
+- **`get_coverage_gaps` test-file-presence fallback**: When SimpleCov JSON is unavailable, the tool now detects test/spec file presence from the manifest and only reports entities without any test files as coverage gaps. Previously, every model and controller was reported as 100% uncovered when no SimpleCov data existed
+- **Namespaced model → test file matching**: `resolveModelName` maps short test names (e.g. `activity_test.rb`) to fully-qualified model keys (e.g. `Activities::Activity`) via `::ClassName` suffix fallback
+- **Admin controller → test file matching**: Controller test files under `test/controllers/admin/` are correctly matched to `Admin::*Controller` entities
+
+### Added
+
+- **`has_test` field on gap entries**: Every gap entry now includes `has_test: boolean` indicating whether a matching test/spec file exists, even when SimpleCov data is available
+
 ## [1.0.25] - 2026-04-03
 
 ### Fixed

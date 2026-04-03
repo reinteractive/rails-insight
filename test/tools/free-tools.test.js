@@ -879,6 +879,104 @@ describe('Free Tools — MCP Handlers', () => {
       expect(data.gaps).toHaveLength(1)
       expect(data.gaps[0].entity).toBe('PostsController')
     })
+
+    it('includes has_test on gap entries when SimpleCov is available', async () => {
+      const freshMock = createFreshMock()
+      const result = await freshMock.callTool('get_coverage_gaps', {})
+      const data = parseResponse(result)
+
+      // User has spec/models/user_spec.rb → has_test: true
+      const userGap = data.gaps.find((g) => g.entity === 'User')
+      expect(userGap).toBeDefined()
+      expect(userGap.has_test).toBe(true)
+
+      // Post has no test file → has_test: false
+      const postGap = data.gaps.find((g) => g.entity === 'Post')
+      expect(postGap).toBeDefined()
+      expect(postGap.has_test).toBe(false)
+    })
+
+    it('only reports untested entities as gaps when SimpleCov is unavailable', async () => {
+      // Build an index WITHOUT coverage_snapshot data
+      const noCovIndex = await buildIndex(createMockProvider())
+      // Ensure no SimpleCov data
+      noCovIndex.extractions.coverage_snapshot = { available: false }
+      const freshMock = createFreshMock(noCovIndex)
+      const result = await freshMock.callTool('get_coverage_gaps', {})
+      const data = parseResponse(result)
+
+      expect(data.coverage_available).toBe(false)
+      // Post has no test file → should be a gap
+      const postGap = data.gaps.find((g) => g.entity === 'Post')
+      expect(postGap).toBeDefined()
+      expect(postGap.has_test).toBe(false)
+
+      // User has spec/models/user_spec.rb → should NOT be in gaps
+      const userGap = data.gaps.find((g) => g.entity === 'User')
+      expect(userGap).toBeUndefined()
+
+      // PostsController has spec/requests/posts_spec.rb → should NOT be in gaps
+      const postsCtrlGap = data.gaps.find(
+        (g) => g.entity === 'PostsController',
+      )
+      expect(postsCtrlGap).toBeUndefined()
+
+      // UsersController has no test file → should be a gap
+      const usersCtrlGap = data.gaps.find(
+        (g) => g.entity === 'UsersController',
+      )
+      expect(usersCtrlGap).toBeDefined()
+      expect(usersCtrlGap.has_test).toBe(false)
+    })
+
+    it('matches namespaced models to test files by short name', async () => {
+      // Build a mock with a namespaced model and a flat test file
+      const nsFiles = {
+        Gemfile: "gem 'rails'",
+        'Gemfile.lock': '  specs:\n    rails (7.1.0)',
+        'config/application.rb': '',
+        'config/routes.rb': 'Rails.application.routes.draw do\nend',
+        'app/models/activities/activity.rb':
+          'module Activities\n  class Activity < ApplicationRecord\n    has_many :events\n  end\nend',
+        'app/models/post.rb':
+          'class Post < ApplicationRecord\n  belongs_to :user\nend',
+        'test/models/activity_test.rb':
+          'class ActivityTest < ActiveSupport::TestCase\nend',
+        'db/schema.rb':
+          'ActiveRecord::Schema[7.1].define(version: 0) do\nend',
+      }
+      const nsProvider = {
+        readFile: (p) => nsFiles[p] || null,
+        fileExists: (p) => p in nsFiles,
+        glob: (pattern) =>
+          Object.keys(nsFiles).filter((p) => {
+            if (pattern.includes('**')) {
+              const suffix = pattern.split('**').pop().replace(/^\//, '')
+              if (suffix.includes('*')) {
+                const ext = suffix.replace('*', '')
+                return p.endsWith(ext)
+              }
+              return p.endsWith(suffix)
+            }
+            return false
+          }),
+        listDir: () => [],
+      }
+      const nsIndex = await buildIndex(nsProvider)
+      nsIndex.extractions.coverage_snapshot = { available: false }
+      const freshMock = createFreshMock(nsIndex)
+      const result = await freshMock.callTool('get_coverage_gaps', {})
+      const data = parseResponse(result)
+
+      // Activities::Activity matched via activity_test.rb → NOT in gaps
+      const actGap = data.gaps.find((g) => g.entity === 'Activities::Activity')
+      expect(actGap).toBeUndefined()
+
+      // Post has no test file → should be in gaps
+      const postGap = data.gaps.find((g) => g.entity === 'Post')
+      expect(postGap).toBeDefined()
+      expect(postGap.has_test).toBe(false)
+    })
   })
 
   describe('get_test_conventions', () => {
