@@ -156,6 +156,12 @@ describe('classify', () => {
   it('classify: single word plural', () => {
     expect(classify('categories')).toBe('Category')
   })
+
+  it('classify: preserves double-s endings (ss)', () => {
+    expect(classify('kids_class')).toBe('KidsClass')
+    expect(classify('business')).toBe('Business')
+    expect(classify('address')).toBe('Address')
+  })
 })
 
 describe('tableize', () => {
