@@ -223,6 +223,23 @@ function mapFilesToSeeds(changedFiles, fileEntityMap) {
         type: mapping.type,
         status: file.status,
       })
+    } else {
+      // Fuzzy resolution: try matching by basename
+      const basename = file.path.split('/').pop()
+      const candidates = Object.entries(fileEntityMap).filter(
+        ([p]) => p.split('/').pop() === basename,
+      )
+      if (candidates.length > 0) {
+        for (const [matchPath, matchMapping] of candidates) {
+          seeds.push({
+            path: matchPath,
+            entity: matchMapping.entity,
+            type: matchMapping.type,
+            status: file.status,
+            resolvedFrom: file.path,
+          })
+        }
+      }
     }
   }
   return seeds
@@ -232,7 +249,18 @@ function collectUnmappedWarnings(changedFiles, fileEntityMap) {
   const warnings = []
   for (const file of changedFiles) {
     if (!fileEntityMap[file.path]) {
-      warnings.push(`Unmapped file: ${file.path}`)
+      // Check if basename fuzzy resolution would find a match
+      const basename = file.path.split('/').pop()
+      const candidates = Object.keys(fileEntityMap).filter(
+        (p) => p.split('/').pop() === basename,
+      )
+      if (candidates.length > 0) {
+        warnings.push(
+          `Resolved ${file.path} → ${candidates.join(', ')} (basename match)`,
+        )
+      } else {
+        warnings.push(`Unmapped file: ${file.path}`)
+      }
     } else if (fileEntityMap[file.path]?.entity === '__gemfile__') {
       warnings.push('Gemfile change — dependency blast radius unknown')
     }

@@ -402,4 +402,40 @@ describe('Edge cases', () => {
     ])
     expect(result.seeds[0].entity).toBe('PaymentProcessor')
   })
+
+  describe('fuzzy file resolution', () => {
+    it('resolves by basename when exact path is not in fileEntityMap', () => {
+      const index = createMockIndex()
+      // user.rb exists at app/models/user.rb in the fileEntityMap
+      const result = computeBlastRadius(index, [
+        { path: 'app/models/concerns/user.rb', status: 'modified' },
+      ])
+      expect(result.seeds.length).toBeGreaterThan(0)
+      expect(result.seeds[0].entity).toBe('User')
+      expect(result.warnings.some((w) => w.includes('Resolved'))).toBe(true)
+    })
+
+    it('resolves model from subdirectory path', () => {
+      const index = createMockIndex()
+      index.fileEntityMap['app/models/activities/post.rb'] = {
+        entity: 'Activities::Post',
+        type: 'model',
+      }
+      // Request with root path that doesn't exist
+      const result = computeBlastRadius(index, [
+        { path: 'app/models/post.rb', status: 'modified' },
+      ])
+      // Should find Post at the root or Activities::Post from subdirectory
+      expect(result.seeds.length).toBeGreaterThan(0)
+    })
+
+    it('returns suggestion warning when no basename match exists', () => {
+      const index = createMockIndex()
+      const result = computeBlastRadius(index, [
+        { path: 'app/models/unicorn.rb', status: 'modified' },
+      ])
+      expect(result.seeds).toHaveLength(0)
+      expect(result.warnings.some((w) => w.includes('Unmapped file'))).toBe(true)
+    })
+  })
 })

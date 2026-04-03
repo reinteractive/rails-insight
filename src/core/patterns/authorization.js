@@ -11,7 +11,7 @@ export const AUTHORIZATION_PATTERNS = {
   policyScope: /policy_scope\s*\((.+)\)/g,
 
   // CanCanCan
-  abilityClass: /class\s+Ability/,
+  abilityClass: /class\s+\w*Ability/,
   includeCanCan: /include\s+CanCan::Ability/,
   canDef: /^\s*can\s+(.+)/gm,
   cannotDef: /^\s*cannot\s+(.+)/gm,

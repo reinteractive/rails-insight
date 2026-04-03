@@ -497,4 +497,125 @@ end`,
       expect(webhooks.actions).toEqual([])
     })
   })
+
+  describe('resource deduplication', () => {
+    it('merges duplicate resources with same name and namespace into one entry with combined actions', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :businesses, only: [:show]
+  resources :businesses, only: [:index]
+end`,
+        }),
+      )
+      const businesses = result.resources.filter((r) => r.name === 'businesses')
+      expect(businesses).toHaveLength(1)
+      expect(businesses[0].actions).toContain('show')
+      expect(businesses[0].actions).toContain('index')
+      expect(businesses[0].actions).toHaveLength(2)
+    })
+
+    it('does NOT merge resources with same name but different namespaces', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :users, only: [:index]
+  namespace :admin do
+    resources :users, only: [:show, :edit, :update]
+  end
+end`,
+        }),
+      )
+      const rootUsers = result.resources.find((r) => r.name === 'users' && !r.namespace)
+      const adminUsers = result.resources.find((r) => r.name === 'users' && r.namespace === 'admin')
+      expect(rootUsers).toBeDefined()
+      expect(adminUsers).toBeDefined()
+      expect(rootUsers.actions).toEqual(['index'])
+      expect(adminUsers.actions).toEqual(['show', 'edit', 'update'])
+    })
+
+    it('merges member_routes and collection_routes from duplicate resources', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :posts do
+    member do
+      get :preview
+    end
+  end
+  resources :posts do
+    collection do
+      get :search
+    end
+  end
+end`,
+        }),
+      )
+      const posts = result.resources.filter((r) => r.name === 'posts')
+      expect(posts).toHaveLength(1)
+      expect(posts[0].member_routes).toContainEqual(expect.objectContaining({ action: 'preview' }))
+      expect(posts[0].collection_routes).toContainEqual(expect.objectContaining({ action: 'search' }))
+    })
+
+    it('merges duplicate resources from drawn sub-route files within same scope', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  draw :directory
+end`,
+          'config/routes/directory.rb': `
+  scope "city" do
+    resources :events, only: [:index, :show]
+    resources :events, only: []
+    resources :businesses, only: [:show]
+    resources :businesses, only: [:index]
+  end
+`,
+        }),
+      )
+      const events = result.resources.filter((r) => r.name === 'events')
+      expect(events).toHaveLength(1)
+      expect(events[0].actions).toContain('index')
+      expect(events[0].actions).toContain('show')
+
+      const businesses = result.resources.filter((r) => r.name === 'businesses')
+      expect(businesses).toHaveLength(1)
+      expect(businesses[0].actions).toContain('show')
+      expect(businesses[0].actions).toContain('index')
+    })
+
+    it('deduplicates actions when same action appears in multiple declarations', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :articles, only: [:index, :show]
+  resources :articles, only: [:show, :create]
+end`,
+        }),
+      )
+      const articles = result.resources.filter((r) => r.name === 'articles')
+      expect(articles).toHaveLength(1)
+      expect(articles[0].actions).toEqual(expect.arrayContaining(['index', 'show', 'create']))
+      expect(articles[0].actions).toHaveLength(3)
+    })
+
+    it('deduplicates nested_relationships for merged resources', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  resources :projects do
+    resources :tasks, only: [:index]
+  end
+  resources :projects do
+    resources :tasks, only: [:show]
+  end
+end`,
+        }),
+      )
+      const taskRelationships = result.nested_relationships.filter(
+        (r) => r.parent === 'projects' && r.child === 'tasks',
+      )
+      expect(taskRelationships).toHaveLength(1)
+    })
+  })
 })

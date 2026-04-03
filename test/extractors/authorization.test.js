@@ -666,4 +666,103 @@ end`,
       expect(result.roles.source).toBe('enum')
     })
   })
+
+  describe('rolify + cancancan coexistence', () => {
+    it('preserves cancancan roles when rolify overwrites source', () => {
+      const entries = [
+        {
+          path: 'app/models/admin_user.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/admin_ability.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+      ]
+      const provider = mockProvider({
+        'app/models/ability.rb': null,
+        'app/models/admin_user.rb':
+          "class AdminUser < ApplicationRecord\n  rolify :role_cname => 'AdminRole'\n  devise :database_authenticatable\nend",
+        'app/models/admin_ability.rb': `class AdminAbility
+  include CanCan::Ability
+  def initialize(admin_user)
+    if admin_user.has_role?(:admin)
+      can :manage, :all
+    elsif admin_user.has_role?(:editor)
+      can :read, Article
+    elsif admin_user.has_role?(:sales)
+      can :read, Business
+    elsif admin_user.has_role?(:producer)
+      can :manage, Article
+    elsif admin_user.has_role?(:contributer)
+      can :read, Article
+    elsif admin_user.has_role?(:explorer)
+      # explorer stuff
+    end
+  end
+end`,
+      })
+      const result = extractAuthorization(provider, entries, {
+        gems: { cancancan: {}, rolify: {} },
+      })
+      expect(result.roles).toBeDefined()
+      expect(result.roles.model).toBe('AdminUser')
+      expect(result.roles.source).toBe('rolify')
+      expect(result.roles.roles).toBeDefined()
+      expect(result.roles.roles).toContain('admin')
+      expect(result.roles.roles).toContain('editor')
+      expect(result.roles.roles).toContain('sales')
+      expect(result.roles.roles).toContain('producer')
+      expect(result.roles.roles).toContain('contributer')
+      expect(result.roles.roles).toContain('explorer')
+      expect(result.roles.roles).toHaveLength(6)
+    })
+
+    it('extracts cancancan roles even when many model entries exist', () => {
+      const entries = [
+        { path: 'app/models/user.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/admin_user.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/article.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/event.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/business.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/venue.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/review.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/organiser.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/admin_ability.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        { path: 'app/models/admin_role.rb', category: 1, categoryName: 'models', type: 'ruby' },
+      ]
+      const provider = mockProvider({
+        'app/models/ability.rb': null,
+        'app/models/user.rb': 'class User < ApplicationRecord\nend',
+        'app/models/admin_user.rb': "class AdminUser < ApplicationRecord\n  rolify :role_cname => 'AdminRole'\nend",
+        'app/models/article.rb': 'class Article < ApplicationRecord\nend',
+        'app/models/event.rb': 'class Event < ApplicationRecord\nend',
+        'app/models/business.rb': 'class Business < ApplicationRecord\nend',
+        'app/models/venue.rb': 'class Venue < ApplicationRecord\nend',
+        'app/models/review.rb': 'class Review < ApplicationRecord\nend',
+        'app/models/organiser.rb': 'class Organiser < ApplicationRecord\nend',
+        'app/models/admin_ability.rb': `class AdminAbility
+  include CanCan::Ability
+  def initialize(user)
+    if user.has_role?(:admin)
+      can :manage, :all
+    elsif user.has_role?(:editor)
+      can :read, Article
+    end
+  end
+end`,
+        'app/models/admin_role.rb': 'class AdminRole < ApplicationRecord\nend',
+      })
+      const result = extractAuthorization(provider, entries, {
+        gems: { cancancan: {}, rolify: {} },
+      })
+      expect(result.roles).toBeDefined()
+      expect(result.roles.roles).toContain('admin')
+      expect(result.roles.roles).toContain('editor')
+    })
+  })
 })

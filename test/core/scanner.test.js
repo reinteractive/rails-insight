@@ -159,6 +159,12 @@ describe('Scanner', () => {
       expect(classifyFile('app/policies/post_policy.rb').category).toBe(9)
     })
 
+    it('classifies ability files as authorization', () => {
+      expect(classifyFile('app/models/ability.rb').category).toBe(9)
+      expect(classifyFile('app/models/admin_ability.rb').category).toBe(9)
+      expect(classifyFile('app/models/user_ability.rb').category).toBe(9)
+    })
+
     it('classifies design pattern directories', () => {
       expect(classifyFile('app/services/payment_service.rb').category).toBe(26)
       expect(classifyFile('app/forms/registration_form.rb').category).toBe(26)

@@ -26,7 +26,73 @@ export function extractRoutes(provider) {
   if (!content) return result
 
   parseRouteContent(content, result, provider, [])
+
+  result.resources = deduplicateResources(result.resources)
+  result.nested_relationships = deduplicateRelationships(result.nested_relationships)
+
   return result
+}
+
+/**
+ * Merge resources that share the same name and namespace.
+ * Unions actions, member_routes, and collection_routes.
+ * @param {object[]} resources
+ * @returns {object[]}
+ */
+function deduplicateResources(resources) {
+  const seen = new Map()
+  const order = []
+
+  for (const entry of resources) {
+    const key = `${entry.namespace || ''}/${entry.name}`
+    if (seen.has(key)) {
+      const existing = seen.get(key)
+      // Union actions
+      for (const action of entry.actions) {
+        if (!existing.actions.includes(action)) {
+          existing.actions.push(action)
+        }
+      }
+      // Merge member_routes by action name
+      for (const mr of entry.member_routes) {
+        if (!existing.member_routes.some((e) => e.action === mr.action)) {
+          existing.member_routes.push(mr)
+        }
+      }
+      // Merge collection_routes by action name
+      for (const cr of entry.collection_routes) {
+        if (!existing.collection_routes.some((e) => e.action === cr.action)) {
+          existing.collection_routes.push(cr)
+        }
+      }
+      // Merge nested arrays
+      for (const n of entry.nested || []) {
+        if (!existing.nested.includes(n)) {
+          existing.nested.push(n)
+        }
+      }
+    } else {
+      seen.set(key, entry)
+      order.push(key)
+    }
+  }
+
+  return order.map((k) => seen.get(k))
+}
+
+/**
+ * Remove duplicate nested_relationships by {parent, child} key.
+ * @param {object[]} relationships
+ * @returns {object[]}
+ */
+function deduplicateRelationships(relationships) {
+  const seen = new Set()
+  return relationships.filter((r) => {
+    const key = `${r.parent}/${r.child}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /**

@@ -132,7 +132,7 @@ const RULES = [
 
   // --- Authorization: policies and ability files ---
   { test: (p) => /^app\/policies\/.*\.rb$/.test(p), category: 9 },
-  { test: (p) => /^app\/models\/ability\.rb$/.test(p), category: 9 },
+  { test: (p) => /^app\/models\/\w*ability\.rb$/.test(p), category: 9 },
 
   // --- API serializers/blueprints: before general models ---
   { test: (p) => /^app\/serializers\/.*\.rb$/.test(p), category: 15 },

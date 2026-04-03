@@ -750,7 +750,11 @@ export function extractAuthorization(
     if (/^\s*rolify\b/m.test(content)) {
       const classMatch = content.match(/class\s+(\w+(?:::\w+)*)/)
       if (classMatch) {
+        const existingRoles = result.roles?.roles
         result.roles = { source: 'rolify', model: classMatch[1] }
+        if (existingRoles && existingRoles.length > 0) {
+          result.roles.roles = existingRoles
+        }
         break
       }
     }

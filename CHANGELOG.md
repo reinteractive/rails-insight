@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.24] - 2026-04-03
+
+### Fixed
+
+- **Route resource deduplication**: `get_routes` now merges duplicate `resources` entries that share the same name and namespace. When `draw_routes` includes sub-route files declaring the same resource multiple times (e.g. `resources :businesses, only: [:show]` and `resources :businesses, only: [:index]`), actions, member routes, and collection routes are unioned into a single entry instead of producing duplicates
+- **CanCanCan roles preserved when rolify coexists**: When both `cancancan` and `rolify` gems are present, role names extracted from `has_role?(:xxx)` calls in the ability class are no longer overwritten by the rolify model detection pass. `get_overview` and `get_deep_analysis` now correctly report roles like `["admin", "editor", "sales", ...]` instead of an empty array
+- **Scanner classifies `*_ability.rb` files as authorization**: Files like `app/models/admin_ability.rb` are now classified as category 9 (authorization) instead of category 1 (models), matching the existing treatment of `ability.rb`
+- **`abilityClass` pattern widened**: The CanCanCan ability class detection regex now matches `class AdminAbility`, `class UserAbility`, etc. in addition to `class Ability`
+- **Blast radius fuzzy file resolution**: `get_review_context` and `get_blast_radius` now resolve files by basename when the exact path is not in the file entity map. Files referenced with an incorrect directory (e.g. `app/models/user.rb` when the model lives at `app/models/accounts/user.rb`) are matched via basename and reported with a resolution warning instead of silently returning zero entities
+
+## [1.0.23] - 2026-04-03
+
+### Fixed
+
+- **search_patterns category routing**: Category keywords (`scope`, `validates`, `devise`, `enum`, `delegate`, `has_secure_password`) are now routed directly to their dedicated extraction sections via a `CATEGORY_ONLY` guard, preventing false positives from substring matching in callbacks, validations, and concerns
+
 ## [1.0.22] - 2026-04-03
 
 ### Fixed
