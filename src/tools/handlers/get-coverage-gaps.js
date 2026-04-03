@@ -45,9 +45,8 @@ function buildTestedEntitySets(manifest, models, controllers) {
       // e.g. test/controllers/admin/articles_controller_test.rb
       // → parts after 'controllers' before the file: ['admin']
       const ctrlDirIdx = pathParts.indexOf('controllers')
-      const namespaceParts = ctrlDirIdx >= 0
-        ? pathParts.slice(ctrlDirIdx + 1, -1)
-        : []
+      const namespaceParts =
+        ctrlDirIdx >= 0 ? pathParts.slice(ctrlDirIdx + 1, -1) : []
 
       const ctrlBaseName = basename
         .replace('_controller', '')

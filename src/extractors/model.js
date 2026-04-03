@@ -97,7 +97,9 @@ export function extractModel(provider, filePath, className) {
   let superclass = null
   let detectedNamespace = null
   const classMatch = content.match(MODEL_PATTERNS.classDeclaration)
-  const isModuleOnly = !classMatch && !isConcern && /module\s+\w+/.test(content)
+  // A file is module-only if it has no class definition at all (excluding `class << self`)
+  const hasAnyClassDef = /^\s*class\s+[A-Z]/m.test(content)
+  const isModuleOnly = !classMatch && !hasAnyClassDef && !isConcern && /module\s+\w+/.test(content)
   if (classMatch) {
     const { fqn, namespace } = resolveFullyQualifiedName(
       content,

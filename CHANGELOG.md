@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.30] - 2026-04-03
+
+### Fixed
+
+- **`index_project` models module-only regression**: Fixed over-aggressive module-only detection that excluded namespace-wrapped classes (`module X; class Y`) and POROs without inheritance. Now checks for any `class` keyword in the file (excluding `class << self`) before classifying as module-only. Recovers +16 models (jasper-portals), +10 (quarter-turn), +1 (sharp-corporate, ellaslist, lf-api)
+- **`index_project` relationships through-association double-count**: `has_many :x, through: :y` no longer creates a synthetic `has_many` edge to the join model that inflates relationship statistics. The join edge now uses type `has_many_through_join` (still used for graph traversal but excluded from statistics). Eliminates ~40 false positives across 3 apps
+- **`index_project` workers under-count for inherited workers**: Worker extraction now accepts classes that inherit from a base worker class (e.g., `class MyWorker < SidekiqWorker`) without requiring an explicit `include Sidekiq::Worker` statement. Fixes jasper-portals workers 1→9
+- **`index_project` route_resources under-count**: `namespace` blocks now create their own resource entries (with `type: 'namespace'`), matching how route declarations are conventionally counted. Fixes under-counts in 6 of 8 evaluated apps
+- **`index_project` jobs under-count for Delayed::RecurringJob**: Job detection now recognizes `include Delayed::RecurringJob`, `include Delayed::Job`, and `include Resque::Job` as job indicators, not just `ApplicationJob`/`ActiveJob::Base` inheritance. Fixes lf-api jobs 3→14
+- **`index_project` jobs over-count from lib/ directory**: Jobs from `lib/` directories are no longer counted in the `jobs` statistic — only jobs from `app/` are included. Fixes sharp-corporate jobs 11→8
+
 ## [1.0.29] - 2026-04-03
 
 ### Fixed

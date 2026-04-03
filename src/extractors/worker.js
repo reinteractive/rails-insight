@@ -16,12 +16,15 @@ export function extractWorker(provider, filePath) {
   const content = provider.readFile(filePath)
   if (!content) return null
 
-  // Must include Sidekiq::Job or Sidekiq::Worker
+  // Accept workers that include Sidekiq::Job/Worker directly,
+  // OR inherit from another class (e.g., SidekiqWorker base class)
+  // when they're already in app/workers/ (pre-classified by scanner)
   const includeMatch = content.match(WORKER_PATTERNS.includeSidekiq)
-  if (!includeMatch) return null
-
   const classMatch = content.match(WORKER_PATTERNS.classDeclaration)
   if (!classMatch) return null
+
+  // If no direct include, require inheritance (< BaseWorker pattern)
+  if (!includeMatch && !classMatch[2]) return null
 
   const result = {
     class: classMatch[1],

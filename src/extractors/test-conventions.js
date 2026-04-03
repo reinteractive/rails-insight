@@ -230,7 +230,8 @@ function detectAuthHelper(provider, entries, gems) {
   // Check support directories for custom auth helpers (spec/support/ and test/support/)
   const supportEntries = entries.filter(
     (e) =>
-      (e.path.startsWith('spec/support/') || e.path.startsWith('test/support/')) &&
+      (e.path.startsWith('spec/support/') ||
+        e.path.startsWith('test/support/')) &&
       e.path.endsWith('.rb') &&
       /auth/i.test(e.path),
   )
@@ -423,7 +424,7 @@ function detectTestHelperFile(provider) {
  */
 function detectFactoryToolFromFiles(provider, entries) {
   const factoryEntries = entries.filter(
-    e => e.path.includes('factories/') && e.path.endsWith('.rb')
+    (e) => e.path.includes('factories/') && e.path.endsWith('.rb'),
   )
   for (const entry of factoryEntries) {
     const content = provider.readFile(entry.path)

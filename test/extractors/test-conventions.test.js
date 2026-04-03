@@ -486,9 +486,7 @@ end`,
       const result = extractTestConventions(provider, entries)
       expect(result.auth_helper.strategy).toBe('custom')
       expect(result.auth_helper.helper_method).toBe('sign_in')
-      expect(result.auth_helper.helper_file).toBe(
-        'test/support/auth_helper.rb',
-      )
+      expect(result.auth_helper.helper_file).toBe('test/support/auth_helper.rb')
     })
   })
 

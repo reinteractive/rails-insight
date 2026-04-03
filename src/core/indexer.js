@@ -715,7 +715,7 @@ export function computeStatistics(manifest, extractions, relationships) {
     workers: Object.keys(extractions.workers || {}).length,
     uploaders: Object.keys(extractions.uploaders?.uploaders || {}).length,
     jobs: (extractions.jobs?.jobs || []).filter(
-      (j) => j.class !== 'ApplicationJob' && j.type !== 'sidekiq_worker',
+      (j) => j.class !== 'ApplicationJob' && j.type !== 'sidekiq_worker' && (!j.file || j.file.startsWith('app/')),
     ).length,
     mailers: (extractions.email?.mailers || []).filter(
       (m) => m.class !== 'ApplicationMailer',

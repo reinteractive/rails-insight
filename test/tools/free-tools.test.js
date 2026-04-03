@@ -916,15 +916,11 @@ describe('Free Tools — MCP Handlers', () => {
       expect(userGap).toBeUndefined()
 
       // PostsController has spec/requests/posts_spec.rb → should NOT be in gaps
-      const postsCtrlGap = data.gaps.find(
-        (g) => g.entity === 'PostsController',
-      )
+      const postsCtrlGap = data.gaps.find((g) => g.entity === 'PostsController')
       expect(postsCtrlGap).toBeUndefined()
 
       // UsersController has no test file → should be a gap
-      const usersCtrlGap = data.gaps.find(
-        (g) => g.entity === 'UsersController',
-      )
+      const usersCtrlGap = data.gaps.find((g) => g.entity === 'UsersController')
       expect(usersCtrlGap).toBeDefined()
       expect(usersCtrlGap.has_test).toBe(false)
     })
@@ -942,8 +938,7 @@ describe('Free Tools — MCP Handlers', () => {
           'class Post < ApplicationRecord\n  belongs_to :user\nend',
         'test/models/activity_test.rb':
           'class ActivityTest < ActiveSupport::TestCase\nend',
-        'db/schema.rb':
-          'ActiveRecord::Schema[7.1].define(version: 0) do\nend',
+        'db/schema.rb': 'ActiveRecord::Schema[7.1].define(version: 0) do\nend',
       }
       const nsProvider = {
         readFile: (p) => nsFiles[p] || null,

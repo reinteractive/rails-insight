@@ -19,11 +19,18 @@ export function extractJob(provider, filePath) {
   if (!classMatch) return null
 
   const superclass = classMatch[2]
-  if (
-    !superclass.includes('Job') &&
-    !superclass.includes('ApplicationJob') &&
-    superclass !== 'ActiveJob::Base'
-  ) {
+
+  // Detect job via inheritance (ApplicationJob, ActiveJob::Base, *Job)
+  const isJobByInheritance = superclass && (
+    superclass.includes('Job') ||
+    superclass.includes('ApplicationJob') ||
+    superclass === 'ActiveJob::Base'
+  )
+
+  // Detect job via mixin (Delayed::RecurringJob, Delayed::Job, Resque::Job)
+  const isJobByMixin = /include\s+(?:Delayed::RecurringJob|Delayed::Job|Resque::Job)/.test(content)
+
+  if (!isJobByInheritance && !isJobByMixin) {
     return null
   }
 

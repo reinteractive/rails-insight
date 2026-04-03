@@ -15,6 +15,7 @@ export const EDGE_WEIGHTS = {
   belongs_to: 2.0,
   has_one: 2.0,
   has_many_through: 1.8,
+  has_many_through_join: 1.5,
   polymorphic: 1.5,
   schema_fk: 2.0,
   routes_to: 1.5,
@@ -328,8 +329,8 @@ export function buildGraph(extractions, manifest, skills = []) {
           if (assoc.through) {
             const joinModel = classify(assoc.through)
             graph.addNode(joinModel, 'model', joinModel)
-            graph.addEdge(name, joinModel, 'has_many')
-            relationships.push({ from: name, to: joinModel, type: 'has_many' })
+            graph.addEdge(name, joinModel, 'has_many_through_join')
+            relationships.push({ from: name, to: joinModel, type: 'has_many_through_join' })
           }
           // Note: polymorphic has_many with `as:` option creates a valid edge
           // to the target model (e.g. has_many :comments, as: :commentable)

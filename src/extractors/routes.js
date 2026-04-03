@@ -172,7 +172,17 @@ function parseRouteContent(content, result, provider, namespaceStack) {
     // Namespace
     const nsMatch = trimmed.match(ROUTE_PATTERNS.namespace)
     if (nsMatch) {
-      namespaceStack.push(nsMatch[1])
+      const nsName = nsMatch[1]
+      const parentNs = namespaceStack.length > 0 ? namespaceStack.join('/') : null
+      result.resources.push({
+        name: nsName,
+        namespace: parentNs,
+        type: 'namespace',
+        actions: [],
+        member_routes: [],
+        collection_routes: [],
+      })
+      namespaceStack.push(nsName)
       blockStack.push('namespace')
       continue
     }
