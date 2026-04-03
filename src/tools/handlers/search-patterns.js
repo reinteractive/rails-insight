@@ -28,10 +28,17 @@ export function register(server, state) {
       // These skip generic substring matching in unrelated sections
       // (callbacks, concerns, validation rules) to avoid false positives.
       const CATEGORY_ONLY = new Set([
-        'scope', 'validates', 'validation', 'validate',
-        'devise', 'enum', 'enumerize',
-        'delegate', 'delegation',
-        'has_secure_password', 'secure_password',
+        'scope',
+        'validates',
+        'validation',
+        'validate',
+        'devise',
+        'enum',
+        'enumerize',
+        'delegate',
+        'delegation',
+        'has_secure_password',
+        'secure_password',
       ])
       const isCategoryOnly = CATEGORY_ONLY.has(lowerPattern)
 
@@ -77,16 +84,24 @@ export function register(server, state) {
           for (const val of model.validations) {
             const attrStr = (val.attributes || []).join(' ').toLowerCase()
             const rulesStr = (val.rules || '').toLowerCase()
-            if (lowerPattern === 'validates' || lowerPattern === 'validation' ||
-                (!isCategoryOnly && (attrStr.includes(lowerPattern) || rulesStr.includes(lowerPattern)))) {
+            if (
+              lowerPattern === 'validates' ||
+              lowerPattern === 'validation' ||
+              (!isCategoryOnly &&
+                (attrStr.includes(lowerPattern) ||
+                  rulesStr.includes(lowerPattern)))
+            ) {
               matches.push({ type: 'validation', detail: val })
             }
           }
         }
         if (model.custom_validators) {
           for (const cv of model.custom_validators) {
-            if (cv.toLowerCase().includes(lowerPattern) ||
-                lowerPattern === 'validates' || lowerPattern === 'validate') {
+            if (
+              cv.toLowerCase().includes(lowerPattern) ||
+              lowerPattern === 'validates' ||
+              lowerPattern === 'validate'
+            ) {
               matches.push({ type: 'custom_validator', detail: cv })
             }
           }
@@ -95,11 +110,16 @@ export function register(server, state) {
         // Scopes
         if (model.scopes) {
           for (const scopeName of model.scopes) {
-            if (lowerPattern === 'scope' ||
-                scopeName.toLowerCase().includes(lowerPattern)) {
+            if (
+              lowerPattern === 'scope' ||
+              scopeName.toLowerCase().includes(lowerPattern)
+            ) {
               matches.push({
                 type: 'scope',
-                detail: { name: scopeName, query: model.scope_queries?.[scopeName] || null }
+                detail: {
+                  name: scopeName,
+                  query: model.scope_queries?.[scopeName] || null,
+                },
               })
             }
           }
@@ -108,10 +128,16 @@ export function register(server, state) {
         // Enums
         if (model.enums && Object.keys(model.enums).length > 0) {
           for (const [enumName, enumData] of Object.entries(model.enums)) {
-            if (lowerPattern === 'enum' || lowerPattern === 'enumerize' ||
-                lowerPattern.includes('enum') ||
-                enumName.toLowerCase().includes(lowerPattern)) {
-              matches.push({ type: 'enum', detail: { name: enumName, ...enumData } })
+            if (
+              lowerPattern === 'enum' ||
+              lowerPattern === 'enumerize' ||
+              lowerPattern.includes('enum') ||
+              enumName.toLowerCase().includes(lowerPattern)
+            ) {
+              matches.push({
+                type: 'enum',
+                detail: { name: enumName, ...enumData },
+              })
             }
           }
         }
@@ -119,9 +145,11 @@ export function register(server, state) {
         // Devise modules
         if (model.devise_modules && model.devise_modules.length > 0) {
           for (const mod of model.devise_modules) {
-            if (lowerPattern === 'devise' ||
-                mod.toLowerCase().includes(lowerPattern) ||
-                `devise_${mod}`.includes(lowerPattern)) {
+            if (
+              lowerPattern === 'devise' ||
+              mod.toLowerCase().includes(lowerPattern) ||
+              `devise_${mod}`.includes(lowerPattern)
+            ) {
               matches.push({ type: 'devise_module', detail: mod })
             }
           }
@@ -130,16 +158,22 @@ export function register(server, state) {
         // Delegations
         if (model.delegations) {
           for (const del of model.delegations) {
-            if (lowerPattern === 'delegate' || lowerPattern === 'delegation' ||
-                (del.to && del.to.toLowerCase().includes(lowerPattern))) {
+            if (
+              lowerPattern === 'delegate' ||
+              lowerPattern === 'delegation' ||
+              (del.to && del.to.toLowerCase().includes(lowerPattern))
+            ) {
               matches.push({ type: 'delegation', detail: del })
             }
           }
         }
 
         // has_secure_password
-        if (model.has_secure_password &&
-            (lowerPattern === 'has_secure_password' || lowerPattern === 'secure_password')) {
+        if (
+          model.has_secure_password &&
+          (lowerPattern === 'has_secure_password' ||
+            lowerPattern === 'secure_password')
+        ) {
           matches.push({ type: 'has_secure_password', detail: true })
         }
 

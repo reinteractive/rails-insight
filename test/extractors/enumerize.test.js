@@ -189,7 +189,9 @@ end
     expect(result.enums.recurrance_type.values).not.toContain('none')
     expect(result.enums.recurrance_type.values).not.toContain('custom')
     expect(result.enums.recurrance_type.values).not.toContain('#:none')
-    expect(result.enums.recurrance_type.values).not.toContain('monthly_by_date#')
+    expect(result.enums.recurrance_type.values).not.toContain(
+      'monthly_by_date#',
+    )
   })
 
   it('strips inline comments from single-line enumerize arrays', () => {

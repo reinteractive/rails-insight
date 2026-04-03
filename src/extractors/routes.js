@@ -28,7 +28,9 @@ export function extractRoutes(provider) {
   parseRouteContent(content, result, provider, [])
 
   result.resources = deduplicateResources(result.resources)
-  result.nested_relationships = deduplicateRelationships(result.nested_relationships)
+  result.nested_relationships = deduplicateRelationships(
+    result.nested_relationships,
+  )
 
   return result
 }
@@ -335,11 +337,19 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       const symbolVerbMatch = trimmed.match(ROUTE_PATTERNS.httpVerbSymbol)
       if (symbolVerbMatch) {
         const action = symbolVerbMatch[1]
-        const symbolMethod = trimmed.match(/^\s*(get|post|put|patch|delete)\s/)?.[1]?.toUpperCase() || 'GET'
+        const symbolMethod =
+          trimmed
+            .match(/^\s*(get|post|put|patch|delete)\s/)?.[1]
+            ?.toUpperCase() || 'GET'
         const currentResource = resourceStack[resourceStack.length - 1]
         if (currentResource) {
-          if (inMember) currentResource.member_routes.push({ action, method: symbolMethod })
-          else currentResource.collection_routes.push({ action, method: symbolMethod })
+          if (inMember)
+            currentResource.member_routes.push({ action, method: symbolMethod })
+          else
+            currentResource.collection_routes.push({
+              action,
+              method: symbolMethod,
+            })
         }
         continue
       }

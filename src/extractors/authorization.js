@@ -653,9 +653,10 @@ export function extractAuthorization(
 
       for (let i = 0; i < rolePositions.length; i++) {
         const start = rolePositions[i].index
-        const end = i + 1 < rolePositions.length
-          ? rolePositions[i + 1].index
-          : abilityContent.length
+        const end =
+          i + 1 < rolePositions.length
+            ? rolePositions[i + 1].index
+            : abilityContent.length
         const block = abilityContent.slice(start, end)
 
         const blockAbilities = []

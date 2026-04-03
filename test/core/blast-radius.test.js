@@ -435,7 +435,9 @@ describe('Edge cases', () => {
         { path: 'app/models/unicorn.rb', status: 'modified' },
       ])
       expect(result.seeds).toHaveLength(0)
-      expect(result.warnings.some((w) => w.includes('Unmapped file'))).toBe(true)
+      expect(result.warnings.some((w) => w.includes('Unmapped file'))).toBe(
+        true,
+      )
     })
   })
 })

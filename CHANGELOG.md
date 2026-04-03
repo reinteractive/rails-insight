@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.25] - 2026-04-03
+
+### Fixed
+
+- **`index_project` model count includes abstract classes**: `computeStatistics` no longer excludes abstract base classes (e.g. `ApplicationRecord`, `Wordpress::WpBase`) from the `models` count. These are real model classes that define shared associations, validations, and callbacks. Fixes `models: 69` → `models: 71` for ellaslist
+
+### Added
+
+- **Enriched `index_project` statistics**: `computeStatistics` now reports `jobs`, `mailers`, `channels`, and `route_resources` counts from already-extracted data
+
+### Changed
+
+- **Removed redundant statistics fields**: `models_in_manifest` (duplicate of `models_file_count`) and `controllers_all` (duplicate of `controllers`) are no longer returned in `index_project` statistics
+
 ## [1.0.24] - 2026-04-03
 
 ### Fixed

@@ -322,11 +322,11 @@ end`,
     expect(controllerNames).toContain('Members::RegistrationsController')
   })
 
-  it('ISSUE-J: statistics.models_in_manifest is present', async () => {
+  it('ISSUE-J: statistics.models_file_count is present', async () => {
     const provider = createMockProvider()
     const index = await buildIndex(provider)
-    expect(index.statistics).toHaveProperty('models_in_manifest')
-    expect(typeof index.statistics.models_in_manifest).toBe('number')
+    expect(index.statistics).toHaveProperty('models_file_count')
+    expect(typeof index.statistics.models_file_count).toBe('number')
   })
 })
 
@@ -345,6 +345,112 @@ describe('ISSUE-K: Model count file_count in statistics', () => {
     const stats = computeStatistics(manifest, extractions, [])
     expect(stats.models).toBe(3)
     expect(stats.models_file_count).toBe(10)
+  })
+})
+
+describe('computeStatistics: abstract models and enriched counts', () => {
+  const baseExtractions = {
+    models: {},
+    controllers: {},
+    components: {},
+    gemfile: { gems: [] },
+    helpers: {},
+    workers: {},
+    uploaders: { uploaders: {} },
+  }
+
+  it('counts abstract models in statistics.models', () => {
+    const manifest = { entries: [], stats: { models: 5 } }
+    const extractions = {
+      ...baseExtractions,
+      models: {
+        ApplicationRecord: { type: 'model', abstract: true },
+        User: { type: 'model' },
+        Post: { type: 'model' },
+        'Wordpress::WpBase': { type: 'model', abstract: true },
+        'Wordpress::Post': { type: 'model' },
+      },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    // Abstract classes ARE model classes — they define shared behavior
+    expect(stats.models).toBe(5)
+  })
+
+  it('still excludes concerns from model count', () => {
+    const manifest = { entries: [], stats: { models: 4 } }
+    const extractions = {
+      ...baseExtractions,
+      models: {
+        ApplicationRecord: { type: 'model', abstract: true },
+        User: { type: 'model' },
+        Post: { type: 'model' },
+        Sluggable: { type: 'concern' },
+      },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    expect(stats.models).toBe(3)
+  })
+
+  it('includes jobs count from extractions.jobs', () => {
+    const manifest = { entries: [], stats: {} }
+    const extractions = {
+      ...baseExtractions,
+      jobs: { ProcessPaymentJob: {}, SendEmailJob: {}, CleanupJob: {} },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    expect(stats.jobs).toBe(3)
+  })
+
+  it('includes mailers count from extractions.email.mailers', () => {
+    const manifest = { entries: [], stats: {} }
+    const extractions = {
+      ...baseExtractions,
+      email: { mailers: [{ name: 'UserMailer' }, { name: 'AdminMailer' }] },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    expect(stats.mailers).toBe(2)
+  })
+
+  it('includes channels count from extractions.realtime.channels', () => {
+    const manifest = { entries: [], stats: {} }
+    const extractions = {
+      ...baseExtractions,
+      realtime: { channels: [{ name: 'ChatChannel' }] },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    expect(stats.channels).toBe(1)
+  })
+
+  it('includes route_resources count from extractions.routes.resources', () => {
+    const manifest = { entries: [], stats: {} }
+    const extractions = {
+      ...baseExtractions,
+      routes: {
+        resources: [
+          { name: 'users' },
+          { name: 'posts' },
+          { name: 'comments' },
+        ],
+      },
+    }
+    const stats = computeStatistics(manifest, extractions, [])
+    expect(stats.route_resources).toBe(3)
+  })
+
+  it('returns 0 for jobs/mailers/channels/routes when not present', () => {
+    const manifest = { entries: [], stats: {} }
+    const stats = computeStatistics(manifest, baseExtractions, [])
+    expect(stats.jobs).toBe(0)
+    expect(stats.mailers).toBe(0)
+    expect(stats.channels).toBe(0)
+    expect(stats.route_resources).toBe(0)
+  })
+
+  it('does not include redundant models_in_manifest or controllers_all', () => {
+    const manifest = { entries: [], stats: { models: 5 } }
+    const stats = computeStatistics(manifest, baseExtractions, [])
+    expect(stats).not.toHaveProperty('models_in_manifest')
+    expect(stats).not.toHaveProperty('controllers_all')
   })
 })
 

@@ -46,9 +46,7 @@ function buildTestIndex() {
             { attributes: ['name'], rules: 'presence: true' },
             { attributes: ['code'], rules: 'uniqueness: { scope: :region }' },
           ],
-          associations: [
-            { type: 'has_many', name: 'parts' },
-          ],
+          associations: [{ type: 'has_many', name: 'parts' }],
           enums: {},
         },
         Account: {
@@ -56,14 +54,24 @@ function buildTestIndex() {
           scope_queries: { locked: '-> { where(locked: true) }' },
           callbacks: [],
           validations: [
-            { attributes: ['email'], rules: 'presence: true, uniqueness: true' },
-            { attributes: ['status'], rules: 'inclusion: { in: %w[active inactive] }' },
+            {
+              attributes: ['email'],
+              rules: 'presence: true, uniqueness: true',
+            },
+            {
+              attributes: ['status'],
+              rules: 'inclusion: { in: %w[active inactive] }',
+            },
           ],
           associations: [
             { type: 'has_many', name: 'orders' },
             { type: 'belongs_to', name: 'plan' },
           ],
-          devise_modules: ['database_authenticatable', 'registerable', 'recoverable'],
+          devise_modules: [
+            'database_authenticatable',
+            'registerable',
+            'recoverable',
+          ],
           delegations: [{ to: 'plan', methods: ['tier'] }],
           enums: { status: { type: 'enum', values: ['active', 'inactive'] } },
           has_secure_password: true,
@@ -87,7 +95,11 @@ describe('search_patterns', () => {
 
   function setup(indexOverride) {
     mock = createMockServer()
-    state = { index: arguments.length ? indexOverride : buildTestIndex(), provider: null, verbose: false }
+    state = {
+      index: arguments.length ? indexOverride : buildTestIndex(),
+      provider: null,
+      verbose: false,
+    }
     register(mock.server, state)
   }
 
@@ -110,7 +122,9 @@ describe('search_patterns', () => {
       const data = await mock.callTool('search_patterns', { pattern: 'scope' })
 
       const allMatches = data.results.flatMap((r) => r.matches)
-      const validationMatches = allMatches.filter((m) => m.type === 'validation')
+      const validationMatches = allMatches.filter(
+        (m) => m.type === 'validation',
+      )
 
       expect(validationMatches).toHaveLength(0)
     })
@@ -126,10 +140,14 @@ describe('search_patterns', () => {
   describe('validates pattern', () => {
     it('returns all validations and custom validators', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'validates' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'validates',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
-      const validationMatches = allMatches.filter((m) => m.type === 'validation')
+      const validationMatches = allMatches.filter(
+        (m) => m.type === 'validation',
+      )
 
       // Widget: 2 validations, Account: 2 validations = 4 total
       expect(validationMatches).toHaveLength(4)
@@ -137,7 +155,9 @@ describe('search_patterns', () => {
 
     it('does not return scopes or callbacks', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'validates' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'validates',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
       const scopeMatches = allMatches.filter((m) => m.type === 'scope')
@@ -186,10 +206,14 @@ describe('search_patterns', () => {
   describe('delegate pattern', () => {
     it('returns delegation matches', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'delegate' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'delegate',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
-      const delegationMatches = allMatches.filter((m) => m.type === 'delegation')
+      const delegationMatches = allMatches.filter(
+        (m) => m.type === 'delegation',
+      )
 
       expect(delegationMatches).toHaveLength(1)
     })
@@ -198,7 +222,9 @@ describe('search_patterns', () => {
   describe('has_secure_password pattern', () => {
     it('returns has_secure_password matches', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'has_secure_password' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'has_secure_password',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
       expect(allMatches).toHaveLength(1)
@@ -209,7 +235,9 @@ describe('search_patterns', () => {
   describe('generic patterns still do substring matching', () => {
     it('finds callbacks by type substring', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'before_save' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'before_save',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
       const callbackMatches = allMatches.filter((m) => m.type === 'callback')
@@ -220,7 +248,9 @@ describe('search_patterns', () => {
 
     it('finds controller filters by name substring', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'before_action' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'before_action',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
       const filterMatches = allMatches.filter((m) => m.type === 'filter')
@@ -230,7 +260,9 @@ describe('search_patterns', () => {
 
     it('finds associations by type', async () => {
       setup()
-      const data = await mock.callTool('search_patterns', { pattern: 'has_many' })
+      const data = await mock.callTool('search_patterns', {
+        pattern: 'has_many',
+      })
 
       const allMatches = data.results.flatMap((r) => r.matches)
       const assocMatches = allMatches.filter((m) => m.type === 'association')

@@ -690,12 +690,10 @@ export function computeStatistics(manifest, extractions, relationships) {
   return {
     total_files: entries.length,
     models: Object.values(extractions.models || {}).filter(
-      (m) => m.type !== 'concern' && !m.abstract,
+      (m) => m.type !== 'concern',
     ).length,
     models_file_count: (manifest.stats || {}).models || 0,
-    models_in_manifest: (manifest.stats || {}).models || 0,
     controllers: Object.keys(extractions.controllers || {}).length,
-    controllers_all: Object.keys(extractions.controllers || {}).length,
     components: entries.filter(
       (e) => e.categoryName === 'components' && e.type === 'ruby',
     ).length,
@@ -706,5 +704,9 @@ export function computeStatistics(manifest, extractions, relationships) {
     helpers: Object.keys(extractions.helpers || {}).length,
     workers: Object.keys(extractions.workers || {}).length,
     uploaders: Object.keys(extractions.uploaders?.uploaders || {}).length,
+    jobs: Object.keys(extractions.jobs || {}).length,
+    mailers: (extractions.email?.mailers || []).length,
+    channels: (extractions.realtime?.channels || []).length,
+    route_resources: (extractions.routes?.resources || []).length,
   }
 }

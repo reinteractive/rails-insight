@@ -724,21 +724,72 @@ end`,
 
     it('extracts cancancan roles even when many model entries exist', () => {
       const entries = [
-        { path: 'app/models/user.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/admin_user.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/article.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/event.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/business.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/venue.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/review.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/organiser.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/admin_ability.rb', category: 1, categoryName: 'models', type: 'ruby' },
-        { path: 'app/models/admin_role.rb', category: 1, categoryName: 'models', type: 'ruby' },
+        {
+          path: 'app/models/user.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/admin_user.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/article.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/event.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/business.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/venue.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/review.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/organiser.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/admin_ability.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
+        {
+          path: 'app/models/admin_role.rb',
+          category: 1,
+          categoryName: 'models',
+          type: 'ruby',
+        },
       ]
       const provider = mockProvider({
         'app/models/ability.rb': null,
         'app/models/user.rb': 'class User < ApplicationRecord\nend',
-        'app/models/admin_user.rb': "class AdminUser < ApplicationRecord\n  rolify :role_cname => 'AdminRole'\nend",
+        'app/models/admin_user.rb':
+          "class AdminUser < ApplicationRecord\n  rolify :role_cname => 'AdminRole'\nend",
         'app/models/article.rb': 'class Article < ApplicationRecord\nend',
         'app/models/event.rb': 'class Event < ApplicationRecord\nend',
         'app/models/business.rb': 'class Business < ApplicationRecord\nend',
