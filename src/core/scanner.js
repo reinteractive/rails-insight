@@ -226,10 +226,27 @@ const RULES = [
   { test: (p) => /^lib\/engines\/.*/.test(p), category: 34 },
   { test: (p) => /^app\/notifications\/.*\.rb$/.test(p), category: 40 },
 
+  // --- Assets: stylesheets and javascripts in app/assets ---
+  { test: (p) => /^app\/assets\//.test(p), category: 7 },
+  // --- Frontend JS: app/javascript not matched by stimulus ---
+  {
+    test: (p) => /^app\/javascript\/.*\.(js|jsx|ts|tsx)$/.test(p),
+    category: 7,
+  },
+
   // --- Catch-all: lib and migrations ---
   { test: (p) => /^lib\/.*\.rb$/.test(p), category: 17 },
+  { test: (p) => /^lib\/.*\.rake$/.test(p), category: 17 },
   { test: (p) => /^db\/migrate\/.*\.rb$/.test(p), category: 4 },
   { test: (p) => /^db\/seeds\.rb$/.test(p), category: 17 },
+
+  // --- Catch-all: config files not matched by specific rules ---
+  { test: (p) => /^config\/.*\.(yml|yaml|json)$/.test(p), category: 17 },
+
+  // --- Specific root files ---
+  { test: (p) => p === 'Rakefile', category: 17 },
+  { test: (p) => p === 'Capfile', category: 21 },
+  { test: (p) => p === 'config.ru', category: 17 },
 ]
 
 /**
@@ -256,6 +273,11 @@ function detectType(path) {
   if (path.endsWith('.sql')) return 'sql'
   if (path.endsWith('.css')) return 'css'
   if (path.endsWith('.scss')) return 'scss'
+  if (path.endsWith('.sass')) return 'sass'
+  if (path.endsWith('.coffee')) return 'coffee'
+  if (path.endsWith('.jsx')) return 'jsx'
+  if (path.endsWith('.tsx')) return 'tsx'
+  if (path.endsWith('.rake')) return 'rake'
   return 'other'
 }
 
@@ -340,7 +362,14 @@ export function scanStructure(provider) {
   const allFiles = [
     ...provider.glob('app/**/*.rb'),
     ...provider.glob('app/**/*.js'),
+    ...provider.glob('app/**/*.jsx'),
     ...provider.glob('app/**/*.ts'),
+    ...provider.glob('app/**/*.tsx'),
+    ...provider.glob('app/**/*.css'),
+    ...provider.glob('app/**/*.scss'),
+    ...provider.glob('app/**/*.sass'),
+    ...provider.glob('app/**/*.coffee'),
+    ...provider.glob('app/**/*.json'),
     ...provider.glob('app/**/*.html.erb'),
     ...provider.glob('app/**/*.text.erb'),
     ...provider.glob('app/**/*.js.erb'),
@@ -353,9 +382,12 @@ export function scanStructure(provider) {
     ...provider.glob('app/**/*.jbuilder'),
     ...provider.glob('config/**/*.rb'),
     ...provider.glob('config/**/*.yml'),
+    ...provider.glob('config/**/*.yaml'),
+    ...provider.glob('config/**/*.json'),
     ...provider.glob('db/**/*.rb'),
     ...provider.glob('db/**/*.sql'),
     ...provider.glob('lib/**/*.rb'),
+    ...provider.glob('lib/**/*.rake'),
     ...provider.glob('spec/**/*.rb'),
     ...provider.glob('test/**/*.rb'),
     ...provider.glob('engines/**/*'),
@@ -365,6 +397,9 @@ export function scanStructure(provider) {
   const specificFiles = [
     'Gemfile',
     'Gemfile.lock',
+    'Rakefile',
+    'Capfile',
+    'config.ru',
     'Dockerfile',
     'docker-compose.yml',
     '.dockerignore',

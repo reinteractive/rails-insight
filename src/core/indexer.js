@@ -685,27 +685,41 @@ function mapMigrationFiles(map, manifest) {
 /**
  * Compute summary statistics.
  */
+const ASSOCIATION_TYPES = new Set([
+  'belongs_to',
+  'has_many',
+  'has_one',
+  'has_and_belongs_to_many',
+])
+
 export function computeStatistics(manifest, extractions, relationships) {
   const entries = manifest.entries || []
   return {
     total_files: entries.length,
     models: Object.values(extractions.models || {}).filter(
-      (m) => m.type !== 'concern',
+      (m) => m.type !== 'concern' && m.type !== 'module',
     ).length,
     models_file_count: (manifest.stats || {}).models || 0,
-    controllers: Object.keys(extractions.controllers || {}).length,
+    controllers: Object.values(extractions.controllers || {}).filter(
+      (c) => !c.file || !c.file.includes('/concerns/'),
+    ).length,
     components: entries.filter(
       (e) => e.categoryName === 'components' && e.type === 'ruby',
     ).length,
-    relationships: relationships.length,
+    relationships: relationships.filter((r) => ASSOCIATION_TYPES.has(r.type))
+      .length,
     gems: Array.isArray(extractions.gemfile?.gems)
       ? extractions.gemfile.gems.length
       : Object.keys(extractions.gemfile?.gems || {}).length,
     helpers: Object.keys(extractions.helpers || {}).length,
     workers: Object.keys(extractions.workers || {}).length,
     uploaders: Object.keys(extractions.uploaders?.uploaders || {}).length,
-    jobs: (extractions.jobs?.jobs || []).length,
-    mailers: (extractions.email?.mailers || []).length,
+    jobs: (extractions.jobs?.jobs || []).filter(
+      (j) => j.class !== 'ApplicationJob' && j.type !== 'sidekiq_worker',
+    ).length,
+    mailers: (extractions.email?.mailers || []).filter(
+      (m) => m.class !== 'ApplicationMailer',
+    ).length,
     channels: (extractions.realtime?.channels || []).length,
     route_resources: (extractions.routes?.resources || []).length,
   }
