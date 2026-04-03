@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.31] - 2026-04-03
+
+### Fixed
+
+- **`index_project` total_files under-count for apps with vendored lib/ engines**: Scanner now indexes non-Ruby files inside `lib/` directories — `.erb`, `.haml`, `.slim`, `.scss`, `.sass`, `.css`, `.js`, `.jsx`, `.ts`, `.tsx`, `.coffee`, `.yml`, `.yaml`, `.json`. Apps with vendored engines (e.g. `lib/store_connect_mini/`, `lib/hydrofoil_mini/`) now have their asset and view files counted. Recovers ~231 files for sharp-corporate, bringing `total_files` within the ±5% tolerance threshold
+- **`index_project` total_files under-count for spec/test fixture files**: Scanner now indexes non-Ruby files in `spec/` and `test/` directories — `.json`, `.yml`, `.yaml`. Fixture files, VCR cassettes, and factory YAML are now counted. Recovers 35 files for sharp-corporate, 27 for lf-api, 28 for ellaslist
+- **`index_project` jobs under-count for namespaced base classes**: `JOB_PATTERNS.classDeclaration` regex now captures the full namespaced superclass (e.g. `StoreConnect::ScheduledJobBase`) instead of truncating at the first `::` segment. Fixes detection of jobs inheriting from vendor engine base classes where the full name contains 'Job'
+
 ## [1.0.30] - 2026-04-03
 
 ### Fixed

@@ -215,4 +215,60 @@ Sidekiq::Cron::Job.create(
       expect(result.recurring_jobs.sidekiq_cron[0].class).toBe('CleanupWorker')
     })
   })
+
+  describe('ISSUE-SHARP: namespaced superclass job detection', () => {
+    it('detects job inheriting from a namespaced ScheduledJobBase (e.g. StoreConnect::ScheduledJobBase)', () => {
+      const provider = mockProvider({
+        'app/jobs/sync_logins_job.rb': `
+class SyncLoginsJob < StoreConnect::ScheduledJobBase
+  queue_as :default
+
+  def perform
+    Sync::LoginWithContactService.execute
+  end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/sync_logins_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('SyncLoginsJob')
+      expect(result.superclass).toBe('StoreConnect::ScheduledJobBase')
+    })
+
+    it('does NOT detect a class inheriting from a namespaced non-Job superclass', () => {
+      const provider = mockProvider({
+        'app/jobs/batch_processor.rb': `
+class BatchProcessor < StoreConnect::ApplicationRecord
+  def process; end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/batch_processor.rb')
+      expect(result).toBeNull()
+    })
+
+    it('still detects standard ApplicationJob subclass (regression guard)', () => {
+      const provider = mockProvider({
+        'app/jobs/report_job.rb': `
+class ReportJob < ApplicationJob
+  queue_as :reports
+  def perform; end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/report_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('ReportJob')
+      expect(result.queue).toBe('reports')
+    })
+
+    it('still detects ActiveJob::Base subclass (regression guard)', () => {
+      const provider = mockProvider({
+        'app/jobs/legacy_job.rb': `
+class LegacyJob < ActiveJob::Base
+  def perform; end
+end`,
+      })
+      const result = extractJob(provider, 'app/jobs/legacy_job.rb')
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('LegacyJob')
+    })
+  })
 })

@@ -450,4 +450,138 @@ describe('Scanner', () => {
       expect(textErbEntries.length).toBeGreaterThanOrEqual(2)
     })
   })
+
+  describe('ISSUE-SHARP: lib/ engine assets and spec/test fixtures', () => {
+    describe('classifyFile — lib/ non-Ruby files (engine assets)', () => {
+      it('classifies lib/ erb template as config (category 17)', () => {
+        const entry = classifyFile(
+          'lib/store_connect_mini/app/views/store_connect/shared/foo.html.erb',
+        )
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+        expect(entry.categoryName).toBe('config')
+      })
+
+      it('classifies lib/ scss stylesheet as config', () => {
+        const entry = classifyFile(
+          'lib/store_connect_mini/app/assets/stylesheets/theme/components/card.scss',
+        )
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies lib/ css file as config', () => {
+        const entry = classifyFile(
+          'lib/store_connect_mini/app/assets/stylesheets/base.css',
+        )
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies lib/ js file as config', () => {
+        const entry = classifyFile(
+          'lib/store_connect_mini/app/assets/javascripts/theme/app.js',
+        )
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies lib/ yml file as config', () => {
+        const entry = classifyFile(
+          'lib/store_connect_mini/config/settings.yml',
+        )
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies lib/ json file as config', () => {
+        const entry = classifyFile(
+          'lib/hydrofoil_mini/lib/hydrofoil/schemas/base.json',
+        )
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies lib/ haml template as config', () => {
+        const entry = classifyFile('lib/engine/app/views/shared/nav.html.haml')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('still classifies lib/ Ruby files as config (unchanged)', () => {
+        const entry = classifyFile('lib/store_connect_mini/app/models/store_connect/product.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+    })
+
+    describe('classifyFile — spec/test non-Ruby fixture files', () => {
+      it('classifies spec/ json fixture as testing (category 19)', () => {
+        const entry = classifyFile('spec/fixtures/files/sales_order/response.json')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(19)
+        expect(entry.categoryName).toBe('testing')
+      })
+
+      it('classifies spec/ yml fixture as testing', () => {
+        const entry = classifyFile('spec/fixtures/vcr_cassettes/request.yml')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(19)
+      })
+
+      it('classifies spec/ yaml fixture as testing', () => {
+        const entry = classifyFile('spec/support/config.yaml')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(19)
+      })
+
+      it('classifies test/ json fixture as testing', () => {
+        const entry = classifyFile('test/fixtures/files/export.json')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(19)
+      })
+
+      it('classifies test/ yml fixture as testing', () => {
+        const entry = classifyFile('test/fixtures/files/config.yml')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(19)
+      })
+
+      it('does not change category of spec/ Ruby files (still testing)', () => {
+        const entry = classifyFile('spec/models/user_spec.rb')
+        expect(entry.category).toBe(19)
+      })
+    })
+
+    describe('scanStructure — lib/ and spec/ non-Ruby files are counted in entries', () => {
+      it('includes lib/ scss, js, yml and spec/ json in total entries', () => {
+        const provider = createMockProvider([
+          'app/models/user.rb',
+          'lib/engine/app/assets/stylesheets/card.scss',
+          'lib/engine/app/assets/javascripts/app.js',
+          'lib/engine/config/settings.yml',
+          'spec/fixtures/files/response.json',
+          'spec/fixtures/vcr_cassettes/request.yml',
+        ])
+        const manifest = scanStructure(provider)
+        expect(manifest.entries.length).toBe(6)
+      })
+
+      it('assigns lib/ scss to config category', () => {
+        const provider = createMockProvider([
+          'lib/engine/app/assets/stylesheets/card.scss',
+        ])
+        const manifest = scanStructure(provider)
+        expect(manifest.entries[0].categoryName).toBe('config')
+      })
+
+      it('assigns spec/ json fixture to testing category', () => {
+        const provider = createMockProvider([
+          'spec/fixtures/files/order.json',
+        ])
+        const manifest = scanStructure(provider)
+        expect(manifest.entries[0].categoryName).toBe('testing')
+      })
+    })
+  })
 })
