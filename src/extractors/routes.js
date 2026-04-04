@@ -241,7 +241,7 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         collection_routes: [],
       }
 
-      if (trimmed.includes('do')) {
+      if (/\bdo\s*$/.test(trimmed)) {
         blockStack.push('resource')
         resourceStack.push(entry)
       }
@@ -319,7 +319,7 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         }
       }
 
-      if (trimmed.includes('do')) {
+      if (/\bdo\s*$/.test(trimmed)) {
         blockStack.push('resources')
         resourceStack.push(entry)
       }

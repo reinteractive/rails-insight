@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.34] - 2026-04-04
+
+### Fixed
+
+- **`index_project` route_resources block-stack misalignment from `do` substring in resource names**: The route parser used `trimmed.includes('do')` to detect Ruby `do..end` blocks, which falsely matched resource names containing the substring `do` (e.g. `vendor_products`, `vendor_open_hours`, `documents`). These phantom pushes caused the namespace stack to desync, placing subsequent resources under incorrect namespaces. Replaced with word-boundary regex `/\bdo\s*$/` that only matches `do` as a standalone keyword at end-of-line. Fixes quarter-turn route_resources 30→32
+
 ## [1.0.33] - 2026-04-03
 
 ### Fixed

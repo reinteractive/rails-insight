@@ -714,4 +714,105 @@ end`,
       )
     })
   })
+
+  describe('do-substring in resource names', () => {
+    it('does not treat "do" inside resource names as a do-block', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `
+Rails.application.routes.draw do
+  namespace :admin do
+    resources :vendor_products, only: :index
+    resources :documents
+  end
+  resources :orders
+end`,
+        }),
+      )
+      const vendorProducts = result.resources.find(
+        (r) => r.name === 'vendor_products',
+      )
+      expect(vendorProducts).toBeDefined()
+      expect(vendorProducts.namespace).toBe('admin')
+
+      const documents = result.resources.find((r) => r.name === 'documents')
+      expect(documents).toBeDefined()
+      expect(documents.namespace).toBe('admin')
+
+      const orders = result.resources.find((r) => r.name === 'orders')
+      expect(orders).toBeDefined()
+      expect(orders.namespace).toBeNull()
+    })
+
+    it('does not misalign block stack when "do" appears in options', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `
+Rails.application.routes.draw do
+  namespace :api do
+    namespace :v1 do
+      resources :vendor_products, only: :index
+    end
+  end
+  resources :categories
+end`,
+        }),
+      )
+      const vendorProducts = result.resources.find(
+        (r) => r.name === 'vendor_products',
+      )
+      expect(vendorProducts).toBeDefined()
+      expect(vendorProducts.namespace).toBe('api/v1')
+
+      const categories = result.resources.find((r) => r.name === 'categories')
+      expect(categories).toBeDefined()
+      expect(categories.namespace).toBeNull()
+    })
+
+    it('handles singular resource with "do" in name without block', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `
+Rails.application.routes.draw do
+  namespace :admin do
+    resource :vendor_profile, only: [:edit, :update]
+  end
+  resources :users
+end`,
+        }),
+      )
+      const vendorProfile = result.resources.find(
+        (r) => r.name === 'vendor_profile',
+      )
+      expect(vendorProfile).toBeDefined()
+      expect(vendorProfile.namespace).toBe('admin')
+      expect(vendorProfile.singular).toBe(true)
+
+      const users = result.resources.find((r) => r.name === 'users')
+      expect(users).toBeDefined()
+      expect(users.namespace).toBeNull()
+    })
+
+    it('still detects actual do-blocks on resources with "do" in name', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `
+Rails.application.routes.draw do
+  resources :vendor_products do
+    member do
+      post :approve
+    end
+  end
+end`,
+        }),
+      )
+      const vendorProducts = result.resources.find(
+        (r) => r.name === 'vendor_products',
+      )
+      expect(vendorProducts).toBeDefined()
+      expect(vendorProducts.member_routes).toContainEqual(
+        expect.objectContaining({ action: 'approve' }),
+      )
+    })
+  })
 })
