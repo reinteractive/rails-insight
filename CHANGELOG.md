@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.33] - 2026-04-03
+
+### Fixed
+
+- **`index_project` route_resources dedup collision between namespaces and same-named resources**: `deduplicateResources()` now includes entry type in the dedup key, preventing `namespace :X` from merging with `resources :X` when both share the same name. Fixes mitchcap-portal losing `asset_reviews` and `metrics` resource declarations
+- **`index_project` route_resources over-count from namespace entries**: `computeStatistics()` now filters `type: 'namespace'` entries from the `route_resources` count. Namespaces are structural groupings, not resource declarations. Fixes ellaslist 30→27 (=GT), lf-api 22→20
+- **`index_project` total_files under-count — broader file scanning**: Scanner now indexes turbo stream ERB (`*.turbo_stream.erb`), plain ERB partials, `config/**/*.js` (webpack configs), `features/**/*.rb` (Cucumber), `vendor/assets/` and `vendor/javascript/` files, `swagger/**/*.yml` API docs, and `db/*.rb` catch-all files. Provider no longer skips entire `vendor/` directory — only `vendor/bundle/` and `vendor/cache/` are excluded. New classification rules for `app/overrides/` (design_patterns), `app/chewy/` (search). Recovers +116 files for quarter-turn, +42 for kollaras, +37 for mitchcap, +22 for lf-api
+
 ## [1.0.32] - 2026-04-03
 
 ### Fixed

@@ -141,6 +141,9 @@ const RULES = [
   // --- GraphQL: own directory under app/ ---
   { test: (p) => /^app\/graphql\/.*\.rb$/.test(p), category: 56 },
 
+  // --- Search: Chewy indexes (before general models) ---
+  { test: (p) => /^app\/chewy\/.*\.rb$/.test(p), category: 22 },
+
   // --- Design pattern directories: before general models ---
   { test: (p) => /^app\/services\/.*\.rb$/.test(p), category: 26 },
   { test: (p) => /^app\/forms\/.*\.rb$/.test(p), category: 26 },
@@ -148,6 +151,7 @@ const RULES = [
   { test: (p) => /^app\/decorators\/.*\.rb$/.test(p), category: 26 },
   { test: (p) => /^app\/presenters\/.*\.rb$/.test(p), category: 26 },
   { test: (p) => /^app\/interactors\/.*\.rb$/.test(p), category: 26 },
+  { test: (p) => /^app\/overrides\/.*\.rb$/.test(p), category: 26 },
 
   // --- Admin namespace ---
   { test: (p) => /^app\/admin\/.*\.rb$/.test(p), category: 25 },
@@ -199,6 +203,7 @@ const RULES = [
   // --- Testing ---
   { test: (p) => /^spec\/.*\.rb$/.test(p), category: 19 },
   { test: (p) => /^test\/.*\.rb$/.test(p), category: 19 },
+  { test: (p) => /^features\/.*\.rb$/.test(p), category: 19 },
   { test: (p) => /^\.rspec$/.test(p), category: 19 },
 
   // --- Code quality & tooling ---
@@ -248,14 +253,23 @@ const RULES = [
     category: 19,
   },
 
+  // --- Vendor assets: stylesheets and javascripts ---
+  { test: (p) => /^vendor\/(assets|javascript)\//.test(p), category: 7 },
+
+  // --- Swagger/API docs ---
+  { test: (p) => /^swagger\/.*\.(yml|yaml|json)$/.test(p), category: 15 },
+
   // --- Catch-all: lib and migrations ---
   { test: (p) => /^lib\/.*\.rb$/.test(p), category: 17 },
   { test: (p) => /^lib\/.*\.rake$/.test(p), category: 17 },
   { test: (p) => /^db\/migrate\/.*\.rb$/.test(p), category: 4 },
   { test: (p) => /^db\/seeds\.rb$/.test(p), category: 17 },
+  // --- Catch-all: db non-migration Ruby files ---
+  { test: (p) => /^db\/.*\.rb$/.test(p), category: 4 },
 
   // --- Catch-all: config files not matched by specific rules ---
   { test: (p) => /^config\/.*\.(yml|yaml|json)$/.test(p), category: 17 },
+  { test: (p) => /^config\/.*\.(rb|js)$/.test(p), category: 17 },
 
   // --- Specific root files ---
   { test: (p) => p === 'Rakefile', category: 17 },
@@ -384,20 +398,15 @@ export function scanStructure(provider) {
     ...provider.glob('app/**/*.sass'),
     ...provider.glob('app/**/*.coffee'),
     ...provider.glob('app/**/*.json'),
-    ...provider.glob('app/**/*.html.erb'),
-    ...provider.glob('app/**/*.text.erb'),
-    ...provider.glob('app/**/*.js.erb'),
-    ...provider.glob('app/**/*.xml.erb'),
-    ...provider.glob('app/**/*.json.erb'),
-    ...provider.glob('app/**/*.html.haml'),
-    ...provider.glob('app/**/*.text.haml'),
-    ...provider.glob('app/**/*.html.slim'),
-    ...provider.glob('app/**/*.text.slim'),
+    ...provider.glob('app/**/*.erb'),
+    ...provider.glob('app/**/*.haml'),
+    ...provider.glob('app/**/*.slim'),
     ...provider.glob('app/**/*.jbuilder'),
     ...provider.glob('config/**/*.rb'),
     ...provider.glob('config/**/*.yml'),
     ...provider.glob('config/**/*.yaml'),
     ...provider.glob('config/**/*.json'),
+    ...provider.glob('config/**/*.js'),
     ...provider.glob('db/**/*.rb'),
     ...provider.glob('db/**/*.sql'),
     ...provider.glob('lib/**/*.rb'),
@@ -420,6 +429,15 @@ export function scanStructure(provider) {
     ...provider.glob('test/**/*.json'),
     ...provider.glob('test/**/*.yml'),
     ...provider.glob('test/**/*.yaml'),
+    ...provider.glob('features/**/*.rb'),
+    ...provider.glob('vendor/assets/**/*.js'),
+    ...provider.glob('vendor/assets/**/*.css'),
+    ...provider.glob('vendor/assets/**/*.scss'),
+    ...provider.glob('vendor/assets/**/*.sass'),
+    ...provider.glob('vendor/javascript/**/*.js'),
+    ...provider.glob('swagger/**/*.yml'),
+    ...provider.glob('swagger/**/*.yaml'),
+    ...provider.glob('swagger/**/*.json'),
     ...provider.glob('engines/**/*'),
   ]
 

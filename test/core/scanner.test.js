@@ -426,7 +426,7 @@ describe('Scanner', () => {
     it('counts text.erb templates via scanStructure', () => {
       const provider = {
         glob(pattern) {
-          if (pattern === 'app/**/*.text.erb')
+          if (pattern === 'app/**/*.erb')
             return [
               'app/views/layouts/mailer.text.erb',
               'app/views/user_mailer/welcome.text.erb',
@@ -581,6 +581,103 @@ describe('Scanner', () => {
         ])
         const manifest = scanStructure(provider)
         expect(manifest.entries[0].categoryName).toBe('testing')
+      })
+    })
+
+    describe('classifyFile — turbo stream and plain ERB files', () => {
+      it('classifies turbo_stream.erb views as views (category 7)', () => {
+        const entry = classifyFile('app/views/admin/brands/create.turbo_stream.erb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(7)
+        expect(entry.categoryName).toBe('views')
+      })
+
+      it('classifies plain .erb partials as views (category 7)', () => {
+        const entry = classifyFile('app/views/backend/emails/ingested_items.erb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(7)
+      })
+    })
+
+    describe('classifyFile — app/overrides and app/chewy files', () => {
+      it('classifies app/overrides/*.rb as design_patterns (category 26)', () => {
+        const entry = classifyFile('app/overrides/spree/controllers/checkout_controller.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(26)
+        expect(entry.categoryName).toBe('design_patterns')
+      })
+
+      it('classifies app/chewy/*.rb as search (category 22)', () => {
+        const entry = classifyFile('app/chewy/product_index.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(22)
+        expect(entry.categoryName).toBe('search')
+      })
+    })
+
+    describe('classifyFile — config catch-all and non-Ruby config', () => {
+      it('classifies config/boot.rb as config (category 17)', () => {
+        const entry = classifyFile('config/boot.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies config/environment.rb as config (category 17)', () => {
+        const entry = classifyFile('config/environment.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+
+      it('classifies config/webpack/development.js as config (category 17)', () => {
+        const entry = classifyFile('config/webpack/development.js')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(17)
+      })
+    })
+
+    describe('classifyFile — features (Cucumber) files', () => {
+      it('classifies features/*.rb as testing (category 19)', () => {
+        const entry = classifyFile('features/step_definitions/user_steps.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(19)
+        expect(entry.categoryName).toBe('testing')
+      })
+    })
+
+    describe('classifyFile — vendor/assets files', () => {
+      it('classifies vendor/assets/*.js as views (category 7)', () => {
+        const entry = classifyFile('vendor/assets/javascripts/spree/backend/all.js')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(7)
+        expect(entry.categoryName).toBe('views')
+      })
+
+      it('classifies vendor/assets/*.scss as views (category 7)', () => {
+        const entry = classifyFile('vendor/assets/stylesheets/spree/backend/all.scss')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(7)
+      })
+
+      it('classifies vendor/javascript/*.js as views (category 7)', () => {
+        const entry = classifyFile('vendor/javascript/flowbite.js')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(7)
+      })
+    })
+
+    describe('classifyFile — db catch-all files', () => {
+      it('classifies db/appsetup.rb as schema (category 4)', () => {
+        const entry = classifyFile('db/appsetup.rb')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(4)
+      })
+    })
+
+    describe('classifyFile — swagger/API doc files', () => {
+      it('classifies swagger/*.yml as api (category 15)', () => {
+        const entry = classifyFile('swagger/v1/swagger.yml')
+        expect(entry).not.toBeNull()
+        expect(entry.category).toBe(15)
       })
     })
   })

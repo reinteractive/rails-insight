@@ -653,5 +653,65 @@ end`,
       )
       expect(taskRelationships).toHaveLength(1)
     })
+
+    it('does NOT merge namespace entry with same-named resource entry', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  namespace :asset_reviews do
+    resource :export, only: [:show]
+  end
+  resources :asset_reviews do
+    collection do
+      post :submit
+    end
+  end
+end`,
+        }),
+      )
+      // Both should exist separately
+      const nsEntry = result.resources.find(
+        (r) => r.name === 'asset_reviews' && r.type === 'namespace',
+      )
+      const resEntry = result.resources.find(
+        (r) => r.name === 'asset_reviews' && r.type !== 'namespace',
+      )
+      expect(nsEntry).toBeDefined()
+      expect(resEntry).toBeDefined()
+      expect(resEntry.collection_routes).toContainEqual(
+        expect.objectContaining({ action: 'submit' }),
+      )
+    })
+
+    it('does NOT merge nested namespace with same-named resource in parent namespace', () => {
+      const result = extractRoutes(
+        mockProvider({
+          'config/routes.rb': `Rails.application.routes.draw do
+  namespace :admin do
+    namespace :metrics do
+      resources :history_logs, only: [:index]
+    end
+    resources :metrics do
+      collection do
+        get :edit
+      end
+    end
+  end
+end`,
+        }),
+      )
+      const nsEntry = result.resources.find(
+        (r) => r.name === 'metrics' && r.type === 'namespace',
+      )
+      const resEntry = result.resources.find(
+        (r) => r.name === 'metrics' && r.type !== 'namespace',
+      )
+      expect(nsEntry).toBeDefined()
+      expect(resEntry).toBeDefined()
+      expect(resEntry.namespace).toBe('admin')
+      expect(resEntry.collection_routes).toContainEqual(
+        expect.objectContaining({ action: 'edit' }),
+      )
+    })
   })
 })

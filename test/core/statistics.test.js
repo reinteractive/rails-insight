@@ -342,6 +342,35 @@ describe('computeStatistics', () => {
     })
   })
 
+  describe('route_resources', () => {
+    it('excludes namespace entries from count', () => {
+      const manifest = { entries: [], stats: {} }
+      const extractions = {
+        models: {},
+        controllers: {},
+        helpers: {},
+        workers: {},
+        uploaders: { uploaders: {}, mounted: [] },
+        jobs: { jobs: [] },
+        email: { mailers: [] },
+        realtime: { channels: [] },
+        routes: {
+          resources: [
+            { name: 'projects', type: 'resources', namespace: null, actions: [], member_routes: [], collection_routes: [], nested: [] },
+            { name: 'users', type: 'resources', namespace: null, actions: [], member_routes: [], collection_routes: [], nested: [] },
+            { name: 'admin', type: 'namespace', namespace: null, actions: [], member_routes: [], collection_routes: [], nested: [] },
+            { name: 'api', type: 'namespace', namespace: null, actions: [], member_routes: [], collection_routes: [], nested: [] },
+            { name: 'profile', type: 'resource', namespace: null, actions: [], member_routes: [], collection_routes: [], nested: [] },
+          ],
+        },
+        gemfile: { gems: [] },
+      }
+
+      const stats = computeStatistics(manifest, extractions, [])
+      expect(stats.route_resources).toBe(3) // only resources + resource, not namespaces
+    })
+  })
+
   describe('models', () => {
     it('excludes module-only files from model count', () => {
       const manifest = { entries: [], stats: {} }

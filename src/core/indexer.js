@@ -721,6 +721,8 @@ export function computeStatistics(manifest, extractions, relationships) {
       (m) => m.class !== 'ApplicationMailer',
     ).length,
     channels: (extractions.realtime?.channels || []).length,
-    route_resources: (extractions.routes?.resources || []).length,
+    route_resources: (extractions.routes?.resources || []).filter(
+      (r) => r.type !== 'namespace',
+    ).length,
   }
 }

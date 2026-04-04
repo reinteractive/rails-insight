@@ -46,7 +46,7 @@ function deduplicateResources(resources) {
   const order = []
 
   for (const entry of resources) {
-    const key = `${entry.namespace || ''}/${entry.name}`
+    const key = `${entry.type === 'namespace' ? 'ns:' : ''}${entry.namespace || ''}/${entry.name}`
     if (seen.has(key)) {
       const existing = seen.get(key)
       // Union actions

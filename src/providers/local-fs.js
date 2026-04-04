@@ -14,7 +14,6 @@ const execPromise = promisify(exec)
 
 const SKIP_DIRS = new Set([
   'node_modules',
-  'vendor',
   '.git',
   'tmp',
   'log',
@@ -23,7 +22,12 @@ const SKIP_DIRS = new Set([
   '.yarn',
 ])
 
-const SKIP_PATHS = new Set(['public/assets', 'public/packs'])
+const SKIP_PATHS = new Set([
+  'public/assets',
+  'public/packs',
+  'vendor/bundle',
+  'vendor/cache',
+])
 
 /**
  * LocalFSProvider implements the FileProvider interface using Node.js fs.
