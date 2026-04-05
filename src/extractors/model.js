@@ -331,6 +331,33 @@ export function extractModel(provider, filePath, className) {
     }
   }
 
+  // %w[] / %i[] syntax: enum status: %w[draft published] or enum :status, %w[...]
+  const enumPercentPatterns = [
+    { re: /^\s*enum\s+:(\w+),\s*%[wi]\[([^\]]+)\]/gm, syntax: 'positional_percent_w' },
+    { re: /^\s*enum\s+(\w+):\s*%[wi]\[([^\]]+)\]/gm, syntax: 'legacy_percent_w' },
+  ]
+  for (const { re, syntax } of enumPercentPatterns) {
+    while ((m = re.exec(content))) {
+      const name = m[1]
+      if (enums[name]) continue
+      const values = m[2].trim().split(/\s+/).filter((v) => v.length > 0)
+      enums[name] = { values, syntax }
+    }
+  }
+
+  // Constant reference: enum status: STATUSES or enum :status, STATUSES
+  const enumConstPatterns = [
+    { re: /^\s*enum\s+:(\w+),\s*([A-Z][A-Z_0-9]+)\b/gm, syntax: 'positional_constant' },
+    { re: /^\s*enum\s+(\w+):\s*([A-Z][A-Z_0-9]+)\b/gm, syntax: 'legacy_constant' },
+  ]
+  for (const { re, syntax } of enumConstPatterns) {
+    while ((m = re.exec(content))) {
+      const name = m[1]
+      if (enums[name]) continue
+      enums[name] = { values: [], constant: m[2], syntax }
+    }
+  }
+
   // Enumerize gem: enumerize :field, in: [:val1, :val2, ...]
   // Strip inline Ruby comments before matching to avoid capturing commented-out values
   const contentNoComments = content

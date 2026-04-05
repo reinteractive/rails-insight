@@ -236,13 +236,22 @@ export async function buildIndex(provider, options = {}) {
         // Check if we need directory-based namespace inference
         const pathFQN = pathToFullClassName(entry.path)
         if (key && !key.includes('::') && pathFQN.includes('::')) {
-          // Model class has no namespace but file is in a subdirectory
+          // Model class has no namespace but file is in a subdirectory.
           // Apply directory-derived namespace (Rails autoloading convention)
-          key = pathFQN
-          model.class = pathFQN
-          const nsParts = pathFQN.split('::')
-          nsParts.pop()
-          model.namespace = nsParts.join('::')
+          // UNLESS the model likely declares an intentionally non-namespaced class
+          // (e.g. STI subclass: `class Admin < User` in app/models/users/admin.rb).
+          // STI detection: superclass is not ApplicationRecord or ActiveRecord::Base.
+          const isLikelySTI =
+            model.superclass &&
+            model.superclass !== 'ApplicationRecord' &&
+            model.superclass !== 'ActiveRecord::Base'
+          if (!isLikelySTI) {
+            key = pathFQN
+            model.class = pathFQN
+            const nsParts = pathFQN.split('::')
+            nsParts.pop()
+            model.namespace = nsParts.join('::')
+          }
         }
 
         // Handle collision: if key already exists from a different file

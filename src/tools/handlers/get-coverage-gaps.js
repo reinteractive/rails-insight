@@ -93,6 +93,40 @@ function buildTestedEntitySets(manifest, models, controllers) {
     }
   }
 
+  // Fallback: handle per-action request spec splitting pattern.
+  // e.g. spec/requests/accounts/balance_spec.rb tests AccountsController
+  // e.g. spec/requests/sales/create_spec.rb tests SalesController
+  // Collect directories that contain request specs.
+  const requestSpecDirs = new Set()
+  for (const entry of entries) {
+    if (entry.category !== 19) continue
+    if (entry.specCategory !== 'request_specs') continue
+    const parts = entry.path.split('/')
+    const reqIdx = parts.indexOf('requests')
+    if (reqIdx === -1) continue
+    const subDirs = parts.slice(reqIdx + 1, -1)
+    if (subDirs.length > 0) {
+      requestSpecDirs.add(subDirs.join('/'))
+    }
+  }
+
+  // For each unmatched controller, check if its resource path matches a spec dir
+  for (const ctrlName of Object.keys(controllers)) {
+    if (testedControllers.has(ctrlName)) continue
+    // Convert FQN to underscore path: SalesController → sales
+    const ctrlParts = ctrlName.replace('Controller', '').split('::')
+    const toSnake = (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
+    // Only match non-namespaced controllers: AccountsController → "accounts"
+    // Namespaced controllers are too ambiguous (e.g. spec/requests/users/
+    // might only test OmniauthCallbacksController, not ConfirmationsController)
+    if (ctrlParts.length === 1) {
+      const resourceDir = toSnake(ctrlParts[0])
+      if (requestSpecDirs.has(resourceDir)) {
+        testedControllers.add(ctrlName)
+      }
+    }
+  }
+
   return { testedModels, testedControllers }
 }
 

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.37] - 2026-04-05
+
+### Fixed
+
+- **`get_model` enum `%w[]`, `%i[]`, and constant-reference syntax detection**: Enums declared with word-array syntax (`enum status: %w[draft published].freeze`), symbol-array syntax (`enum state: %i[pending active]`), or constant references (`enum status: STATUSES`) are now correctly extracted. Previously only `{ hash }` and `[ array ]` literals were detected. Fixes 6 enum false negatives in lf-api evaluation
+- **`get_model` STI subclass namespace resolution**: Models in subdirectories that declare a root-level class inheriting from another model (STI pattern, e.g. `class Admin < User` in `app/models/users/admin.rb`) now preserve their declared class name instead of being incorrectly namespaced to `Users::Admin`. Path-based namespace inference is skipped when the superclass is not `ApplicationRecord` or `ActiveRecord::Base`. Fixes 3 entity resolution failures in lf-api evaluation
+
+## [1.0.36] - 2026-04-05
+
+### Fixed
+
+- **`get_coverage_gaps` per-action request spec splitting pattern support**: Apps that split request specs into per-action files under a directory (e.g. `spec/requests/accounts/balance_spec.rb` instead of `spec/requests/accounts_spec.rb`) now correctly match their controllers. The test matcher adds a post-loop fallback that collects request spec directories and matches unmatched controllers by their underscore resource name. Fixes 5 `has_test` false negatives in the sharp-corporate evaluation
+
 ## [1.0.35] - 2026-04-05
 
 ### Fixed
