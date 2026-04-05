@@ -347,6 +347,7 @@ function classifyFile(path) {
  * @returns {string|null}
  */
 function classifySpecFile(path) {
+  // RSpec directories
   if (path.startsWith('spec/models/')) return 'model_specs'
   if (path.startsWith('spec/requests/')) return 'request_specs'
   if (path.startsWith('spec/controllers/')) return 'controller_specs'
@@ -356,13 +357,30 @@ function classifySpecFile(path) {
   if (path.startsWith('spec/policies/')) return 'policy_specs'
   if (path.startsWith('spec/components/')) return 'component_specs'
   if (path.startsWith('spec/forms/')) return 'form_specs'
+  if (path.startsWith('spec/helpers/')) return 'helper_specs'
+  if (path.startsWith('spec/features/')) return 'feature_specs'
+  if (path.startsWith('spec/system/')) return 'system_specs'
+  if (path.startsWith('spec/views/')) return 'view_specs'
+  if (path.startsWith('spec/routing/')) return 'routing_specs'
+  if (path.startsWith('spec/workers/')) return 'worker_specs'
+  if (path.startsWith('spec/lib/')) return 'lib_specs'
+  if (path.startsWith('spec/integration/')) return 'integration_specs'
+  if (path.startsWith('spec/decorators/')) return 'decorator_specs'
+  if (path.startsWith('spec/serializers/')) return 'serializer_specs'
+  if (path.startsWith('spec/presenters/')) return 'presenter_specs'
   if (path.startsWith('spec/factories/')) return 'factories'
   if (path.startsWith('spec/support/')) return 'support'
   if (path.startsWith('spec/shared_examples/')) return 'shared_examples'
   if (path.startsWith('spec/shared_contexts/')) return 'shared_contexts'
+  // Minitest directories
   if (path.startsWith('test/models/')) return 'model_tests'
   if (path.startsWith('test/controllers/')) return 'controller_tests'
   if (path.startsWith('test/integration/')) return 'integration_tests'
+  if (path.startsWith('test/helpers/')) return 'helper_tests'
+  if (path.startsWith('test/system/')) return 'system_tests'
+  if (path.startsWith('test/jobs/')) return 'job_tests'
+  if (path.startsWith('test/mailers/')) return 'mailer_tests'
+  if (path.startsWith('test/services/')) return 'service_tests'
   if (path.startsWith('test/factories/')) return 'factories'
   return null
 }
