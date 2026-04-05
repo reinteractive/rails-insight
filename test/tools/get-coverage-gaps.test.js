@@ -564,3 +564,143 @@ describe('get_coverage_gaps edge cases', () => {
     expect(model.has_test).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Phase 4: Per-action request spec splitting pattern
+// ---------------------------------------------------------------------------
+describe('get_coverage_gaps per-action request spec matching', () => {
+  it('matches per-action request specs to non-namespaced controller', async () => {
+    // Pattern: spec/requests/accounts/balance_spec.rb → AccountsController
+    const state = buildState({
+      controllers: {
+        AccountsController: {
+          file: 'app/controllers/accounts_controller.rb',
+          class: 'AccountsController',
+          actions: ['index', 'balance', 'destroy'],
+        },
+      },
+      coverage_snapshot: {
+        available: true,
+        overall: { line_coverage: 70 },
+        per_file: {
+          'app/controllers/accounts_controller.rb': { line_coverage: 60 },
+        },
+        uncovered_methods: [],
+      },
+      manifest: {
+        entries: [
+          {
+            path: 'spec/requests/accounts/balance_spec.rb',
+            category: 19,
+            specCategory: 'request_specs',
+          },
+          {
+            path: 'spec/requests/accounts/destroy_spec.rb',
+            category: 19,
+            specCategory: 'request_specs',
+          },
+        ],
+      },
+    })
+
+    const result = await callHandler({}, state)
+    const data = parseResponse(result)
+
+    const ctrl = data.gaps.find((g) => g.entity === 'AccountsController')
+    expect(ctrl).toBeDefined()
+    expect(ctrl.has_test).toBe(true)
+  })
+
+  it('matches per-action request specs to namespaced controller', async () => {
+    // Pattern: spec/requests/sales/stock_search_spec.rb → Sales::StocksController
+    // The directory 'sales' is a namespace and the spec tests an action in StocksController
+    const state = buildState({
+      controllers: {
+        'Sales::StocksController': {
+          file: 'app/controllers/sales/stocks_controller.rb',
+          class: 'Sales::StocksController',
+          actions: ['index', 'stock_search'],
+        },
+        SalesController: {
+          file: 'app/controllers/sales_controller.rb',
+          class: 'SalesController',
+          actions: ['index', 'create'],
+        },
+      },
+      coverage_snapshot: {
+        available: true,
+        overall: { line_coverage: 70 },
+        per_file: {
+          'app/controllers/sales/stocks_controller.rb': {
+            line_coverage: 40,
+          },
+          'app/controllers/sales_controller.rb': { line_coverage: 85 },
+        },
+        uncovered_methods: [],
+      },
+      manifest: {
+        entries: [
+          {
+            path: 'spec/requests/sales/stock_search_spec.rb',
+            category: 19,
+            specCategory: 'request_specs',
+          },
+          {
+            path: 'spec/requests/sales/create_spec.rb',
+            category: 19,
+            specCategory: 'request_specs',
+          },
+        ],
+      },
+    })
+
+    const result = await callHandler({}, state)
+    const data = parseResponse(result)
+
+    // SalesController should be matched — spec/requests/sales/ dir matches resource
+    const salesCtrl = data.gaps.find((g) => g.entity === 'SalesController')
+    expect(salesCtrl).toBeDefined()
+    expect(salesCtrl.has_test).toBe(true)
+  })
+
+  it('does not false-match per-action specs when no controller exists for the dir', async () => {
+    // spec/requests/admin/foo_spec.rb should NOT match AdminController
+    // if there's no AdminController (admin/ is only a namespace)
+    const state = buildState({
+      controllers: {
+        'Admin::BrandsController': {
+          file: 'app/controllers/admin/brands_controller.rb',
+          class: 'Admin::BrandsController',
+          actions: ['index'],
+        },
+      },
+      coverage_snapshot: {
+        available: true,
+        overall: { line_coverage: 90 },
+        per_file: {
+          'app/controllers/admin/brands_controller.rb': {
+            line_coverage: 80,
+          },
+        },
+        uncovered_methods: [],
+      },
+      manifest: {
+        entries: [
+          {
+            path: 'spec/requests/admin/brands_spec.rb',
+            category: 19,
+            specCategory: 'request_specs',
+          },
+        ],
+      },
+    })
+
+    const result = await callHandler({}, state)
+    const data = parseResponse(result)
+
+    // Admin::BrandsController should match (standard namespace match)
+    const ctrl = data.gaps.find((g) => g.entity === 'Admin::BrandsController')
+    expect(ctrl).toBeDefined()
+    expect(ctrl.has_test).toBe(true)
+  })
+})
