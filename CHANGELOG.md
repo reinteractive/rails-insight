@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.36] - 2026-04-05
+
+### Fixed
+
+- **`get_coverage_gaps` per-action request spec splitting pattern support**: Apps that split request specs into per-action files under a directory (e.g. `spec/requests/accounts/balance_spec.rb` instead of `spec/requests/accounts_spec.rb`) now correctly match their controllers. The test matcher adds a post-loop fallback that collects request spec directories and matches unmatched controllers by their underscore resource name. Fixes 5 `has_test` false negatives in the sharp-corporate evaluation
+
 ## [1.0.35] - 2026-04-05
 
 ### Fixed

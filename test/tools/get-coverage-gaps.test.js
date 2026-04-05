@@ -661,6 +661,13 @@ describe('get_coverage_gaps per-action request spec matching', () => {
     const salesCtrl = data.gaps.find((g) => g.entity === 'SalesController')
     expect(salesCtrl).toBeDefined()
     expect(salesCtrl.has_test).toBe(true)
+    // Sales::StocksController should NOT be matched by the fallback
+    // (namespaced controllers are excluded to avoid false positives)
+    const stocksCtrl = data.gaps.find(
+      (g) => g.entity === 'Sales::StocksController',
+    )
+    expect(stocksCtrl).toBeDefined()
+    expect(stocksCtrl.has_test).toBe(false)
   })
 
   it('does not false-match per-action specs when no controller exists for the dir', async () => {
