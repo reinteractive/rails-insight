@@ -22,9 +22,8 @@ function buildState(overrides = {}) {
 
 // Helper to call the handler logic directly (extracted for testability)
 async function callHandler(args, state) {
-  const { register } = await import(
-    '../../src/tools/handlers/get-coverage-gaps.js'
-  )
+  const { register } =
+    await import('../../src/tools/handlers/get-coverage-gaps.js')
 
   let capturedHandler = null
   const mockServer = {
@@ -387,9 +386,7 @@ describe('buildTestedEntitySets namespace resolution', () => {
     const result = await callHandler({}, state)
     const data = parseResponse(result)
 
-    const ctrl = data.gaps.find(
-      (g) => g.entity === 'Api::V1::TokensController',
-    )
+    const ctrl = data.gaps.find((g) => g.entity === 'Api::V1::TokensController')
     expect(ctrl).toBeDefined()
     expect(ctrl.has_test).toBe(true)
   })
@@ -437,9 +434,7 @@ describe('buildTestedEntitySets namespace resolution', () => {
     const result = await callHandler({}, state)
     const data = parseResponse(result)
 
-    const setupsContact = data.gaps.find(
-      (g) => g.entity === 'Setups::Contact',
-    )
+    const setupsContact = data.gaps.find((g) => g.entity === 'Setups::Contact')
     const rootContact = data.gaps.find((g) => g.entity === 'Contact')
 
     expect(setupsContact).toBeDefined()

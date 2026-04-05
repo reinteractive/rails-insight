@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.35] - 2026-04-05
+
+### Fixed
+
+- **`get_coverage_gaps` phantom entity elimination — exclude concerns and modules from gap reporting**: Model concerns (`type: 'concern'`) and modules (`type: 'module'`) are now skipped during gap iteration. Controller concerns (files under `app/controllers/concerns/`) are also excluded. These are not standalone entities and were creating false positive gap entries. Eliminates 11+ FPs across evaluated apps
+- **`get_coverage_gaps` gap=0 entities excluded from output**: Entities at 100% coverage (gap=0) are no longer included in the gaps array. The `total_gaps` field now correctly reflects only entities with actual coverage gaps, not the total entity count. Fixes `total_gaps` metadata in 4/6 evaluated apps
+- **`get_coverage_gaps` request spec namespace resolution for namespaced controllers**: The test matcher now uses `'requests'` as an alternative directory anchor (alongside `'controllers'`), so request specs at `spec/requests/admin/brands_spec.rb` correctly match `Admin::BrandsController`. Previously, all namespace information was lost for request specs because the path contains no `controllers` directory. Fixes 28+ `has_test` errors across evaluated apps
+- **`get_coverage_gaps` multi-word CamelCase for namespace segments**: Directory path segments like `asset_reviews` are now properly converted to `AssetReviews` (split on `_`, capitalize each word) instead of `Asset_reviews`. Applies to both controller namespace and model namespace resolution
+- **`get_coverage_gaps` namespace-aware model spec matching**: Model spec paths now incorporate directory structure to prefer namespaced matches. `spec/models/setups/contact_spec.rb` now matches `Setups::Contact` instead of incorrectly matching root `Contact`. The FQN from the spec path is tried first, with short-name fallback
+- **`get_coverage_gaps` case-insensitive acronym matching for model test resolution**: `resolveModelName()` now includes a case-insensitive fallback for models with custom acronyms (e.g. `HTTPLog`, `SMSNotification`). `classify('http_log')` produces `HttpLog` which now correctly matches the `HTTPLog` model key
+
 ## [1.0.34] - 2026-04-04
 
 ### Fixed

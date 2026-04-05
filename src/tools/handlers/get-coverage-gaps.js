@@ -32,8 +32,25 @@ function buildTestedEntitySets(manifest, models, controllers) {
       entry.specCategory === 'model_specs' ||
       entry.specCategory === 'model_tests'
     ) {
+      // Build namespace from spec directory structure
+      // e.g. spec/models/setups/contact_spec.rb → Setups::Contact
+      const modelPathParts = entry.path.split('/')
+      const modelsIdx = modelPathParts.indexOf('models')
+      const nsParts =
+        modelsIdx >= 0 ? modelPathParts.slice(modelsIdx + 1, -1) : []
+      const nsPrefix = nsParts
+        .map((p) =>
+          p
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(''),
+        )
+        .join('::')
       const className = classify(basename)
-      const match = resolveModelName(className, models)
+      const fqn = nsPrefix ? `${nsPrefix}::${className}` : className
+
+      // Try FQN first, then fall back to short name
+      const match = models[fqn] ? fqn : resolveModelName(className, models)
       if (match) testedModels.add(match)
     } else if (
       entry.specCategory === 'request_specs' ||
@@ -43,10 +60,11 @@ function buildTestedEntitySets(manifest, models, controllers) {
       // Derive controller name, respecting subdirectory namespaces
       const pathParts = entry.path.split('/')
       // e.g. test/controllers/admin/articles_controller_test.rb
-      // → parts after 'controllers' before the file: ['admin']
-      const ctrlDirIdx = pathParts.indexOf('controllers')
+      // → parts after 'controllers' (or 'requests') before the file: ['admin']
+      let anchorIdx = pathParts.indexOf('controllers')
+      if (anchorIdx === -1) anchorIdx = pathParts.indexOf('requests')
       const namespaceParts =
-        ctrlDirIdx >= 0 ? pathParts.slice(ctrlDirIdx + 1, -1) : []
+        anchorIdx >= 0 ? pathParts.slice(anchorIdx + 1, -1) : []
 
       const ctrlBaseName = basename
         .replace('_controller', '')
@@ -56,8 +74,14 @@ function buildTestedEntitySets(manifest, models, controllers) {
       const ctrlShortName = ctrlBaseName + 'Controller'
 
       // Build FQN with namespace: Admin::ArticlesController
+      // Properly CamelCase multi-word segments (asset_reviews → AssetReviews)
       const ns = namespaceParts
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .map((p) =>
+          p
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(''),
+        )
         .join('::')
       const ctrlFQN = ns ? `${ns}::${ctrlShortName}` : ctrlShortName
 
@@ -84,6 +108,12 @@ function resolveModelName(shortName, models) {
   const suffix = '::' + shortName
   for (const key of Object.keys(models)) {
     if (key.endsWith(suffix)) return key
+  }
+  // Case-insensitive fallback for acronym models (HTTPLog vs HttpLog)
+  const lower = shortName.toLowerCase()
+  for (const key of Object.keys(models)) {
+    const lastPart = key.split('::').pop()
+    if (lastPart.toLowerCase() === lower) return key
   }
   return null
 }
@@ -134,12 +164,15 @@ export function register(server, state) {
 
       for (const [name, model] of Object.entries(models)) {
         if (!model.file) continue
+        // Skip concerns and modules — they are not standalone entities
+        if (model.type === 'concern' || model.type === 'module') continue
         const fileCov = coverageSnapshot.per_file?.[model.file]
         const coverage = fileCov ? fileCov.line_coverage : 0
         const gap = 100 - (coverage || 0)
         const hasTest = testedModels.has(name)
 
-        if (gap < min_gap) continue
+        if (gap <= 0) continue
+        if (min_gap > 0 && gap < min_gap) continue
         if (category && category !== 'model_specs') continue
         // When no SimpleCov, skip entities that have test files
         if (!hasCoverage && hasTest) continue
@@ -161,12 +194,15 @@ export function register(server, state) {
 
       for (const [name, ctrl] of Object.entries(controllers)) {
         if (!ctrl.file) continue
+        // Skip controller concerns (modules in app/controllers/concerns/)
+        if (ctrl.file.includes('/concerns/')) continue
         const fileCov = coverageSnapshot.per_file?.[ctrl.file]
         const coverage = fileCov ? fileCov.line_coverage : 0
         const gap = 100 - (coverage || 0)
         const hasTest = testedControllers.has(name)
 
-        if (gap < min_gap) continue
+        if (gap <= 0) continue
+        if (min_gap > 0 && gap < min_gap) continue
         if (
           category &&
           category !== 'request_specs' &&
