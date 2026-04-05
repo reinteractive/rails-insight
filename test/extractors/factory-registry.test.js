@@ -254,4 +254,128 @@ end`,
     expect(result.total_factories).toBe(0)
     expect(result.factory_files).toEqual([])
   })
+
+  it('excludes trait-level attributes from factory attributes', () => {
+    const provider = createMemoryProvider({
+      'spec/factories/stock_locations.rb': `
+FactoryBot.define do
+  factory :stock_location do
+    name { "Warehouse" }
+    active { true }
+
+    trait :click_and_collect do
+      click_and_collect_allowed { true }
+      days_to_restock { 3 }
+    end
+  end
+end`,
+    })
+    const entries = [
+      {
+        path: 'spec/factories/stock_locations.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
+    ]
+    const result = extractFactoryRegistry(provider, entries)
+    expect(result.factories.stock_location.attributes).toContain('name')
+    expect(result.factories.stock_location.attributes).toContain('active')
+    expect(result.factories.stock_location.attributes).not.toContain('click_and_collect_allowed')
+    expect(result.factories.stock_location.attributes).not.toContain('days_to_restock')
+    expect(result.factories.stock_location.traits).toContain('click_and_collect')
+  })
+
+  it('excludes attributes from multiple traits', () => {
+    const provider = createMemoryProvider({
+      'spec/factories/advertisements.rb': `
+FactoryBot.define do
+  factory :advertisement do
+    url { "https://example.com" }
+    active { true }
+
+    trait :inactive do
+      active { false }
+    end
+
+    trait :home_page do
+      display_on_home_page { true }
+      home_page_position { "Top" }
+    end
+  end
+end`,
+    })
+    const entries = [
+      {
+        path: 'spec/factories/advertisements.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
+    ]
+    const result = extractFactoryRegistry(provider, entries)
+    expect(result.factories.advertisement.attributes).toContain('url')
+    expect(result.factories.advertisement.attributes).toContain('active')
+    expect(result.factories.advertisement.attributes).not.toContain('display_on_home_page')
+    expect(result.factories.advertisement.attributes).not.toContain('home_page_position')
+    expect(result.factories.advertisement.traits).toEqual(['inactive', 'home_page'])
+  })
+
+  it('handles trait with after(:create) callback inside', () => {
+    const provider = createMemoryProvider({
+      'spec/factories/asset_reviews.rb': `
+FactoryBot.define do
+  factory :asset_review do
+    priority { :low }
+
+    trait :approved do
+      status { :approved }
+      argos_synced_at { nil }
+    end
+
+    trait :with_metrics do
+      after(:create) do |review|
+        create(:metric, asset_review: review)
+      end
+    end
+  end
+end`,
+    })
+    const entries = [
+      {
+        path: 'spec/factories/asset_reviews.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
+    ]
+    const result = extractFactoryRegistry(provider, entries)
+    expect(result.factories.asset_review.attributes).toContain('priority')
+    expect(result.factories.asset_review.attributes).not.toContain('status')
+    expect(result.factories.asset_review.attributes).not.toContain('argos_synced_at')
+    expect(result.factories.asset_review.traits).toEqual(['approved', 'with_metrics'])
+  })
+
+  it('detects attributes with multi-line block values', () => {
+    const provider = createMemoryProvider({
+      'spec/factories/articles.rb': `
+FactoryBot.define do
+  factory :article do
+    title { "My Article" }
+    body_markdown { "This is a very long article body
+that spans multiple lines with lots of content.
+It keeps going and going." }
+    published { true }
+  end
+end`,
+    })
+    const entries = [
+      {
+        path: 'spec/factories/articles.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
+    ]
+    const result = extractFactoryRegistry(provider, entries)
+    expect(result.factories.article.attributes).toContain('title')
+    expect(result.factories.article.attributes).toContain('body_markdown')
+    expect(result.factories.article.attributes).toContain('published')
+  })
 })

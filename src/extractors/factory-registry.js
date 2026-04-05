@@ -60,8 +60,10 @@ function parseFactoryFile(content, filePath) {
 
   let currentFactory = null
   let inTransient = false
+  let inTrait = false
   let depth = 0
   let factoryDepth = 0
+  let traitDepth = 0
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -114,6 +116,8 @@ function parseFactoryFile(content, filePath) {
     const traitMatch = trimmed.match(FACTORY_PATTERNS.trait)
     if (traitMatch) {
       currentFactory.traits.push(traitMatch[1])
+      inTrait = true
+      traitDepth = depth
       depth++
       continue
     }
@@ -167,22 +171,25 @@ function parseFactoryFile(content, filePath) {
 
     if (/\bend\b/.test(trimmed)) {
       depth--
-      if (depth <= factoryDepth) {
+      if (inTrait && depth <= traitDepth) {
+        inTrait = false
+      } else if (inTransient && depth <= factoryDepth) {
+        inTransient = false
+      } else if (depth <= factoryDepth) {
         // Factory closed
-        if (inTransient) {
-          inTransient = false
-        } else {
-          // Deduplicate attributes
-          currentFactory.attributes = [...new Set(currentFactory.attributes)]
-          factories.push(currentFactory)
-          currentFactory = null
-        }
+        // Deduplicate attributes
+        currentFactory.attributes = [...new Set(currentFactory.attributes)]
+        factories.push(currentFactory)
+        currentFactory = null
+        inTrait = false
+        inTransient = false
       }
     }
 
-    // Attribute with block
-    if (!inTransient) {
-      const attrBlockMatch = trimmed.match(FACTORY_PATTERNS.attributeBlock)
+    // Attribute with block (single-line or multi-line)
+    if (!inTransient && !inTrait) {
+      const attrBlockMatch = trimmed.match(FACTORY_PATTERNS.attributeBlock) ||
+        trimmed.match(/^\s*(\w+)\s*\{/)
       if (
         attrBlockMatch &&
         !FACTORY_PATTERNS.trait.test(trimmed) &&

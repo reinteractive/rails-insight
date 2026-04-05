@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.39] - 2026-04-05
+
+### Fixed
+
+- **`get_factory_registry` trait-level attributes leak into factory attributes**: Attributes defined inside `trait` blocks (e.g. `trait :click_and_collect do; click_and_collect_allowed { true }; end`) were incorrectly included in the factory's top-level `attributes` list. The parser now tracks trait block depth and excludes attributes inside traits, matching the same guard already applied to `transient` blocks
+- **`get_factory_registry` multi-line attribute block detection**: Attributes with block values spanning multiple lines (e.g. `body_markdown { "long text...\n..." }`) were not detected because the regex required both `{` and `}` on the same line. Now falls back to matching just the opening `{` for attribute detection
+
 ## [1.0.38] - 2026-04-05
 
 ### Fixed
