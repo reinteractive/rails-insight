@@ -115,8 +115,7 @@ function buildTestedEntitySets(manifest, models, controllers) {
     if (testedControllers.has(ctrlName)) continue
     // Convert FQN to underscore path: SalesController → sales
     const ctrlParts = ctrlName.replace('Controller', '').split('::')
-    const toSnake = (s) =>
-      s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
+    const toSnake = (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
     // Only match non-namespaced controllers: AccountsController → "accounts"
     // Namespaced controllers are too ambiguous (e.g. spec/requests/users/
     // might only test OmniauthCallbacksController, not ConfirmationsController)
