@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.38] - 2026-04-05
+
+### Fixed
+
+- **`get_test_conventions` full-scan for subject, described_class, and let style detection**: The extractor previously sampled only the first 20 spec files to detect conventions, causing false negatives for `subject_usage`, `described_class_usage`, and incorrect `let_style` classification in projects with more than 20 spec files. Now scans all spec files for accurate convention detection. Fixes subject_usage FN in 3 apps, described_class FN in 2 apps, and let_style misclassification in 2 apps
+- **`get_test_conventions` spec_counts missing categories**: Added 11 missing RSpec spec category directories (`helper_specs`, `feature_specs`, `system_specs`, `view_specs`, `routing_specs`, `worker_specs`, `lib_specs`, `integration_specs`, `decorator_specs`, `serializer_specs`, `presenter_specs`) and 5 Minitest directories (`helper_tests`, `system_tests`, `job_tests`, `mailer_tests`, `service_tests`) to the spec file classifier. Previously, files in these directories were reported as `other` instead of their correct category
+
 ## [1.0.37] - 2026-04-05
 
 ### Fixed

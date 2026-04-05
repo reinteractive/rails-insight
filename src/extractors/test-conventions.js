@@ -88,11 +88,8 @@ export function extractTestConventions(provider, entries, gemInfo = {}) {
     result.spec_counts[cat] = (result.spec_counts[cat] || 0) + 1
   }
 
-  // Sample up to 20 spec files to detect conventions (avoid reading hundreds)
-  const sampleSize = Math.min(specEntries.length, 20)
-  const sampledEntries = specEntries.slice(0, sampleSize)
-
-  for (const entry of sampledEntries) {
+  // Scan all spec/test files for convention patterns
+  for (const entry of specEntries) {
     const content = provider.readFile(entry.path)
     if (!content) continue
 
