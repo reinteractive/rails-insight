@@ -352,4 +352,30 @@ end`,
     expect(result.factories.asset_review.attributes).not.toContain('argos_synced_at')
     expect(result.factories.asset_review.traits).toEqual(['approved', 'with_metrics'])
   })
+
+  it('detects attributes with multi-line block values', () => {
+    const provider = createMemoryProvider({
+      'spec/factories/articles.rb': `
+FactoryBot.define do
+  factory :article do
+    title { "My Article" }
+    body_markdown { "This is a very long article body
+that spans multiple lines with lots of content.
+It keeps going and going." }
+    published { true }
+  end
+end`,
+    })
+    const entries = [
+      {
+        path: 'spec/factories/articles.rb',
+        category: 19,
+        specCategory: 'factories',
+      },
+    ]
+    const result = extractFactoryRegistry(provider, entries)
+    expect(result.factories.article.attributes).toContain('title')
+    expect(result.factories.article.attributes).toContain('body_markdown')
+    expect(result.factories.article.attributes).toContain('published')
+  })
 })
