@@ -171,6 +171,10 @@ const RULES = [
 
   // --- Core Tier 1: broad app/ directory matches ---
   { test: (p) => /^app\/models\/.*\.rb$/.test(p), category: 1 },
+  {
+    test: (p) => /^app\/controllers\/concerns\/.*\.rb$/.test(p),
+    category: 26,
+  },
   { test: (p) => /^app\/controllers\/.*\.rb$/.test(p), category: 2 },
   { test: (p) => /^app\/components\/.*\.(rb|html\.\w+)$/.test(p), category: 5 },
   {

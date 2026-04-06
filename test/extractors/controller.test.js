@@ -551,4 +551,34 @@ end`
       expect(tqp.options).toContain(']')
     })
   })
+
+  describe('superclass with :: prefix', () => {
+    it('extracts superclass when prefixed with ::', () => {
+      const content = `module Spree
+  module Admin
+    module Api
+      module V1
+        class UploaderController < ::Spree::Api::V2::BaseController
+          def image
+            blob = ActiveStorage::Blob.create_after_upload!(io: params[:file])
+            render json: { url: blob.url }
+          end
+        end
+      end
+    end
+  end
+end`
+      const result = extractController(
+        mockProvider({
+          'app/controllers/spree/admin/api/v1/uploader_controller.rb': content,
+        }),
+        'app/controllers/spree/admin/api/v1/uploader_controller.rb',
+      )
+      expect(result).not.toBeNull()
+      expect(result.class).toBe('Spree::Admin::Api::V1::UploaderController')
+      expect(result.superclass).toBe('Spree::Api::V2::BaseController')
+      expect(result.api_controller).toBe(true)
+      expect(result.actions).toContain('image')
+    })
+  })
 })

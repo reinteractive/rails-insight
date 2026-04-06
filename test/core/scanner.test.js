@@ -63,6 +63,18 @@ describe('Scanner', () => {
       expect(entry.category).toBe(2)
     })
 
+    it('classifies controller concern files as design_patterns, not controllers', () => {
+      const entry = classifyFile('app/controllers/concerns/authenticatable.rb')
+      expect(entry.category).toBe(26)
+      expect(entry.categoryName).toBe('design_patterns')
+    })
+
+    it('classifies nested controller concern files as design_patterns', () => {
+      const entry = classifyFile('app/controllers/concerns/api/respondable.rb')
+      expect(entry.category).toBe(26)
+      expect(entry.categoryName).toBe('design_patterns')
+    })
+
     it('classifies routes', () => {
       expect(classifyFile('config/routes.rb').category).toBe(3)
       expect(classifyFile('config/routes/api.rb').category).toBe(3)
