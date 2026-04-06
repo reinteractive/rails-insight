@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.40] - 2026-04-06
+
+### Fixed
+
+- **`get_controller` concern modules indexed as controllers**: Files in `app/controllers/concerns/` (e.g. `Authenticatable`, `Respondable`) were classified as category 2 (controllers) by the scanner, causing the indexer to add them to `extractions.controllers`. The scanner now classifies controller concern files as `design_patterns` (category 26) before the broad controller rule matches. Fixes false-positive controller discovery in 3 eval apps (sharp, quarter-turn, lf-api)
+- **`get_controller` superclass with `::` prefix not detected**: Controller class declarations inheriting with a root-namespace prefix (e.g. `class UploaderController < ::Spree::Api::V2::BaseController`) failed to match the `classDeclaration` regex, resulting in `null` superclass and incorrect `api_controller` flag. The pattern now handles optional leading `::` on the superclass
+
 ## [1.0.39] - 2026-04-05
 
 ### Fixed
