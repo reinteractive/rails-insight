@@ -105,6 +105,42 @@ end`,
     })
   })
 
+  describe('namespaced policy classes', () => {
+    // Regression: policyClass regex must match Admin::LogsPolicy < ApplicationPolicy
+    const files = {
+      'app/policies/admin/logs_policy.rb': `
+module Admin
+  class LogsPolicy < ApplicationPolicy
+    def index?
+      user.admin?
+    end
+
+    def show?
+      user.admin?
+    end
+  end
+end`,
+    }
+
+    const entries = [
+      { path: 'app/policies/admin/logs_policy.rb', category: 'policy' },
+    ]
+
+    const gemInfo = { gems: { pundit: { version: '2.3' } } }
+    const provider = mockProvider(files)
+    const result = extractAuthorization(provider, entries, gemInfo)
+
+    it('detects namespaced policy class', () => {
+      expect(result.policies).toHaveLength(1)
+    })
+
+    it('extracts resource name from namespaced policy', () => {
+      const logsPolicy = result.policies.find((p) => p.resource === 'Logs')
+      expect(logsPolicy).toBeTruthy()
+      expect(logsPolicy.class).toBe('LogsPolicy')
+    })
+  })
+
   describe('CanCanCan authorization', () => {
     const files = {
       'app/models/ability.rb': `
