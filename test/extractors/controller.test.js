@@ -552,6 +552,36 @@ end`
     })
   })
 
+  describe('filters with inline comments', () => {
+    it('extracts filter when inline Ruby comment follows on the same line', () => {
+      const content = `module Webhook
+  module V1
+    class EmailsController < ApplicationController
+      skip_before_action :verify_authenticity_token # Skip CSRF for webhooks
+      before_action :authenticate! # must be authenticated
+
+      def create
+      end
+    end
+  end
+end`
+      const result = extractController(
+        mockProvider({
+          'app/controllers/webhook/v1/emails_controller.rb': content,
+        }),
+        'app/controllers/webhook/v1/emails_controller.rb',
+      )
+      expect(result.class).toBe('Webhook::V1::EmailsController')
+      expect(result.filters).toHaveLength(2)
+      const skip = result.filters.find((f) => f.method === 'verify_authenticity_token')
+      expect(skip).toBeDefined()
+      expect(skip.type).toBe('skip_before_action')
+      const auth = result.filters.find((f) => f.method === 'authenticate!')
+      expect(auth).toBeDefined()
+      expect(auth.type).toBe('before_action')
+    })
+  })
+
   describe('superclass with :: prefix', () => {
     it('extracts superclass when prefixed with ::', () => {
       const content = `module Spree

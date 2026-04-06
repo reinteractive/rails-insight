@@ -76,11 +76,15 @@ export function extractController(provider, filePath) {
     }
     joinedLines.push(line)
   }
-  const joinedContent = joinedLines.join('\n')
+  // Strip inline Ruby comments before matching filters (prevents inline comments
+  // like `before_action :auth # sets up auth` from breaking the regex end-anchor)
+  const filterContent = joinedLines
+    .map((l) => l.replace(/#[^{].*$/, '').trimEnd())
+    .join('\n')
 
   const rawFilters = []
   const filterRe = new RegExp(CONTROLLER_PATTERNS.filterType.source, 'gm')
-  while ((m = filterRe.exec(joinedContent))) {
+  while ((m = filterRe.exec(filterContent))) {
     const filterMethod = m[2]
     const isAuthzGuard = /^require_\w+!$/.test(filterMethod)
     rawFilters.push({
