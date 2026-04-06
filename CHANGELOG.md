@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.42] - 2026-04-06
+
+### Fixed
+
+- **`get_schema` fails to parse schema-prefixed table names**: Tables defined with PostgreSQL schema prefixes (e.g. `create_table "public.login_permissions"`, `create_table "salesforce.account"`) were not matched by the `createTable` regex because `\w+` does not match dots. Changed to `[\w.]+` in `createTable`, `foreignKey`, and `checkConstraint` patterns. Affects any PostgreSQL database using multi-schema setups (e.g. Heroku Connect with `salesforce.*` tables)
+
 ## [1.0.41] - 2026-04-06
 
 ### Fixed
