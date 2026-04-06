@@ -217,15 +217,22 @@ export function register(server, state) {
         case 'model_list': {
           const models = extractions.models || {}
           return respond(
-            Object.entries(models).map(([n, m]) => ({
-              name: n,
-              superclass: m.superclass || null,
-              type: m.type || 'model',
-              association_count: (m.associations || []).length,
-              scope_count: (m.scopes || []).length,
-              has_secure_password: m.has_secure_password || false,
-              file: m.file,
-            })),
+            Object.entries(models)
+              .filter(
+                ([, m]) =>
+                  m.type !== 'concern' &&
+                  m.type !== 'module' &&
+                  m.type !== 'poro',
+              )
+              .map(([n, m]) => ({
+                name: n,
+                superclass: m.superclass || null,
+                type: m.type || 'model',
+                association_count: (m.associations || []).length,
+                scope_count: (m.scopes || []).length,
+                has_secure_password: m.has_secure_password || false,
+                file: m.file,
+              })),
           )
         }
 

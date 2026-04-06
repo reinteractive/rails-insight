@@ -96,12 +96,22 @@ export function extractJobs(provider, entries, gemInfo = {}) {
     recurring_jobs: null,
   }
 
-  // Detect adapter
+  // Detect adapter — first check explicit gem list, then fall back to Gemfile.lock
   if (gems.solid_queue) result.adapter = 'solid_queue'
   else if (gems.sidekiq) result.adapter = 'sidekiq'
   else if (gems.delayed_job) result.adapter = 'delayed_job'
   else if (gems.resque) result.adapter = 'resque'
   else if (gems.good_job) result.adapter = 'good_job'
+
+  // Gemfile.lock fallback: adapter gem may come from a sub-gem or path dependency
+  if (!result.adapter) {
+    const lockfile = provider.readFile('Gemfile.lock') || ''
+    if (/^\s{4}sidekiq\s/m.test(lockfile)) result.adapter = 'sidekiq'
+    else if (/^\s{4}solid.?queue\s/m.test(lockfile)) result.adapter = 'solid_queue'
+    else if (/^\s{4}good.?job\s/m.test(lockfile)) result.adapter = 'good_job'
+    else if (/^\s{4}delayed.?job\s/m.test(lockfile)) result.adapter = 'delayed_job'
+    else if (/^\s{4}resque\s/m.test(lockfile)) result.adapter = 'resque'
+  }
 
   for (const entry of entries) {
     if (entry.workerType === 'sidekiq_native') {

@@ -444,12 +444,26 @@ export function extractAuth(
         const lines = content.split('\n')
         const matchLine =
           content.slice(0, deviseMatch.index).split('\n').length - 1
-        for (let li = matchLine + 1; li < lines.length; li++) {
-          const ltrim = lines[li].trim()
-          if (ltrim.startsWith(':') || /^\w+.*:/.test(ltrim)) {
+        // Check if the devise call uses parentheses (content after `devise(` may be empty on the match line)
+        const inParens = deviseMatch[0].includes('(')
+        if (inParens) {
+          // Paren mode: consume lines until closing `)`
+          for (let li = matchLine + 1; li < lines.length; li++) {
+            const ltrim = lines[li].trim()
             fullDecl += ' ' + ltrim
-          } else {
-            break
+            if (ltrim.includes(')')) break
+          }
+        } else {
+          // Comma-continuation mode: only extend when the accumulated declaration ends with a comma
+          // and the next line starts with `:` (a symbol argument)
+          for (let li = matchLine + 1; li < lines.length; li++) {
+            if (!fullDecl.trim().endsWith(',')) break
+            const ltrim = lines[li].trim()
+            if (ltrim.startsWith(':')) {
+              fullDecl += ' ' + ltrim
+            } else {
+              break
+            }
           }
         }
 
