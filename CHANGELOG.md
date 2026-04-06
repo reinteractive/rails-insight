@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.47] - 2026-04-12
+
+### Fixed
+
+- **`get_deep_analysis` model_list returns concerns and modules**: The `model_list` category returned all entries in `extractions.models` including concern modules (e.g. `UserRansackable`, `Orderable`, `Discardable`) and POROs (e.g. `Ability`, `DeliveryAddress`). The handler now filters out `type: 'concern'`, `type: 'module'`, and `type: 'poro'` entries — consistent with `get_domain_clusters` — so only ActiveRecord model classes are returned
+- **`get_deep_analysis` authentication includes non-Devise symbols as devise modules**: The auth extractor's multi-line devise declaration parser used `^\w+.*:` as a continuation condition, which incorrectly matched `attr_accessor :skip_sync_with_salesforce` and similar declarations as Devise modules. Changed to stop continuation when the accumulated declaration does not end with a comma and the next line does not start with `:`, preventing non-devise declarations from being captured
+- **`get_deep_analysis` jobs adapter detection misses sub-gem adapters**: The jobs extractor only detected the adapter from top-level `Gemfile` gem declarations. Apps where the job adapter (e.g. Sidekiq) was declared in a sub-gem or path dependency (only appearing in `Gemfile.lock`) incorrectly returned `adapter: null`. The extractor now falls back to reading `Gemfile.lock` when gem-based detection finds nothing
+
 ## [1.0.46] - 2026-04-12
 
 ### Fixed
