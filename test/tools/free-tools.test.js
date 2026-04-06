@@ -1044,6 +1044,70 @@ describe('Free Tools — MCP Handlers', () => {
         { from: 'Post', to: 'User', type: 'belongs_to' },
       ])
     })
+
+    it('resolves plural has_many association names to singular model names', async () => {
+      // Create index where the anchor model only has has_many associations
+      // (no belongs_to), so clustering depends on singularizing the plural name
+      const customIndex = structuredClone(builtIndex)
+
+      // Remove Post's belongs_to so User's has_many :posts is the only link
+      customIndex.extractions.models.Post.associations = [
+        { type: 'has_many', name: 'comments', options: null },
+      ]
+      // User keeps has_many :posts — clustering must singularize 'posts' → 'Post'
+      customIndex.extractions.models.User.associations = [
+        { type: 'has_many', name: 'posts', options: null },
+      ]
+      // Remove coverage so both are eligible
+      customIndex.extractions.coverage_snapshot = { available: false }
+
+      const freshMock = createFreshMock(customIndex)
+      const result = await freshMock.callTool('get_domain_clusters', {
+        include_covered: true,
+        max_cluster_size: 10,
+      })
+      const data = parseResponse(result)
+
+      // User and Post should be in the same cluster because has_many :posts → Post
+      const allModels = data.clusters.flatMap((c) => c.models)
+      const userCluster = data.clusters.find((c) => c.models.includes('User'))
+      expect(userCluster).toBeDefined()
+      expect(userCluster.models).toContain('Post')
+      expect(userCluster.shared_associations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ from: 'User', to: 'Post', type: 'has_many' }),
+        ]),
+      )
+    })
+
+    it('excludes POROs and modules from clustering', async () => {
+      const customIndex = structuredClone(builtIndex)
+      // Add a PORO and a module to the models
+      customIndex.extractions.models.MyPoro = {
+        type: 'poro',
+        abstract: false,
+        file: 'app/models/my_poro.rb',
+        associations: [],
+      }
+      customIndex.extractions.models.MyModule = {
+        type: 'module',
+        abstract: false,
+        file: 'app/models/my_module.rb',
+        associations: [],
+      }
+      customIndex.extractions.coverage_snapshot = { available: false }
+
+      const freshMock = createFreshMock(customIndex)
+      const result = await freshMock.callTool('get_domain_clusters', {
+        include_covered: true,
+      })
+      const data = parseResponse(result)
+
+      const allModels = data.clusters.flatMap((c) => c.models)
+      expect(allModels).not.toContain('MyPoro')
+      expect(allModels).not.toContain('MyModule')
+      expect(data.unassigned_models).toBe(0)
+    })
   })
 
   describe('get_factory_registry', () => {
