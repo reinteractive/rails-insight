@@ -3,7 +3,9 @@
  */
 export const AUTHORIZATION_PATTERNS = {
   // Pundit
-  policyClass: /class\s+(\w+)Policy\s*<\s*(\w+)/,
+  // Supports plain `class LoginPolicy < ApplicationPolicy` and
+  // namespaced `class Admin::LogsPolicy < ApplicationPolicy`
+  policyClass: /class\s+(?:[\w]+::)*(\w+)Policy\s*<\s*(\w+)/,
   policyMethod: /def\s+(\w+)\?/g,
   policyScopeClass: /class\s+Scope\s*<\s*(?:ApplicationPolicy::)?Scope/,
   policyScopeResolve: /def\s+resolve/,

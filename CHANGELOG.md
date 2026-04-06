@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.45] - 2026-04-11
+
+### Fixed
+
+- **`get_overview` returns database adapter string instead of raw config object**: When the config extractor produces `config.database` as an object (e.g. `{ adapter: 'postgresql', pool: 5 }`), the handler now extracts `.adapter` and returns a plain string. Previously the entire object was returned verbatim, failing schema comparisons downstream
+- **Devise modules not extracted when declared with parentheses**: The `deviseModules` pattern `/^\s*devise\s+(.+)/m` required a space immediately after `devise`, missing the `devise(:database_authenticatable, ...)` parenthesis form used by some apps. Changed to `/^\s*devise[\s(](.*)/m` to handle both forms
+- **Namespaced Pundit policy classes not detected**: The `policyClass` pattern `/class\s+(\w+)Policy\s*<\s*(\w+)/` did not match declarations like `class Admin::LogsPolicy < ApplicationPolicy` where the class name includes a module prefix. Updated to `/class\s+(?:[\w]+::)*(\w+)Policy\s*<\s*(\w+)/` to handle namespaced policy classes in `app/policies/*/`
+
 ## [1.0.43] - 2026-04-06
 
 ### Fixed

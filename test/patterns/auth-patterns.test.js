@@ -18,6 +18,17 @@ describe('AUTH_PATTERNS', () => {
       expect(m).toBeTruthy()
       expect(m[1]).toContain('database_authenticatable')
     })
+    it('matches devise( parenthesis form', () => {
+      expect(
+        '  devise(:database_authenticatable, :registerable)',
+      ).toMatch(AUTH_PATTERNS.deviseModules)
+    })
+    it('extracts modules from devise( parenthesis form', () => {
+      const str = '  devise(:database_authenticatable, :registerable)'
+      const m = str.match(AUTH_PATTERNS.deviseModules)
+      expect(m).toBeTruthy()
+      expect(m[1]).toContain('database_authenticatable')
+    })
   })
 
   describe('deviseController', () => {

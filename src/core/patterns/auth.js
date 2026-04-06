@@ -4,7 +4,8 @@
 export const AUTH_PATTERNS = {
   // Devise
   deviseConfig: /config\.(\w+)\s*=\s*(.+)/g,
-  deviseModules: /^\s*devise\s+(.+)/m,
+  // Matches both `devise :module, ...` (space) and `devise(...)` (parens)
+  deviseModules: /^\s*devise[\s(](.*)/m,
   deviseController:
     /class\s+\w+::(\w+Controller)\s*<\s*Devise::(\w+Controller)/,
   omniauthProvider: /provider\s+:(\w+)/g,

@@ -124,10 +124,18 @@ export function register(server, state) {
           (index.extractions?.authorization?.policies || []).length || 0,
       }
 
+      // Extract database adapter as a plain string (config.database may be an object
+      // with { adapter, pool, ... } from the config extractor)
+      const dbConfig = config.database
+      const databaseStr =
+        dbConfig && typeof dbConfig === 'object'
+          ? dbConfig.adapter || 'unknown'
+          : dbConfig || v.database || 'unknown'
+
       const overview = {
         rails_version: v.rails || 'unknown',
         ruby_version: v.ruby || 'unknown',
-        database: config.database || v.database || 'unknown',
+        database: databaseStr,
         asset_pipeline:
           v.framework?.assetPipeline || v.asset_pipeline || 'unknown',
         frontend_stack: v.frontend || [],
