@@ -2,7 +2,7 @@
  * Regex patterns for Rails controller extraction.
  */
 export const CONTROLLER_PATTERNS = {
-  classDeclaration: /class\s+(\w+(?:::\w+)*Controller)\s*<\s*(\w+(?:::\w+)*)/,
+  classDeclaration: /class\s+(\w+(?:::\w+)*Controller)\s*<\s*(?:::)?(\w+(?:::\w+)*)/,
   include: /^\s*include\s+(\w+(?:::\w+)*)/m,
 
   // Filters

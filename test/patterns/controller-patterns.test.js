@@ -21,6 +21,15 @@ describe('CONTROLLER_PATTERNS', () => {
         CONTROLLER_PATTERNS.classDeclaration,
       )
     })
+    it('matches controller with :: prefix on superclass', () => {
+      const m =
+        'class UploaderController < ::Spree::Api::V2::BaseController'.match(
+          CONTROLLER_PATTERNS.classDeclaration,
+        )
+      expect(m).not.toBeNull()
+      expect(m[1]).toBe('UploaderController')
+      expect(m[2]).toBe('Spree::Api::V2::BaseController')
+    })
   })
 
   describe('filterType', () => {
