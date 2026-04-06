@@ -573,7 +573,9 @@ end`
       )
       expect(result.class).toBe('Webhook::V1::EmailsController')
       expect(result.filters).toHaveLength(2)
-      const skip = result.filters.find((f) => f.method === 'verify_authenticity_token')
+      const skip = result.filters.find(
+        (f) => f.method === 'verify_authenticity_token',
+      )
       expect(skip).toBeDefined()
       expect(skip.type).toBe('skip_before_action')
       const auth = result.filters.find((f) => f.method === 'authenticate!')
