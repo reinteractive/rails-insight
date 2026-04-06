@@ -187,7 +187,16 @@ function parseRouteContent(content, result, provider, namespaceStack) {
       continue
     }
 
-    // Scope
+    // Scope with module: option — pushes the module name as a namespace modifier.
+    // e.g. `scope module: :accounts, path: :account do` → namespaceStack gets 'accounts'
+    const scopeModuleMatch = trimmed.match(ROUTE_PATTERNS.scopeModule)
+    if (scopeModuleMatch && /\bdo\b/.test(trimmed)) {
+      namespaceStack.push(scopeModuleMatch[1])
+      blockStack.push('scope')
+      continue
+    }
+
+    // Scope (path or symbol form)
     const scopeMatch = trimmed.match(ROUTE_PATTERNS.scope)
     if (scopeMatch) {
       const scopeName = scopeMatch[1] || scopeMatch[2] || ''
@@ -239,6 +248,18 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         singular: true,
         member_routes: [],
         collection_routes: [],
+      }
+
+      // Track nesting relationship for singular resource inside a parent resource block
+      const singularParent = resourceStack[resourceStack.length - 1] || null
+      if (singularParent) {
+        result.nested_relationships.push({
+          parent: singularParent.name,
+          child: name,
+          parent_controller: singularParent.controller,
+          child_controller: ns ? `${ns}/${name}` : name,
+        })
+        entry.parent_resource = singularParent.name
       }
 
       if (/\bdo\s*$/.test(trimmed)) {
@@ -385,7 +406,10 @@ function parseRouteContent(content, result, provider, namespaceStack) {
         const currentResource = resourceStack[resourceStack.length - 1]
         const collAction = path.replace(/^\//, '').split('/')[0]
         currentResource.collection_routes.push({ action: collAction, method })
-      } else {
+      } else if (!inMember && !inCollection) {
+        // Only add to standalone_routes when not inside an orphaned member/collection block
+        // (i.e. a member/collection whose parent `resources name do` used a variable name
+        // that was unrecognised by the regex extractor)
         result.standalone_routes.push({ method, path, controller, action })
       }
       continue

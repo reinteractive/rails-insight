@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.46] - 2026-04-12
+
+### Fixed
+
+- **`get_routes` misses controller namespace for `scope module:` blocks**: Resources declared inside `scope module: :name do` blocks were extracted at the root namespace instead of the correct `name/` prefix. Added detection for `scope module:` in the routes extractor, using the existing `scopeModule` regex pattern that was defined but never applied. Affects any app using `scope module:` to group controllers under a module without a URL prefix (e.g. `scope module: :accounts, path: :account do`)
+- **`get_routes` leaks member/collection routes to `standalone_routes` from dynamic resource blocks**: Routes declared inside `member do` or `collection do` blocks of a dynamically-named resource (e.g. `%i[sales parts].each do |name| resources name do member do ...`) were added to `standalone_routes` because the regex could not match the variable name. These routes are now silently dropped (consistent with how ground-truth parsers handle them) instead of appearing as false-positive standalone routes
+- **`get_routes` nested_relationships missing for singular `resource` inside `resources` block**: A singular `resource :child` nested inside `resources :parent do` was not recorded in `nested_relationships`. The extractor now tracks nesting for singular resources in the same way it already did for plural `resources` blocks, and sets `parent_resource` on the child entry
+
 ## [1.0.45] - 2026-04-11
 
 ### Fixed
