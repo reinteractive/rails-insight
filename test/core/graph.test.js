@@ -207,6 +207,33 @@ describe('buildGraph', () => {
     expect(testsEdge.from).toBe('spec:User')
   })
 
+  it('creates tests edge from namespaced model spec to FQN', () => {
+    const extractions = {
+      models: {
+        'Salesforce::ServiceProvider': {
+          superclass: 'ApplicationRecord',
+          associations: [],
+        },
+      },
+      test_conventions: {},
+    }
+    const manifest = {
+      entries: [
+        {
+          path: 'spec/models/salesforce/service_provider_spec.rb',
+          category: 19,
+          specCategory: 'model_specs',
+        },
+      ],
+    }
+    const { relationships } = buildGraph(extractions, manifest)
+    const testsEdge = relationships.find(
+      (r) => r.type === 'tests' && r.to === 'Salesforce::ServiceProvider',
+    )
+    expect(testsEdge).toBeTruthy()
+    expect(testsEdge.from).toBe('spec:Salesforce::ServiceProvider')
+  })
+
   it('creates tests edge from request spec to controller', () => {
     const extractions = {
       controllers: {

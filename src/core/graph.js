@@ -453,21 +453,38 @@ export function buildGraph(extractions, manifest, skills = []) {
         .replace(isTest ? '_test.rb' : '_spec.rb', '')
       const className = classify(basename)
 
+      // Infer namespace from directory structure under models/:
+      // spec/models/salesforce/service_provider_spec.rb → Salesforce::ServiceProvider
+      const specPathParts = entry.path.split('/')
+      const modelsIdx = specPathParts.findIndex((p) => p === 'models')
+      const nsDirs = modelsIdx >= 0 ? specPathParts.slice(modelsIdx + 1, -1) : []
+      const namespacedClassName =
+        nsDirs.length > 0
+          ? nsDirs.map((p) => p[0].toUpperCase() + p.slice(1)).join('::') + '::' + className
+          : className
+
       if (
         entry.specCategory === 'model_specs' ||
         entry.specCategory === 'model_tests'
       ) {
-        if (extractions.models && extractions.models[className]) {
+        // Try namespaced FQN first (respecting directory structure), then plain name
+        const resolvedModelName =
+          extractions.models && extractions.models[namespacedClassName]
+            ? namespacedClassName
+            : extractions.models && extractions.models[className]
+              ? className
+              : null
+        if (resolvedModelName) {
           const nodePrefix = isTest ? 'test' : 'spec'
           graph.addNode(
-            `${nodePrefix}:${className}`,
+            `${nodePrefix}:${resolvedModelName}`,
             nodePrefix,
-            `${className} ${nodePrefix}`,
+            `${resolvedModelName} ${nodePrefix}`,
           )
-          graph.addEdge(`${nodePrefix}:${className}`, className, 'tests')
+          graph.addEdge(`${nodePrefix}:${resolvedModelName}`, resolvedModelName, 'tests')
           relationships.push({
-            from: `${nodePrefix}:${className}`,
-            to: className,
+            from: `${nodePrefix}:${resolvedModelName}`,
+            to: resolvedModelName,
             type: 'tests',
           })
         }
