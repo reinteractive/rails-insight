@@ -43,6 +43,9 @@ export function register(server, state) {
       const isCategoryOnly = CATEGORY_ONLY.has(lowerPattern)
 
       for (const [name, model] of Object.entries(extractions.models || {})) {
+        // Skip concerns, modules, and POROs — search only concrete model classes
+        if (model.type === 'concern' || model.type === 'module' || model.type === 'poro') continue
+
         const matches = []
         if (model.associations) {
           for (const assoc of model.associations) {

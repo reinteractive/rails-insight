@@ -271,6 +271,83 @@ describe('search_patterns', () => {
     })
   })
 
+  describe('concern and module filtering', () => {
+    it('does not return concerns (type: concern) in scope results', async () => {
+      const indexWithConcern = {
+        extractions: {
+          models: {
+            Widget: {
+              type: 'model',
+              scopes: ['active'],
+              scope_queries: { active: '-> { where(active: true) }' },
+            },
+            Orderable: {
+              type: 'concern',
+              scopes: ['ordered'],
+              scope_queries: { ordered: '-> { order(:position) }' },
+            },
+          },
+          controllers: {},
+        },
+      }
+      setup(indexWithConcern)
+      const data = await mock.callTool('search_patterns', { pattern: 'scope' })
+
+      const entities = data.results.map((r) => r.entity)
+      expect(entities).toContain('Widget')
+      expect(entities).not.toContain('Orderable')
+      expect(data.total_matches).toBe(1)
+    })
+
+    it('does not return modules (type: module) in enum results', async () => {
+      const indexWithModule = {
+        extractions: {
+          models: {
+            User: {
+              type: 'model',
+              enums: { role: { values: ['admin', 'user'] } },
+            },
+            Activateable: {
+              type: 'module',
+              enums: { status: { values: ['active', 'inactive'] } },
+            },
+          },
+          controllers: {},
+        },
+      }
+      setup(indexWithModule)
+      const data = await mock.callTool('search_patterns', { pattern: 'enum' })
+
+      const entities = data.results.map((r) => r.entity)
+      expect(entities).toContain('User')
+      expect(entities).not.toContain('Activateable')
+    })
+
+    it('does not return POROs (type: poro) in validates results', async () => {
+      const indexWithPoro = {
+        extractions: {
+          models: {
+            Order: {
+              type: 'model',
+              validations: [{ attributes: ['amount'], rules: 'presence: true' }],
+            },
+            OrderForm: {
+              type: 'poro',
+              validations: [{ attributes: ['name'], rules: 'presence: true' }],
+            },
+          },
+          controllers: {},
+        },
+      }
+      setup(indexWithPoro)
+      const data = await mock.callTool('search_patterns', { pattern: 'validates' })
+
+      const entities = data.results.map((r) => r.entity)
+      expect(entities).toContain('Order')
+      expect(entities).not.toContain('OrderForm')
+    })
+  })
+
   describe('no index', () => {
     it('returns error when index is null', async () => {
       setup(null)

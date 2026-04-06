@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.43] - 2026-04-06
+
+### Fixed
+
+- **`search_patterns` returns concerns and modules in model results**: The handler iterated all entries in `extractions.models` without filtering by type, causing ActiveSupport::Concern modules (e.g. `Orderable`, `Activateable`) to appear in search results for `scope`, `validates`, `enum`, etc. The handler now skips entries with `type: 'concern'`, `type: 'module'`, or `type: 'poro'` — only concrete model classes are searched
+- **Controller extractor misses filters with inline Ruby comments**: A `before_action` or `skip_before_action` declaration followed by an inline comment (e.g. `skip_before_action :verify_authenticity_token # Skip CSRF`) failed to match the filter regex because the `$` end-of-line anchor could not match past the comment text. The extractor now strips inline Ruby comments from each line (same approach used by model extractor for callbacks) before running filter detection
+
 ## [1.0.42] - 2026-04-06
 
 ### Fixed
