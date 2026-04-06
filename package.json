@@ -1,6 +1,6 @@
 {
   "name": "@reinteractive/rails-insight",
-  "version": "1.0.41",
+  "version": "1.0.42",
   "description": "Rails-aware codebase indexer — MCP server for AI agents",
   "type": "module",
   "bin": {

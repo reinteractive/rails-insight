@@ -437,5 +437,38 @@ end`,
       const idx = r.tables[0].indexes[0]
       expect(idx.using).toBeNull()
     })
+
+    it('parses schema-prefixed table names (e.g., public.users, salesforce.account)', () => {
+      const provider = mockProvider({
+        'db/schema.rb': `
+ActiveRecord::Schema[7.2].define(version: 2026_01_27_000000) do
+  create_table "public.login_permissions", id: :bigint, force: :cascade do |t|
+    t.integer "login_id"
+    t.string "code"
+    t.timestamps
+  end
+
+  create_table "salesforce.account", id: :integer, force: :cascade do |t|
+    t.string "name"
+    t.string "sfid"
+    t.index ["sfid"], unique: true
+  end
+
+  add_foreign_key "salesforce.sales_order_logs", "public.saved_orders"
+end`,
+      })
+      const r = extractSchema(provider)
+      expect(r.tables).toHaveLength(2)
+      expect(r.tables[0].name).toBe('public.login_permissions')
+      expect(r.tables[0].primary_key).toEqual({ type: 'bigint', auto: true })
+      expect(r.tables[0].columns).toHaveLength(4) // login_id, code, created_at, updated_at
+      expect(r.tables[1].name).toBe('salesforce.account')
+      expect(r.tables[1].primary_key).toEqual({ type: 'integer', auto: true })
+      expect(r.tables[1].indexes).toHaveLength(1)
+      expect(r.tables[1].indexes[0].unique).toBe(true)
+      expect(r.foreign_keys).toHaveLength(1)
+      expect(r.foreign_keys[0].from_table).toBe('salesforce.sales_order_logs')
+      expect(r.foreign_keys[0].to_table).toBe('public.saved_orders')
+    })
   })
 })
