@@ -13,7 +13,12 @@ export function getSkillSeeds(skill, index) {
 
   switch (skill) {
     case 'authentication': {
-      // Models with Devise, has_secure_password, or Session/Current naming
+      // Devise models from the auth extractor (more reliable than model.devise_modules
+      // which can be empty when the model uses the `devise(...)` paren-call style)
+      for (const name of Object.keys(extractions.auth?.devise?.models || {})) {
+        seeds.add(name)
+      }
+      // Models with Devise (via model extractor), has_secure_password, or standard naming
       for (const [name, model] of Object.entries(extractions.models || {})) {
         if (
           model.has_secure_password ||
@@ -23,10 +28,10 @@ export function getSkillSeeds(skill, index) {
           seeds.add(name)
         }
       }
-      // Controllers related to auth
+      // Controllers related to auth — use \bauth(?!or) to avoid matching 'author/authors'
       for (const [name] of Object.entries(extractions.controllers || {})) {
         if (
-          /session|registration|password|confirmation|login|signup|auth/i.test(
+          /session|registration|password|confirmation|login|signup|\bauth(?!or)/i.test(
             name,
           )
         ) {
@@ -143,14 +148,27 @@ export function register(server, state) {
       // BFS one hop from seeds using relationships
       const relevantEntities = new Set(seeds)
 
-      // For authentication subgraph, exclude irrelevant entities reached only via inherits edges
+      // For authentication subgraph, exclude edges that pull in irrelevant entities:
+      // - 'inherits': superclass chain edges (base classes aren't auth-specific)
+      // - 'includes_concern': concern modules (e.g. UserRansackable, Discardable) aren't auth
       const authIrrelevantEdges =
-        skill === 'authentication' ? new Set(['inherits']) : new Set()
+        skill === 'authentication'
+          ? new Set(['inherits', 'includes_concern'])
+          : new Set()
 
       for (const rel of allRels) {
         if (authIrrelevantEdges.has(rel.type)) continue
         if (seeds.has(rel.from)) relevantEntities.add(rel.to)
         if (seeds.has(rel.to)) relevantEntities.add(rel.from)
+      }
+
+      // Remove spec/test file entities from all skill subgraphs — spec files are
+      // added as BFS neighbors via 'spec_for' edges from seeded model/controller
+      // entities. They belong in blast-radius results, not skill subgraphs.
+      for (const entity of relevantEntities) {
+        if (entity.startsWith('spec:') || entity.startsWith('test:')) {
+          relevantEntities.delete(entity)
+        }
       }
 
       const subgraphRels = allRels.filter(
@@ -164,7 +182,8 @@ export function register(server, state) {
       // BFS from auth seeds leaks into high-connectivity models (e.g., Activity
       // via belongs_to :author), polluting the subgraph.
       if (skill === 'authentication') {
-        const authEntityPatterns = /auth|session|user|admin|devise|password|registration|confirmation|login|signup|member|ability|role|current|warden|omniauth/i
+        // Use \bauth(?!or) to avoid matching 'author'/'authors' models/controllers
+        const authEntityPatterns = /\bauth(?!or)|session|user|admin|devise|password|registration|confirmation|login|signup|member|ability|role|current|warden|omniauth/i
 
         const authFiltered = rankedFiles.filter(e =>
           seeds.has(e.entity) || authEntityPatterns.test(e.entity)

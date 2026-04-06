@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.48] - 2026-04-06
+
+### Fixed
+
+- **`get_subgraph` authentication skill misses Devise models that use paren-style `devise(...)` declaration**: `getSkillSeeds('authentication')` checked `model.devise_modules.length > 0` on the model extractor's per-model record. When a model uses `devise(...)` with parens (e.g. `devise(:database_authenticatable, ...)`) the model extractor returns an empty array while the auth extractor correctly identifies the model. Seeds now also derive Devise models from `extractions.auth?.devise?.models`, which is always populated by the dedicated auth extractor regardless of call style
+- **`get_subgraph` authentication skill incorrectly seeds `AuthorsController` / `Spree::Admin::AuthorsController`**: The controller seed pattern `/session|registration|password|confirmation|login|signup|auth/i` matched any controller whose name contained `auth` as a substring, including `AuthorsController` (an article authors CRUD controller). Changed `auth` to `\bauth(?!or)` (word-boundary prefix + negative lookahead) so that `authenticate`, `authentication`, `AuthenticatedController` still match but `author` and `authors` do not
+- **`get_subgraph` authentication subgraph includes `spec:user` and other test-file entities**: The BFS one-hop expansion adds spec files as neighbors of seeded models via `spec_for` edges (e.g. `{ from: 'spec:user', to: 'User', type: 'spec_for' }`). These entities (with `spec:` or `test:` prefix) are then kept by the post-filter because the word `user` appears in `spec:user`. Added a post-BFS cleanup loop that removes all entities whose name starts with `spec:` or `test:` from the relevant entity set before building the ranked file list
+- **`get_subgraph` authentication subgraph includes concern modules via `includes_concern` BFS edges**: Concern modules like `UserRansackable`, `Orderable`, and `Discardable` are connected to their including models via `includes_concern` edges. BFS from auth seeds (e.g. User) would follow these edges and add the concerns to `relevantEntities`. The auth post-filter kept them because the word `user` appeared in the concern name. Added `includes_concern` to the `authIrrelevantEdges` set (alongside the existing `inherits` exclusion) so concern nodes are never added during auth BFS
+- **`get_subgraph` authentication post-filter regex matches `Author` model via `auth` substring**: The post-filter pattern included bare `auth` which matched any entity containing `auth` including `Author`. Changed to `\bauth(?!or)` to prevent the `Author` entity from being retained in the authentication subgraph
+
 ## [1.0.47] - 2026-04-12
 
 ### Fixed
