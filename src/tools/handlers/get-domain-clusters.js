@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { noIndex, respond, pathToClassName } from './helpers.js'
+import { noIndex, respond } from './helpers.js'
 import { WELL_COVERED_THRESHOLD } from '../../core/constants.js'
+import { classify } from '../../utils/inflector.js'
 
 /**
  * Register the get_domain_clusters tool.
@@ -33,7 +34,13 @@ export function register(server, state) {
       const assigned = new Set()
 
       const sortedModels = Object.entries(models)
-        .filter(([, m]) => m.type !== 'concern' && !m.abstract)
+        .filter(
+          ([, m]) =>
+            m.type !== 'concern' &&
+            m.type !== 'poro' &&
+            m.type !== 'module' &&
+            !m.abstract,
+        )
         .sort(
           (a, b) =>
             (b[1].associations?.length || 0) - (a[1].associations?.length || 0),
@@ -58,7 +65,7 @@ export function register(server, state) {
         assigned.add(name)
 
         const relatedModels = (model.associations || [])
-          .map((a) => pathToClassName(a.name))
+          .map((a) => classify(a.name))
           .filter((n) => models[n] && !assigned.has(n))
 
         for (const related of relatedModels) {
@@ -81,7 +88,7 @@ export function register(server, state) {
             to: related,
             type:
               (model.associations || []).find(
-                (a) => pathToClassName(a.name) === related,
+                (a) => classify(a.name) === related,
               )?.type || 'association',
           })
         }
@@ -105,6 +112,8 @@ export function register(server, state) {
           (n) =>
             !assigned.has(n) &&
             models[n].type !== 'concern' &&
+            models[n].type !== 'poro' &&
+            models[n].type !== 'module' &&
             !models[n].abstract,
         ).length,
       })

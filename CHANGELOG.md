@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.41] - 2026-04-06
+
+### Fixed
+
+- **`get_domain_clusters` plural association names not resolved to model classes**: The clustering algorithm used `pathToClassName` to convert association names (e.g. `posts` from `has_many :posts`) to model class names, which produced `Posts` instead of `Post`. Replaced with `classify` from the inflector, which correctly singularizes the last word segment before PascalCase conversion. Fixes cluster fragmentation where `has_many` and `has_and_belongs_to_many` associations failed to pull related models into the same cluster
+- **`get_domain_clusters` POROs and modules included in clustering**: Non-ActiveRecord classes (type `poro`) and modules (type `module`) in `app/models/` were included in domain clusters despite having no associations or database backing. The handler now excludes `poro` and `module` types from both cluster formation and the unassigned models count
+
 ## [1.0.40] - 2026-04-06
 
 ### Fixed
